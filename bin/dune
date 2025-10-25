@@ -1,4 +1,6 @@
 (executable
  (name main)
  (public_name bs)
- (package knowledge-bases))
+ (package knowledge-bases)
+ (libraries kbases)
+)

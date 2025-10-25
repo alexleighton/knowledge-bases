@@ -1,2 +1,5 @@
+module Id = Kbases.Data.Identifier
+
 let () =
-  print_endline "Hello from knowledge-bases!"
+  let id = Id.make "test" 42 in
+  Printf.printf "Hello from knowledge-bases! (%s)\n" (Id.to_string id);

@@ -28,6 +28,14 @@ $ dune build
 $ dune exec bs
 ```
 
+**Tests (expect tests):**
+
+```
+$ dune runtest
+# If outputs changed and you want to accept them:
+$ dune promote
+```
+
 # License
 
 This project is licensed under the terms of the MIT license. See LICENSE.txt
