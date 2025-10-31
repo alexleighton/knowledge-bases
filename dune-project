@@ -9,8 +9,10 @@
  (depends
   (ocaml (>= "5.3.0"))
   (dune (>= "3.20.2"))
+  (ppx_deriving (>= "6.1.1"))
   (ppx_expect (and (= "v0.17.3") :with-test))
   (ppx_inline_test (and (= "v0.17.1") :with-test))
   str
   )
 )
+

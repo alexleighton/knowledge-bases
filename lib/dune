@@ -1,6 +1,8 @@
 (library
  (name kbases)
  (libraries str)
+ (preprocess
+  (pps ppx_deriving.show))
 )
 
 (include_subdirs qualified)
