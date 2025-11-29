@@ -1,0 +1,8 @@
+(include_subdirs no)
+
+(library
+ (name kbases_tests_data_uuid)
+ (inline_tests)
+ (libraries kbases)
+ (preprocess (pps ppx_inline_test ppx_expect))
+)

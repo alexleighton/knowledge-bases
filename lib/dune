@@ -1,6 +1,6 @@
 (library
  (name kbases)
- (libraries str)
+ (libraries unix str uuidm stdint)
  (preprocess
   (pps ppx_deriving.show))
 )
