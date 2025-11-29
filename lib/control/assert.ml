@@ -14,3 +14,10 @@ let require2 ?(msg) ?(arg1) ?(arg2) predicate =
   match msg with 
   | Some msg -> invalid_arg2 msg (Option.get arg1) (Option.get arg2)
   | None     -> invalid_arg "Requirement not met"
+
+let require_strlen ?msg ~min ~max value =
+  let len = String.length value in
+  if not (len >= min && len <= max) then
+    match msg with
+    | Some msg -> invalid_arg msg
+    | None -> invalid_arg3 "String length must be between %d and %d, got %d" min max len

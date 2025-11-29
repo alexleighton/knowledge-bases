@@ -43,3 +43,15 @@ val require1 : ?msg:('a -> string, unit, string) format -> ?arg:'a -> bool -> un
 *)
 val require2 : ?msg:('a -> 'b -> string, unit, string) format
                -> ?arg1:'a -> ?arg2:'b -> bool -> unit
+
+(** [require_strlen ?msg ~min ~max value] validates that the length of
+    [value] lies within the inclusive range [[min], [max]].
+
+    @param msg optional custom error message (default includes the offending
+               length)
+    @param min minimum accepted length
+    @param max maximum accepted length
+    @param value the string whose length is validated
+    @raise Invalid_argument if the length is outside the inclusive range
+*)
+val require_strlen : ?msg:string -> min:int -> max:int -> string -> unit

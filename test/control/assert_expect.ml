@@ -65,3 +65,20 @@ let%expect_test "require2 failure with only arg2" =
 let%expect_test "require2 failure with only args" =
   (try ignore (A.require2 false ~arg1:"start" ~arg2:"end") with Invalid_argument msg -> print_endline msg);
   [%expect {| Requirement not met |}]
+
+let%expect_test "require_string_length success case" =
+  A.require_strlen ~min:2 ~max:4 "abc";
+  print_endline "Length within range";
+  [%expect {| Length within range |}]
+
+let%expect_test "require_string_length failure with default message" =
+  (try
+     A.require_strlen ~min:2 ~max:4 "abcde"
+   with Invalid_argument msg -> print_endline msg);
+  [%expect {| String length must be between 2 and 4, got 5 |}]
+
+let%expect_test "require_string_length failure with custom message" =
+  (try
+     A.require_strlen ~min:1 ~max:2 ~msg:"value must be 1-2 chars" "toolong"
+   with Invalid_argument msg -> print_endline msg);
+  [%expect {| value must be 1-2 chars |}]
