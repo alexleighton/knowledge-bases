@@ -22,3 +22,14 @@ val invalid_arg1 : ('a -> string, unit, string) format -> 'a -> 'b
     @raise Invalid_argument always raised with the formatted message
 *)
 val invalid_arg2 : ('a -> 'b -> string, unit, string) format -> 'a -> 'b -> 'c
+
+(** [invalid_arg3 fmt arg1 arg2 arg3] creates an [Invalid_argument] exception with a
+    formatted message.
+
+    @param fmt the format string template
+    @param arg1 the first argument to substitute into the format string
+    @param arg2 the second argument to substitute into the format string
+    @param arg3 the third argument to substitute into the format string
+    @raise Invalid_argument always raised with the formatted message
+*)
+val invalid_arg3 : ('a -> 'b -> 'c -> string, unit, string) format -> 'a -> 'b -> 'c -> 'd
