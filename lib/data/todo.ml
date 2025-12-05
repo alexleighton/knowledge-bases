@@ -18,7 +18,7 @@ type t = {
 let note   { note;   _ } = note
 let status { status; _ } = status
 
-let id t = note t |> Note.id
+let id t = note t |> Note.niceid
 
 let make note status = {
   note   = note;

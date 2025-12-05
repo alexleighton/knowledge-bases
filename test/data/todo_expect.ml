@@ -1,12 +1,15 @@
 module Todo = Kbases.Data.Todo
 module Note = Kbases.Data.Note
 module Id = Kbases.Data.Identifier
+module Typeid = Kbases.Data.Uuid.Typeid
+
+let sample_note_id = Typeid.of_string "note_0123456789abcdefghjkmnpqrs"
 
 let statuses = [Todo.Open; Todo.In_Progress; Todo.Done]
 
 let%expect_test "make and accessors" =
-  let identifier = Id.make "todo" 1 in
-  let note = Note.make identifier "Todo Title" "Todo content" in
+  let identifier = Id.from_string "todo-1" in
+  let note = Note.make sample_note_id identifier "Todo Title" "Todo content" in
   List.iter (fun status ->
     let todo = Todo.make note status in
     Printf.printf "%s -> id=%s status=%s\n"
@@ -38,13 +41,14 @@ let%expect_test "status_from_string invalid input" =
   [%expect {| Invalid status "pending" |}]
 
 let%expect_test "pretty printing" =
-  let identifier = Id.make "todo" 5 in
-  let note = Note.make identifier "Task" "Review" in
+  let identifier = Id.from_string "todo-5" in
+  let note = Note.make sample_note_id identifier "Task" "Review" in
   let todo = Todo.make note Todo.In_Progress in
   Format.printf "%a@." Todo.pp todo;
   [%expect {|
     { Todo.note =
-      { Note.identifier = todo-5; title = "Task"; content = "Review" };
+      { Note.id = note_0123456789abcdefghjkmnpqrs; niceid = todo-5;
+        title = "Task"; content = "Review" };
       status = Todo.In_Progress }
   |}]
 
