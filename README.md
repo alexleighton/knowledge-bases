@@ -36,6 +36,13 @@ $ dune runtest
 $ dune promote
 ```
 
+**Git hooks:**
+
+```
+$ bash scripts/install-pre-push-hook.sh
+# Installs a pre-push hook that runs dune runtest before pushes
+```
+
 # License
 
 This project is licensed under the terms of the MIT license. See LICENSE.txt
