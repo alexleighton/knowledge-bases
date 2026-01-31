@@ -17,12 +17,17 @@ set -euo pipefail
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
-echo "Running tests before push (dune runtest)..."
+border="*~*~*~*~*~*~*~*~*~*~*~*~*~*~*"
+
+echo "$border"
+echo "🧪 Kicking off tests (dune runtest)..."
 if dune runtest; then
-  echo "Tests passed. Proceeding with push."
+  echo "✅ Tests passed. Proceeding with push."
+  echo "$border"
   exit 0
 else
-  echo "Tests failed. Push aborted."
+  echo "❌ Tests failed. Push aborted."
+  echo "$border"
   exit 1
 fi
 EOF
