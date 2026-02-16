@@ -1,35 +1,17 @@
 (** Exception helper functions.
 
-    These functions provide convenient ways to create formatted
-    [Invalid_argument] exceptions.
+    Provides a convenient way to raise [Invalid_argument] with formatted
+    messages.
 *)
 
-(** [invalid_arg1 fmt arg] creates an [Invalid_argument] exception with a
-    formatted message.
+(** [invalid_argf fmt ...] raises [Invalid_argument] with a message
+    built from the format string [fmt] and its arguments.
 
-    @param fmt the format string template
-    @param arg the argument to substitute into the format string
+    {[
+      invalid_argf "expected %d, got %d" 10 42
+      (* raises Invalid_argument "expected 10, got 42" *)
+    ]}
+
     @raise Invalid_argument always raised with the formatted message
 *)
-val invalid_arg1 : ('a -> string, unit, string) format -> 'a -> 'b
-
-(** [invalid_arg2 fmt arg1 arg2] creates an [Invalid_argument] exception with a
-    formatted message.
-
-    @param fmt the format string template
-    @param arg1 the first argument to substitute into the format string
-    @param arg2 the second argument to substitute into the format string
-    @raise Invalid_argument always raised with the formatted message
-*)
-val invalid_arg2 : ('a -> 'b -> string, unit, string) format -> 'a -> 'b -> 'c
-
-(** [invalid_arg3 fmt arg1 arg2 arg3] creates an [Invalid_argument] exception with a
-    formatted message.
-
-    @param fmt the format string template
-    @param arg1 the first argument to substitute into the format string
-    @param arg2 the second argument to substitute into the format string
-    @param arg3 the third argument to substitute into the format string
-    @raise Invalid_argument always raised with the formatted message
-*)
-val invalid_arg3 : ('a -> 'b -> 'c -> string, unit, string) format -> 'a -> 'b -> 'c -> 'd
+val invalid_argf : ('a, unit, string, 'b) format4 -> 'a

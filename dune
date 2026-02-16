@@ -1,0 +1,14 @@
+(env
+ ; Inherit standard flags but specifically disable warnings:
+ ;   warning 42 [disambiguated-name] — Type-directed disambiguation for record fields,
+ ;                                     won't compile with OCaml <= 4.00, we don't care.
+
+ ; Development profile settings
+ (dev
+  ; Enable all warnings (+a) and treat them all as errors (-warn-error +a)
+  (flags (:standard -w +a-42 -warn-error +a)))
+
+ ; Release profile settings
+ (release
+  ; Enable all warnings (+a) and treat them all as errors (-warn-error +a)
+  (flags (:standard -w +a-42 -warn-error +a))))

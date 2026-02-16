@@ -8,6 +8,9 @@ type error =
   | Row_parse_failed of string
   | No_row_found
 
+(** [error_message err] returns a human-readable description of [err]. *)
+val error_message : error -> string
+
 (** [exec db sql] runs [sql] against [db] and returns an [Error msg] when sqlite
     does not report [OK]. *)
 val exec : Sqlite3.db -> string -> (unit, string) result

@@ -14,5 +14,6 @@
   (ppx_inline_test (and (= "v0.17.1") :with-test))
   (stdint (>= "0.7.2"))
   (uuidm (>= "0.9.10"))
+  (cmdliner (>= "2.1.0"))
   )
 )

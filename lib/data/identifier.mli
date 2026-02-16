@@ -9,7 +9,7 @@
 
 (** [make namespace raw_id] constructs an identifier after validating inputs.
     
-    - [namespace] must be 1–4 lowercase English letters ([a–z]).
+    - [namespace] must be 1–5 lowercase English letters ([a–z]).
     - [raw_id] must be [>= 0].
     
     @raise Invalid_argument if validation fails. *)

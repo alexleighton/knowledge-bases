@@ -1,5 +1,14 @@
 (include_subdirs qualified)
 
+(env
+ ; Apply to all profiles (_)
+ (_
+  (flags
+   ; Inherit standard flags but specifically disable warnings:
+   ;   warning 40 [name-out-of-scope] — Expect tests generate types with names out of scope
+   ;   warning 70 [missing-mli]       — Expect tests don't have interface files
+   (:standard -w -40-70))))
+
 (library
  (name kbases_tests)
  (inline_tests)

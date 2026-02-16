@@ -18,21 +18,21 @@ type t = {
 
 let _validate_title title =
   let len = String.length title in
-  CA.require1 (len >= 1 && len <= 100)
-    ~msg:"title must be between 1 and 100 characters, got %d" ~arg:len;
+  CA.requiref (len >= 1 && len <= 100)
+    "title must be between 1 and 100 characters, got %d" len;
   title
 
 let _validate_content content =
   let len = String.length content in
-  CA.require1 (len >= 1 && len <= 10000)
-    ~msg:"content must be between 1 and 10000 characters, got %d" ~arg:len;
+  CA.requiref (len >= 1 && len <= 10000)
+    "content must be between 1 and 10000 characters, got %d" len;
   content
 
 let _validate_id typeid =
   let prefix = Typeid.get_prefix typeid in
-  CA.require2 (String.equal prefix _typeid_prefix)
-    ~msg:"note TypeId prefix must be \"%s\", got \"%s\""
-    ~arg1:_typeid_prefix ~arg2:prefix;
+  CA.requiref (String.equal prefix _typeid_prefix)
+    "note TypeId prefix must be \"%s\", got \"%s\""
+    _typeid_prefix prefix;
   typeid
 
 let make_id () = Typeid.make _typeid_prefix

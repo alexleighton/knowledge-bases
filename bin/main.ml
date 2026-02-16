@@ -1,5 +1,11 @@
-module Id = Kbases.Data.Identifier
+include Cmdline_common
 
-let () =
-  let id = Id.make "test" 42 in
-  Printf.printf "Hello from knowledge-bases! (%s)\n" (Id.to_string id);
+module Cmd = Cmdliner.Cmd
+
+let root_doc = "Knowledge base management CLI."
+
+let root_info = Cmd.info "bs" ~doc:root_doc
+
+let root_cmd = Cmd.group root_info [ Cmd_add.cmd ]
+
+let () = exit (Cmd.eval root_cmd)

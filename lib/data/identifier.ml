@@ -15,14 +15,14 @@ let _dash_re = Str.regexp "-"
 
 let _validate_namespace ns =
   let len = String.length ns in
-  CA.require1 (len >= 1 && len <= 5)
-    ~msg:"namespace must be between 1 and 5 characters, got \"%s\"" ~arg:ns;
-  CA.require2 (Str.string_match _namespace_re ns 0)
-    ~msg:"namespace must match `%s`, got \"%s\"" ~arg1:(_namespace_pattern) ~arg2:ns;
+  CA.requiref (len >= 1 && len <= 5)
+    "namespace must be between 1 and 5 characters, got \"%s\"" ns;
+  CA.requiref (Str.string_match _namespace_re ns 0)
+    "namespace must match `%s`, got \"%s\"" _namespace_pattern ns;
   ns
 
 let _validate_raw_id id =
-  CA.require1 (id >= 0) ~msg:"raw_id must be >= 0, got %d" ~arg:id;
+  CA.requiref (id >= 0) "raw_id must be >= 0, got %d" id;
   id
 
 let make namespace raw_id = {
@@ -38,4 +38,4 @@ let to_string t = Format.asprintf "%a" pp t
 let from_string s =
   match Str.split _dash_re s with
   | [namespace; raw_id_str] -> make namespace (int_of_string raw_id_str)
-  | _ -> CE.invalid_arg1 "Invalid format \"%s\", expected \"namespace-id\"" s
+  | _ -> CE.invalid_argf "Invalid format \"%s\", expected \"namespace-id\"" s

@@ -8,74 +8,62 @@ type t = {
 type error =
   | Backend_failure of string
 
-let map_backend_error =
-  Result.map_error (fun msg -> Backend_failure msg)
-
-let map_sqlite_error = function
-  | Sqlite.Step_failed msg -> Error (Backend_failure msg)
-  | Sqlite.Bind_failed msg -> Error (Backend_failure msg)
-  | Sqlite.Row_parse_failed msg -> Error (Backend_failure msg)
-  | Sqlite.Constraint_violation -> Error (Backend_failure "niceid constraint violation")
-  | Sqlite.No_row_found -> Error (Backend_failure "no row found")
-
-let exec_sql db sql = Sqlite.exec db sql |> map_backend_error
-
-let commit_sql db = Sqlite.commit db |> map_backend_error
-
-let rollback_sql db = Sqlite.rollback db |> map_backend_error
-
 let init ~db ~namespace =
   try
     let create_sql =
       "CREATE TABLE IF NOT EXISTS niceid (\
        typeid TEXT PRIMARY KEY,\
+       namespace TEXT NOT NULL,\
        niceid INTEGER NOT NULL\
       );"
     in
-    match exec_sql db create_sql with
+    match Sqlite.exec db create_sql with
     | Ok () -> Ok { db; namespace }
-    | Error _ as e -> e
+    | Error msg -> Error (Backend_failure msg)
   with
   | Sql.Error msg -> Error (Backend_failure msg)
 
-let allocate { db; namespace; _ } typeid =
-  let rollback () = ignore (rollback_sql db) in
-  let commit () = ignore (commit_sql db) in
+let allocate { db; namespace } typeid =
   let typeid_str = Data.Uuid.Typeid.to_string typeid in
-  let run () =
-    match exec_sql db "BEGIN IMMEDIATE" with
-    | Error _ as e -> e
+  try
+    match Sqlite.exec db "BEGIN IMMEDIATE" with
+    | Error msg -> Error (Backend_failure msg)
     | Ok () ->
-        (* Get the next ID *)
-        let get_max_id stmt =
-          let current = Sql.column_int stmt 0 in
-          Ok (current + 1)
-        in
         let next_id =
-          match Sqlite.with_stmt_single db "SELECT IFNULL(MAX(niceid), -1) FROM niceid;" [] get_max_id with
-          | Ok id -> id
-          | Error Sqlite.No_row_found -> 0
-          | Error _ ->
-              rollback ();
-              raise (Failure "Failed to get max niceid")
+          match
+            Sqlite.with_stmt_single db
+              "SELECT IFNULL(MAX(niceid), -1) FROM niceid WHERE namespace = ?;"
+              [(1, Sql.Data.TEXT namespace)]
+              (fun stmt -> Ok (Sql.column_int stmt 0 + 1))
+          with
+          | Ok id -> Ok id
+          | Error Sqlite.No_row_found -> Ok 0
+          | Error (Sqlite.Step_failed _ | Sqlite.Constraint_violation
+                  | Sqlite.Bind_failed _ | Sqlite.Row_parse_failed _ as err) ->
+              Error (Backend_failure (Sqlite.error_message err))
         in
-        (* Insert the new niceid *)
-        let params = [
-          (1, Sql.Data.TEXT typeid_str);
-          (2, Sql.Data.INT (Int64.of_int next_id));
-        ] in
-        match Sqlite.with_stmt_cmd db "INSERT INTO niceid(typeid, niceid) VALUES (?, ?);" params with
-        | Ok () ->
-            commit ();
-            Ok (Data.Identifier.make namespace next_id)
-        | Error Sqlite.Constraint_violation ->
-            rollback ();
-            Error (Backend_failure "niceid constraint violation")
-        | Error e ->
-            rollback ();
-            map_sqlite_error e
-  in
-  try run () with
+        let result =
+          match next_id with
+          | Error _ as err -> err
+          | Ok id ->
+              let params = [
+                (1, Sql.Data.TEXT typeid_str);
+                (2, Sql.Data.TEXT namespace);
+                (3, Sql.Data.INT (Int64.of_int id));
+              ] in
+              match Sqlite.with_stmt_cmd db
+                "INSERT INTO niceid(typeid, namespace, niceid) VALUES (?, ?, ?);"
+                params
+              with
+              | Ok () -> Ok (Data.Identifier.make namespace id)
+              | Error (Sqlite.Step_failed _ | Sqlite.Constraint_violation
+                      | Sqlite.Bind_failed _ | Sqlite.Row_parse_failed _
+                      | Sqlite.No_row_found as err) ->
+                  Error (Backend_failure (Sqlite.error_message err))
+        in
+        (match result with
+         | Ok _ as ok -> ignore (Sqlite.commit db); ok
+         | Error _ as err -> ignore (Sqlite.rollback db); err)
+  with
   | Sql.Error msg -> Error (Backend_failure msg)
   | Invalid_argument msg -> Error (Backend_failure msg)
-  | Failure msg -> Error (Backend_failure msg)

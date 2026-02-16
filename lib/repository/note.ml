@@ -17,26 +17,25 @@ let map_sqlite_error ?id ?niceid = Result.map_error (function
   | Sqlite.Constraint_violation ->
       (match niceid with
        | Some n -> Duplicate_niceid n
-       | None -> Backend_failure "sqlite constraint violation")
+       | None -> Backend_failure "constraint violation")
   | Sqlite.No_row_found ->
       (match id, niceid with
        | Some id, _ -> Not_found (`Id id)
        | _, Some niceid -> Not_found (`Niceid niceid)
-       | _ -> Backend_failure "sqlite no row found")
-  | Sqlite.Step_failed msg -> Backend_failure msg
-  | Sqlite.Bind_failed msg -> Backend_failure msg
-  | Sqlite.Row_parse_failed msg -> Backend_failure msg
+       | _ -> Backend_failure "no row found")
+  | Sqlite.Step_failed _ | Sqlite.Bind_failed _
+  | Sqlite.Row_parse_failed _ as err ->
+      Backend_failure (Sqlite.error_message err)
 )
 
 let _note_of_row stmt =
-  let open Data in
   let id_str    = Sql.column_text stmt 0 in
   let niceid_s  = Sql.column_text stmt 1 in
   let title     = Sql.column_text stmt 2 in
   let content   = Sql.column_text stmt 3 in
-  let typeid    = Uuid.Typeid.of_string id_str in
-  let niceid    = Identifier.from_string niceid_s in
-  Ok (Note.make typeid niceid title content)
+  let typeid    = Data.Uuid.Typeid.of_string id_str in
+  let niceid    = Data.Identifier.from_string niceid_s in
+  Ok (Data.Note.make typeid niceid title content)
 
 let init ~db ~niceid_repo =
   try
@@ -55,22 +54,21 @@ let init ~db ~niceid_repo =
   | Sql.Error msg -> Error (Backend_failure msg)
 
 let create repo ~title ~content =
-  let open Data in
   let open Result.Syntax in
-  let note_id = Note.make_id () in
+  let note_id = Data.Note.make_id () in
   let* niceid =
     Niceid.allocate repo.niceid_repo note_id
     |> Result.map_error (function Niceid.Backend_failure msg -> Backend_failure msg)
   in
-  let note = Note.make note_id niceid title content in
+  let note = Data.Note.make note_id niceid title content in
   let+ () =
     Sqlite.with_stmt_cmd repo.db
       "INSERT INTO note(id, niceid, title, content) VALUES (?, ?, ?, ?);"
       [
-        (1, Sql.Data.TEXT (Uuid.Typeid.to_string note_id));
-        (2, Sql.Data.TEXT (Identifier.to_string niceid));
-        (3, Sql.Data.TEXT (Note.title note));
-        (4, Sql.Data.TEXT (Note.content note));
+        (1, Sql.Data.TEXT (Data.Uuid.Typeid.to_string note_id));
+        (2, Sql.Data.TEXT (Data.Identifier.to_string niceid));
+        (3, Sql.Data.TEXT (Data.Note.title note));
+        (4, Sql.Data.TEXT (Data.Note.content note));
       ]
     |> map_sqlite_error ~niceid:niceid
   in

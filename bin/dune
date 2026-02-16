@@ -1,6 +1,13 @@
+(env
+ (_
+  (flags
+   ; Inherit standard flags but specifically disable warnings:
+   ;   warning 70 [missing-mli] — Command line modules don't always have interface files
+   (:standard -w -70))))
+
 (executable
  (name main)
  (public_name bs)
  (package knowledge-bases)
- (libraries kbases)
-)
+ (libraries cmdliner kbases)
+ (modules Main Cmd_add Cmdline_common App_context))

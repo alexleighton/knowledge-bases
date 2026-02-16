@@ -1,4 +1,5 @@
-open Stdint
+module Uint128 = Stdint.Uint128
+module Uint48 = Stdint.Uint48
 
 module CE = Control.Exception
 
@@ -56,19 +57,14 @@ let to_string uuid = Uuidm.to_string uuid
 
 let of_string s =
   let s = String.lowercase_ascii s in
-  (* Remove hyphens and collect hex characters *)
   let buf = Buffer.create (String.length s) in
   String.iter (fun c -> if c <> '-' then Buffer.add_char buf c) s;
   let hex = Buffer.contents buf in
-  (* Validate length *)
   let len = String.length hex in
-  if len <> 32 then CE.invalid_arg2 "Invalid UUID hex length: expected %d, got %d" 32 len;
-  (* Validate characters - hex digits: 0-9, a-f *)
-  (* let is_hex c = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') in *)
+  if len <> 32 then CE.invalid_argf "Invalid UUID hex length: expected %d, got %d" 32 len;
   String.iter (fun c ->
     if not (Char.is_hex_digit c) then
-      CE.invalid_arg1 "Invalid hex character '%c' in UUID string" c
+      CE.invalid_argf "Invalid hex character '%c' in UUID string" c
   ) hex;
-  (* Parse the hex string into a Uint128 and convert to UUID *)
   let uint128 = Uint128.of_string ("0x" ^ hex) in
   of_uint128 uint128

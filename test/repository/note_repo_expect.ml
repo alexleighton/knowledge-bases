@@ -39,7 +39,10 @@ let%expect_test "note repo create/get/update/delete happy path" =
   let () = _unwrap_note (NoteRepo.delete note_repo (Note.niceid note1)) in
   (match NoteRepo.get_by_niceid note_repo (Note.niceid note1) with
    | Error (NoteRepo.Not_found (`Niceid _)) -> print_endline "deleted ok"
-   | _ -> print_endline "unexpected lookup result");
+   | Ok _ -> print_endline "unexpected lookup result"
+   | Error (NoteRepo.Duplicate_niceid _) -> print_endline "unexpected duplicate"
+   | Error (NoteRepo.Backend_failure _) -> print_endline "backend failure"
+   | Error (NoteRepo.Not_found (`Id _)) -> print_endline "unexpected not found id");
 
   ignore (Sqlite3.db_close db);
   [%expect {|
@@ -57,11 +60,17 @@ let%expect_test "note repo not found cases" =
   let missing_id = Typeid.of_string "note_0123456789abcdefghjkmnpqrs" in
   (match NoteRepo.get note_repo missing_id with
    | Error (NoteRepo.Not_found (`Id _)) -> print_endline "missing by id"
-   | _ -> print_endline "unexpected get result");
+   | Ok _ -> print_endline "unexpected get result"
+   | Error (NoteRepo.Not_found (`Niceid _)) -> print_endline "unexpected not found niceid"
+   | Error (NoteRepo.Duplicate_niceid _) -> print_endline "unexpected duplicate"
+   | Error (NoteRepo.Backend_failure _) -> print_endline "backend failure");
   let missing_niceid = Identifier.make "nt" 42 in
   (match NoteRepo.delete note_repo missing_niceid with
    | Error (NoteRepo.Not_found (`Niceid _)) -> print_endline "missing delete"
-   | _ -> print_endline "unexpected delete result");
+   | Ok () -> print_endline "unexpected delete result"
+   | Error (NoteRepo.Not_found (`Id _)) -> print_endline "unexpected not found id"
+   | Error (NoteRepo.Duplicate_niceid _) -> print_endline "unexpected duplicate"
+   | Error (NoteRepo.Backend_failure _) -> print_endline "backend failure");
   ignore (Sqlite3.db_close db);
   [%expect {|
     missing by id

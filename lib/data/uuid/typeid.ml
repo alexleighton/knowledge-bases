@@ -29,7 +29,7 @@ let of_string str =
       validate_prefix prefix;
       validate_suffix suffix;
         { prefix; suffix; uuid = Base32.decode suffix |> Uuidv7.of_uuidm }
-  | _ -> CE.invalid_arg1 "Unable to determine prefix: %s" str
+  | _ -> CE.invalid_argf "Unable to determine prefix: %s" str
 
 let of_guid prefix uuid = { prefix; uuid; suffix = Uuidv7.to_uuidm uuid |> Base32.encode }
 

@@ -1,11 +1,20 @@
 module Sql = Sqlite3
 
+(* Suppress fragile-match: Sqlite3.Rc.t has ~30 constructors; catch-all
+   arms are the correct pattern for this wrapper module. *)
+[@@@warning "-4"]
+
 type error =
   | Step_failed of string
   | Constraint_violation
   | Bind_failed of string
   | Row_parse_failed of string
   | No_row_found
+
+let error_message = function
+  | Step_failed msg | Bind_failed msg | Row_parse_failed msg -> msg
+  | Constraint_violation -> "constraint violation"
+  | No_row_found -> "no row found"
 
 let _step_failed rc =
   Step_failed (Printf.sprintf "sqlite step failed: %s" (Sql.Rc.to_string rc))
@@ -34,49 +43,41 @@ let _bind_params stmt params =
   in
   bind_all params
 
-(* Prepare, bind, and delegate to [f], which must call [finish] to finalize *)
 let _with_prepared db sql params f =
   try
     let stmt = Sql.prepare db sql in
-    match _bind_params stmt params with
-    | Error _ as e ->
-        _finalize stmt;
-        e
-    | Ok () ->
-        f stmt (fun res ->
-          _finalize stmt;
-          res)
+    Fun.protect ~finally:(fun () -> _finalize stmt) (fun () ->
+      match _bind_params stmt params with
+      | Error _ as e -> e
+      | Ok () -> f stmt)
   with
   | Sql.Error msg -> Error (Row_parse_failed msg)
   | Invalid_argument msg -> Error (Row_parse_failed msg)
 
 let with_stmt db sql params row_fn =
-  let rec collect_rows stmt finish acc =
+  let rec collect_rows stmt acc =
     match Sql.step stmt with
     | Sql.Rc.ROW ->
         (match row_fn stmt with
-         | Ok row -> collect_rows stmt finish (row :: acc)
-         | Error _ as e -> finish e)
-    | Sql.Rc.DONE -> finish (Ok (List.rev acc))
-    | Sql.Rc.CONSTRAINT -> finish (Error Constraint_violation)
-    | rc -> finish (Error (_step_failed rc))
+         | Ok row -> collect_rows stmt (row :: acc)
+         | Error _ as e -> e)
+    | Sql.Rc.DONE -> Ok (List.rev acc)
+    | Sql.Rc.CONSTRAINT -> Error Constraint_violation
+    | rc -> Error (_step_failed rc)
   in
-  _with_prepared db sql params (fun stmt finish -> collect_rows stmt finish [])
+  _with_prepared db sql params (fun stmt -> collect_rows stmt [])
 
 let with_stmt_single db sql params row_fn =
-  _with_prepared db sql params (fun stmt finish ->
+  _with_prepared db sql params (fun stmt ->
     match Sql.step stmt with
-    | Sql.Rc.ROW ->
-        (match row_fn stmt with
-         | Ok row -> finish (Ok row)
-         | Error _ as e -> finish e)
-    | Sql.Rc.DONE -> finish (Error No_row_found)
-    | Sql.Rc.CONSTRAINT -> finish (Error Constraint_violation)
-    | rc -> finish (Error (_step_failed rc)))
+    | Sql.Rc.ROW -> row_fn stmt
+    | Sql.Rc.DONE -> Error No_row_found
+    | Sql.Rc.CONSTRAINT -> Error Constraint_violation
+    | rc -> Error (_step_failed rc))
 
 let with_stmt_cmd db sql params =
-  _with_prepared db sql params (fun stmt finish ->
+  _with_prepared db sql params (fun stmt ->
     match Sql.step stmt with
-    | Sql.Rc.DONE -> finish (Ok ())
-    | Sql.Rc.CONSTRAINT -> finish (Error Constraint_violation)
-    | rc -> finish (Error (_step_failed rc)))
+    | Sql.Rc.DONE -> Ok ()
+    | Sql.Rc.CONSTRAINT -> Error Constraint_violation
+    | rc -> Error (_step_failed rc))

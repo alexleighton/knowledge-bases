@@ -28,14 +28,14 @@ let decode_char c =
   | 'm' -> "10100" | 'n' -> "10101" | 'p' -> "10110" | 'q' -> "10111"
   | 'r' -> "11000" | 's' -> "11001" | 't' -> "11010" | 'v' -> "11011"
   | 'w' -> "11100" | 'x' -> "11101" | 'y' -> "11110" | 'z' -> "11111"
-  | _ -> CE.invalid_arg1 "Invalid character '%c'" c
+  | _ -> CE.invalid_argf "Invalid character '%c'" c
 
 let is_valid_char = function
   | '0'..'9' | 'a'..'h' | 'j' | 'k' | 'm' | 'n' | 'p'..'t' | 'v'..'z' -> true
   | _ -> false
 
 let encode uuid =
-  (* Convert UUID → 26-char Crockford Base32. We walk the value from the
+  (* Convert UUID -> 26-char Crockford Base32. We walk the value from the
      least-significant end, 5 bits at a time, filling the output buffer
      right-to-left. *)
   let uuid_bytes = Bytes.of_string (Uuidm.to_binary_string uuid) in
@@ -56,13 +56,12 @@ let encode uuid =
   Bytes.to_string res
 
 let decode encoded =
-  (* 26-char Base32 → UUID. Expand each digit into 5 bits, rebuild the
+  (* 26-char Base32 -> UUID. Expand each digit into 5 bits, rebuild the
      128-bit value, then convert to UUID. *)
   let len = String.length encoded in
   if len <> encoded_length then
-    invalid_arg
-      (Printf.sprintf "Invalid base32 length: expected %d, got %d"
-         encoded_length len);
+    CE.invalid_argf "Invalid base32 length: expected %d, got %d"
+      encoded_length len;
   let bits = Buffer.create normalized_bit_length in
   String.iter (fun c -> Buffer.add_string bits (decode_char c)) encoded;
   let binary_string = Buffer.contents bits in
