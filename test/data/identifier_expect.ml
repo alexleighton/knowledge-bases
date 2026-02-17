@@ -1,4 +1,5 @@
 module Id = Kbases.Data.Identifier
+module Namespace = Kbases.Data.Namespace
 
 let%expect_test "make comprehensive test" =
   let test_cases = [
@@ -31,7 +32,7 @@ let%expect_test "make comprehensive test" =
 let%expect_test "from_string happy path" =
   (* Test successful parsing *)
   let id = Id.from_string "ok-0" in
-  Printf.printf "%s-%d\n" (Id.namespace id) (Id.raw_id id);
+  Printf.printf "%s-%d\n" (Namespace.to_string (Id.namespace id)) (Id.raw_id id);
   [%expect {| ok-0 |}]
 
 let%expect_test "from_string invalid format" =

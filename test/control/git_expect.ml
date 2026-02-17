@@ -25,6 +25,17 @@ let%expect_test "find_repo_root with explicit start_dir" =
     root match = true
   |}]
 
+let%expect_test "is_git_root checks exact directory only" =
+  let root = create_repo () in
+  let child = Filename.concat root "child" in
+  Unix.mkdir child 0o755;
+  Printf.printf "root: %b\n" (Git.is_git_root root);
+  Printf.printf "child: %b\n" (Git.is_git_root child);
+  [%expect {|
+    root: true
+    child: false
+  |}]
+
 let%expect_test "find_repo_root defaults to cwd" =
   let root = create_repo () in
   let nested = Filename.concat root "nested" in

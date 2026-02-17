@@ -16,7 +16,7 @@
 val make : string -> int -> t
 
 (** [namespace t] returns the namespace component. *)
-val namespace : t -> string
+val namespace : t -> Namespace.t
 
 (** [raw_id t] returns the numeric id component. *)
 val raw_id : t -> int

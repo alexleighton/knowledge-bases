@@ -1,5 +1,26 @@
 (** Namespace acronym generation utilities. *)
 
+type t = string
+
+let namespace_pattern = "^[a-z]+$"
+let namespace_re = Str.regexp namespace_pattern
+
+let validate ns =
+  let len = String.length ns in
+  if len < 1 || len > 5 then
+    Error (Printf.sprintf "namespace must be between 1 and 5 characters, got \"%s\"" ns)
+  else if not (Str.string_match namespace_re ns 0) then
+    Error (Printf.sprintf "namespace must match `%s`, got \"%s\"" namespace_pattern ns)
+  else
+    Ok ns
+
+let of_string ns =
+  match validate ns with
+  | Ok ns -> ns
+  | Error msg -> invalid_arg msg
+
+let to_string ns = ns
+
 let is_separator = function
   | '-' | '_' | ' ' -> true
   | _ -> false

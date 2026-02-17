@@ -2,6 +2,10 @@
    Git repository utilities.
 *)
 
+let is_git_root dir =
+  let git_path = Filename.concat dir ".git" in
+  Sys.file_exists git_path
+
 let find_repo_root ?start_dir () =
   let cwd = Sys.getcwd () in
   let start =
@@ -11,8 +15,7 @@ let find_repo_root ?start_dir () =
       if Filename.is_relative dir then Filename.concat cwd dir else dir
   in
   let rec search dir =
-    let git_path = Filename.concat dir ".git" in
-    if Sys.file_exists git_path then Some dir
+    if is_git_root dir then Some dir
     else
       let parent = Filename.dirname dir in
       if parent = dir then None else search parent

@@ -20,3 +20,21 @@ let%expect_test "namespace acronym samples" =
     a-b-c -> abc
     CamelCase -> c
   |}]
+
+let%expect_test "validate namespace constraints" =
+  let cases = [ "test"; "a"; "abcde"; ""; "abcdef"; "Te"; "a1" ] in
+  List.iter
+    (fun ns ->
+      match Namespace.validate ns with
+      | Ok valid -> Printf.printf "OK: %s\n" (Namespace.to_string valid)
+      | Error msg -> Printf.printf "ERR: %s\n" msg)
+    cases;
+  [%expect {|
+    OK: test
+    OK: a
+    OK: abcde
+    ERR: namespace must be between 1 and 5 characters, got ""
+    ERR: namespace must be between 1 and 5 characters, got "abcdef"
+    ERR: namespace must match `^[a-z]+$`, got "Te"
+    ERR: namespace must match `^[a-z]+$`, got "a1"
+  |}]

@@ -1,5 +1,8 @@
 (** Git repository utilities. *)
 
+(** [is_git_root dir] returns [true] when [dir] directly contains a [.git] entry. *)
+val is_git_root : string -> bool
+
 (**
    [find_repo_root ?start_dir ()] traverses upward from
    [start_dir] (defaults to the current working directory) looking

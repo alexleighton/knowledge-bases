@@ -1,37 +1,28 @@
 module CA = Control.Assert
 module CE = Control.Exception
+module Namespace = Namespace
 
 type t = {
-  namespace : string;
+  namespace : Namespace.t;
   raw_id    : int;
 }
 
 let namespace { namespace; _ } = namespace
 let raw_id    { raw_id;    _ } = raw_id
 
-let _namespace_pattern = "^[a-z]+$"
-let _namespace_re = Str.regexp _namespace_pattern
 let _dash_re = Str.regexp "-"
-
-let _validate_namespace ns =
-  let len = String.length ns in
-  CA.requiref (len >= 1 && len <= 5)
-    "namespace must be between 1 and 5 characters, got \"%s\"" ns;
-  CA.requiref (Str.string_match _namespace_re ns 0)
-    "namespace must match `%s`, got \"%s\"" _namespace_pattern ns;
-  ns
 
 let _validate_raw_id id =
   CA.requiref (id >= 0) "raw_id must be >= 0, got %d" id;
   id
 
 let make namespace raw_id = {
-  namespace = _validate_namespace namespace;
+  namespace = Namespace.of_string namespace;
   raw_id    = _validate_raw_id raw_id;
 }
 
 let pp fmt { namespace; raw_id } =
-  Format.fprintf fmt "%s-%d" namespace raw_id
+  Format.fprintf fmt "%s-%d" (Namespace.to_string namespace) raw_id
 
 let to_string t = Format.asprintf "%a" pp t
 
