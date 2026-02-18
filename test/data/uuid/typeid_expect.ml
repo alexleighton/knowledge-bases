@@ -84,15 +84,15 @@ let%expect_test "invalid prefix - space" =
 let%expect_test "invalid prefix - too long (64 chars)" =
   print_parse_result
     "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl_00000000000000000000000000";
-  [%expect {| Invalid (abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl_00000000000000000000000000, Prefix must be between 1 and 63 characters) |}]
+  [%expect {| Invalid (abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijkl_00000000000000000000000000, prefix must be between 1 and 63 characters, got 64) |}]
 
 let%expect_test "invalid - empty prefix with separator" =
   print_parse_result "_00000000000000000000000000";
-  [%expect {| Invalid (_00000000000000000000000000, Prefix must be between 1 and 63 characters) |}]
+  [%expect {| Invalid (_00000000000000000000000000, prefix must be between 1 and 63 characters, got 0) |}]
 
 let%expect_test "invalid - only separator" =
   print_parse_result "_";
-  [%expect {| Invalid (_, Prefix must be between 1 and 63 characters) |}]
+  [%expect {| Invalid (_, prefix must be between 1 and 63 characters, got 0) |}]
 
 let%expect_test "invalid prefix - starts with underscore" =
   print_parse_result "_prefix_00000000000000000000000000";
@@ -105,11 +105,11 @@ let%expect_test "invalid prefix - ends with underscore" =
 (* Invalid suffix test cases *)
 let%expect_test "invalid suffix - too short (25 chars)" =
   print_parse_result "prefix_0000000000000000000000000";
-  [%expect {| Invalid (prefix_0000000000000000000000000, Suffix must be 26 characters) |}]
+  [%expect {| Invalid (prefix_0000000000000000000000000, suffix must be between 26 and 26 characters, got 25) |}]
 
 let%expect_test "invalid suffix - too long (27 chars)" =
   print_parse_result "prefix_000000000000000000000000000";
-  [%expect {| Invalid (prefix_000000000000000000000000000, Suffix must be 26 characters) |}]
+  [%expect {| Invalid (prefix_000000000000000000000000000, suffix must be between 26 and 26 characters, got 27) |}]
 
 let%expect_test "invalid suffix - space" =
   print_parse_result "prefix_1234567890123456789012345 ";

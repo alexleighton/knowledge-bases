@@ -35,7 +35,7 @@ let _note_of_row stmt =
   let content   = Sql.column_text stmt 3 in
   let typeid    = Data.Uuid.Typeid.of_string id_str in
   let niceid    = Data.Identifier.from_string niceid_s in
-  Ok (Data.Note.make typeid niceid title content)
+  Ok (Data.Note.make typeid niceid (Data.Title.make title) (Data.Content.make content))
 
 let init ~db ~niceid_repo =
   try
@@ -67,8 +67,8 @@ let create repo ~title ~content =
       [
         (1, Sql.Data.TEXT (Data.Uuid.Typeid.to_string note_id));
         (2, Sql.Data.TEXT (Data.Identifier.to_string niceid));
-        (3, Sql.Data.TEXT (Data.Note.title note));
-        (4, Sql.Data.TEXT (Data.Note.content note));
+        (3, Sql.Data.TEXT (Data.Title.to_string (Data.Note.title note)));
+        (4, Sql.Data.TEXT (Data.Content.to_string (Data.Note.content note)));
       ]
     |> map_sqlite_error ~niceid:niceid
   in
@@ -95,8 +95,8 @@ let update repo note =
       "UPDATE note SET niceid = ?, title = ?, content = ? WHERE id = ?;"
       [
         (1, Sql.Data.TEXT (Data.Identifier.to_string (Data.Note.niceid note)));
-        (2, Sql.Data.TEXT (Data.Note.title note));
-        (3, Sql.Data.TEXT (Data.Note.content note));
+        (2, Sql.Data.TEXT (Data.Title.to_string   (Data.Note.title   note)));
+        (3, Sql.Data.TEXT (Data.Content.to_string (Data.Note.content note)));
         (4, Sql.Data.TEXT (Data.Uuid.Typeid.to_string (Data.Note.id note)));
       ]
     |> map_sqlite_error ~id:(Data.Note.id note) ~niceid:(Data.Note.niceid note)

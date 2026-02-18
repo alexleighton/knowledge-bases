@@ -25,14 +25,16 @@ val require : ?msg:string -> bool -> unit
 *)
 val requiref : bool -> ('a, unit, string, unit) format4 -> 'a
 
-(** [require_strlen ?msg ~min ~max value] validates that the length of
+(** [require_strlen ~name ~min ~max value] validates that the length of
     [value] lies within the inclusive range [[min], [max]].
 
-    @param msg optional custom error message (default includes the offending
-               length)
+    The error message includes [name], the accepted range, and the actual
+    length, e.g. ["title must be between 1 and 100 characters, got 0"].
+
+    @param name human-readable name for error messages
     @param min minimum accepted length
     @param max maximum accepted length
     @param value the string whose length is validated
     @raise Invalid_argument if the length is outside the inclusive range
 *)
-val require_strlen : ?msg:string -> min:int -> max:int -> string -> unit
+val require_strlen : name:string -> min:int -> max:int -> string -> unit

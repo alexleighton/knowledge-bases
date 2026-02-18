@@ -41,7 +41,7 @@ Examples:
 | `Identifier` | Human-friendly `<namespace>-<raw_id>` identifiers |
 | `Namespace`  | Acronym generation from human names               |
 | `Note`       | The core "note" domain type                       |
-| `Todo`       | A note paired with a workflow status              |
+| `Todo`       | Self-contained todo entity with workflow status   |
 | `Uuid.*`     | UUIDv7 generation, TypeId, Crockford Base32       |
 
 Notes on naming:

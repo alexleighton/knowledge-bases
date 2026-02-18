@@ -11,22 +11,10 @@ let pp_id fmt id = Format.pp_print_string fmt (show_id id)
 type t = {
   id      : id;
   niceid  : Identifier.t;
-  title   : string;
-  content : string;
+  title   : Title.t;
+  content : Content.t;
 }
 [@@deriving show]
-
-let _validate_title title =
-  let len = String.length title in
-  CA.requiref (len >= 1 && len <= 100)
-    "title must be between 1 and 100 characters, got %d" len;
-  title
-
-let _validate_content content =
-  let len = String.length content in
-  CA.requiref (len >= 1 && len <= 10000)
-    "content must be between 1 and 10000 characters, got %d" len;
-  content
 
 let _validate_id typeid =
   let prefix = Typeid.get_prefix typeid in
@@ -45,6 +33,6 @@ let content { content; _ } = content
 let make id niceid title content = {
   id      = _validate_id id;
   niceid  = niceid;
-  title   = _validate_title title;
-  content = _validate_content content;
+  title   = title;
+  content = content;
 }

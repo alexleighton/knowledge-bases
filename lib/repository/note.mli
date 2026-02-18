@@ -24,14 +24,12 @@ val init :
     for it.
 
     @return the newly stored note on success.
-    @raise Invalid_argument if the generated values fail {!Note.make}
-      validation.
     @return [Error Duplicate_niceid _] if the generated nice id already exists.
     @return [Error Backend_failure _] if the underlying storage fails. *)
 val create :
   t ->
-  title:string ->
-  content:string ->
+  title:Data.Title.t ->
+  content:Data.Content.t ->
   (Data.Note.t, error) result
 
 (** [get repo id] fetches the note identified by TypeId [id].

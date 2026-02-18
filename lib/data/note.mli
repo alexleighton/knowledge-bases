@@ -18,13 +18,10 @@ val pp : Format.formatter -> t -> unit
 (** [show t] returns the same string that {!pp} would print. *)
 val show : t -> string
 
-(** [make id niceid title content] constructs a note after validating inputs.
+(** [make id niceid title content] constructs a note from already-validated inputs.
 
-    - [title] must be non-empty and at most 100 characters.
-    - [content] must be non-empty and at most 10000 characters.
-
-    @raise Invalid_argument if validation fails. *)
-val make : id -> Identifier.t -> string -> string -> t
+    @raise Invalid_argument if the [id] does not carry the ["note"] TypeId prefix. *)
+val make : id -> Identifier.t -> Title.t -> Content.t -> t
 
 (** [id t] returns the note TypeId. *)
 val id : t -> id
@@ -33,7 +30,7 @@ val id : t -> id
 val niceid : t -> Identifier.t
 
 (** [title t] returns the title of the note. *)
-val title : t -> string
+val title : t -> Title.t
 
 (** [content t] returns the content of the note. *)
-val content : t -> string
+val content : t -> Content.t

@@ -1,6 +1,8 @@
 module NoteRepo = Kbases.Repository.Note
 module Niceid = Kbases.Repository.Niceid
 module Note = Kbases.Data.Note
+module Title = Kbases.Data.Title
+module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
 module Typeid = Kbases.Data.Uuid.Typeid
 
@@ -17,24 +19,29 @@ let%expect_test "note repo create/get/update/delete happy path" =
   let niceid_repo = _unwrap_niceid (Niceid.init ~db ~namespace:"nt") in
   let note_repo = _unwrap_note (NoteRepo.init ~db ~niceid_repo) in
 
-  let note1 = _unwrap_note (NoteRepo.create note_repo ~title:"Hello" ~content:"World") in
+  let note1 = _unwrap_note (NoteRepo.create note_repo
+    ~title:(Title.make "Hello") ~content:(Content.make "World")) in
   Printf.printf "created niceid=%s\n" (Identifier.to_string (Note.niceid note1));
 
   let fetched = _unwrap_note (NoteRepo.get note_repo (Note.id note1)) in
-  Printf.printf "fetched title=%s content=%s\n" (Note.title fetched) (Note.content fetched);
+  Printf.printf "fetched title=%s content=%s\n"
+    (Title.to_string (Note.title fetched))
+    (Content.to_string (Note.content fetched));
 
   let fetched_by_niceid = _unwrap_note (NoteRepo.get_by_niceid note_repo (Note.niceid note1)) in
-  Printf.printf "fetched_by_niceid title=%s\n" (Note.title fetched_by_niceid);
+  Printf.printf "fetched_by_niceid title=%s\n" (Title.to_string (Note.title fetched_by_niceid));
 
   let updated =
     Note.make
       (Note.id note1)
       (Note.niceid note1)
-      "Updated"
-      "Body"
+      (Title.make "Updated")
+      (Content.make "Body")
   in
   let updated = _unwrap_note (NoteRepo.update note_repo updated) in
-  Printf.printf "updated title=%s content=%s\n" (Note.title updated) (Note.content updated);
+  Printf.printf "updated title=%s content=%s\n"
+    (Title.to_string (Note.title updated))
+    (Content.to_string (Note.content updated));
 
   let () = _unwrap_note (NoteRepo.delete note_repo (Note.niceid note1)) in
   (match NoteRepo.get_by_niceid note_repo (Note.niceid note1) with

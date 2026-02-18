@@ -5,6 +5,8 @@ module Arg = Cmdliner.Arg
 module Common = Cmdline_common
 module Service = Kbases.Service.Kb_service
 module Note = Kbases.Data.Note
+module Title = Kbases.Data.Title
+module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
 module Typeid = Kbases.Data.Uuid.Typeid
 module Io = Kbases.Control.Io
@@ -26,6 +28,8 @@ let run_note db_override title =
   let ctx = App_context.init ~db_file ~namespace:None in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
     let content = Io.read_all_stdin () in
+    let title   = try Title.make   title   with Invalid_argument msg -> exit_with msg in
+    let content = try Content.make content with Invalid_argument msg -> exit_with msg in
     match Service.add_note (App_context.service ctx) ~title ~content with
     | Ok note ->
         let niceid = Identifier.to_string (Note.niceid note) in

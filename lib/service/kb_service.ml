@@ -28,10 +28,8 @@ let repository_error_label = function
   | Note.Not_found _ -> Repository_error "note not found"
 
 let add_note t ~title ~content =
-  try
-    Note.create t.note_repo ~title ~content
-    |> Result.map_error repository_error_label
-  with Invalid_argument msg -> Error (Validation_error msg)
+  Note.create t.note_repo ~title ~content
+  |> Result.map_error repository_error_label
 
 let resolve_directory = function
   | None -> (

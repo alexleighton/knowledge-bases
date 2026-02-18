@@ -31,4 +31,4 @@ val init_kb :
 
 (** [add_note t ~title ~content] creates and persists a new note.
     @return the created note on success. *)
-val add_note : t -> title:string -> content:string -> (Data.Note.t, error) result
+val add_note : t -> title:Data.Title.t -> content:Data.Content.t -> (Data.Note.t, error) result

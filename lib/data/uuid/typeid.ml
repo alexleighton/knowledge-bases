@@ -5,7 +5,7 @@ module CE = Control.Exception
 type t = { prefix : string; uuid : Uuidv7.t; suffix : string }
 
 let validate_prefix prefix =
-  CA.require_strlen ~min:1 ~max:63 ~msg:"Prefix must be between 1 and 63 characters" prefix;
+  CA.require_strlen ~name:"prefix" ~min:1 ~max:63 prefix;
   CA.require
     ~msg:"Prefix may only contain lowercase ASCII letters or underscores"
     (Str.for_all (fun ch -> Char.is_lowercase ch || ch = '_') prefix);
@@ -13,7 +13,7 @@ let validate_prefix prefix =
   CA.require ~msg:"Prefix cannot end with _" (Str.get prefix (Str.length prefix - 1) <> '_')
 
 let validate_suffix suffix =
-  CA.require_strlen ~min:26 ~max:26 ~msg:"Suffix must be 26 characters" suffix;
+  CA.require_strlen ~name:"suffix" ~min:26 ~max:26 suffix;
   CA.require ~msg:"Suffix must be base32" (Str.for_all Base32.is_valid_char suffix)
 
 let make prefix =

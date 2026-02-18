@@ -2,6 +2,8 @@ module Root = Kbases.Repository.Root
 module Config = Kbases.Repository.Config
 module Service = Kbases.Service.Kb_service
 module Note = Kbases.Data.Note
+module Title = Kbases.Data.Title
+module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
 
 let create_git_root prefix =
@@ -149,30 +151,15 @@ let%expect_test "init_kb reports invalid derived namespace" =
   |}]
 
 let%expect_test "add_note returns a note on success" =
-  (match with_service (fun svc -> Service.add_note svc ~title:"Reminder" ~content:"Pay bills") with
+  (match with_service (fun svc ->
+     Service.add_note svc
+       ~title:(Title.make "Reminder")
+       ~content:(Content.make "Pay bills")) with
    | Ok note ->
        Printf.printf
          "niceid=%s title=%s content=%s\n"
          (Identifier.to_string (Note.niceid note))
-         (Note.title note)
-         (Note.content note)
+         (Title.to_string (Note.title note))
+         (Content.to_string (Note.content note))
    | Error err -> pp_error err);
   [%expect {| niceid=kb-0 title=Reminder content=Pay bills |}]
-
-let%expect_test "add_note rejects empty title" =
-  (match with_service (fun svc -> Service.add_note svc ~title:"" ~content:"Body") with
-   | Ok _ -> Printf.printf "Expected validation to fail\n"
-   | Error err -> pp_error err);
-  [%expect
-    {|
-    validation error: title must be between 1 and 100 characters, got 0
-    |}]
-
-let%expect_test "add_note rejects empty content" =
-  (match with_service (fun svc -> Service.add_note svc ~title:"Note" ~content:"") with
-   | Ok _ -> Printf.printf "Expected validation to fail\n"
-   | Error err -> pp_error err);
-  [%expect
-    {|
-    validation error: content must be between 1 and 10000 characters, got 0
-    |}]

@@ -17,6 +17,14 @@ appears in two places, one of two things is true:
    abstraction — a new function, type, or module — that captures the common
    pattern in one place.
 
+   A particularly important case: **duplicated validation means a missing
+   type.** When two modules validate the same constraint on a raw value
+   (e.g., "string must be 1–100 characters"), the constrained value space is
+   a concept that deserves its own Data module. Give it an abstract type and
+   a smart constructor that enforces the invariant once. Both modules then
+   accept the validated type instead of the raw value, and the duplicate
+   validators disappear.
+
 **Why:** Duplicated code is a maintenance liability. When the logic changes,
 every copy must be found and updated in lockstep. Worse, near-duplicates
 diverge silently over time, producing subtle inconsistencies that are hard to

@@ -4,10 +4,7 @@ let require ?(msg = "Requirement not met") condition =
 let requiref condition fmt =
   Printf.ksprintf (fun msg -> if not condition then invalid_arg msg) fmt
 
-let require_strlen ?msg ~min ~max value =
+let require_strlen ~name ~min ~max value =
   let len = String.length value in
-  match msg with
-  | Some msg -> require ~msg (len >= min && len <= max)
-  | None ->
-      requiref (len >= min && len <= max)
-        "String length must be between %d and %d, got %d" min max len
+  requiref (len >= min && len <= max)
+    "%s must be between %d and %d characters, got %d" name min max len

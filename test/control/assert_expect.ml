@@ -35,18 +35,12 @@ let%expect_test "requiref failure with two string args" =
   [%expect {| Range start-end is invalid |}]
 
 let%expect_test "require_string_length success case" =
-  A.require_strlen ~min:2 ~max:4 "abc";
+  A.require_strlen ~name:"field" ~min:2 ~max:4 "abc";
   print_endline "Length within range";
   [%expect {| Length within range |}]
 
-let%expect_test "require_string_length failure with default message" =
+let%expect_test "require_string_length failure includes name and length" =
   (try
-     A.require_strlen ~min:2 ~max:4 "abcde"
+     A.require_strlen ~name:"field" ~min:2 ~max:4 "abcde"
    with Invalid_argument msg -> print_endline msg);
-  [%expect {| String length must be between 2 and 4, got 5 |}]
-
-let%expect_test "require_string_length failure with custom message" =
-  (try
-     A.require_strlen ~min:1 ~max:2 ~msg:"value must be 1-2 chars" "toolong"
-   with Invalid_argument msg -> print_endline msg);
-  [%expect {| value must be 1-2 chars |}]
+  [%expect {| field must be between 2 and 4 characters, got 5 |}]

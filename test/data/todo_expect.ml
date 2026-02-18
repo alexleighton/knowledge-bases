@@ -1,27 +1,85 @@
 module Todo = Kbases.Data.Todo
-module Note = Kbases.Data.Note
 module Id = Kbases.Data.Identifier
 module Typeid = Kbases.Data.Uuid.Typeid
+module Title = Kbases.Data.Title
+module Content = Kbases.Data.Content
 
-let sample_note_id = Typeid.of_string "note_0123456789abcdefghjkmnpqrs"
+let sample_todo_id = Typeid.of_string "todo_0123456789abcdefghjkmnpqrs"
 
 let statuses = [Todo.Open; Todo.In_Progress; Todo.Done]
 
-let%expect_test "make and accessors" =
-  let identifier = Id.from_string "todo-1" in
-  let note = Note.make sample_note_id identifier "Todo Title" "Todo content" in
-  List.iter (fun status ->
-    let todo = Todo.make note status in
-    Printf.printf "%s -> id=%s status=%s\n"
-      (Note.title (Todo.note todo))
-      (Id.to_string (Todo.id todo))
-      (Todo.status_to_string (Todo.status todo))
-  ) statuses;
+let%expect_test "make comprehensive test" =
+  let test_cases = [
+    (* Success cases *)
+    ("todo_01h455vb4pex5vsknk084sn02q", "task-1", "Todo Title", "Simple content", Todo.Open);
+    ("todo_0123456789abcdefghjkmnpqrs", "abc-0",  "Todo Title", "Content with zero ID", Todo.In_Progress);
+
+    (* TypeId validation error *)
+    ("note_01h455vb4pex5vsknk084sn02q", "task-9", "Title", "Content", Todo.Open);
+  ] in
+  List.iter (fun (typeid, niceid, title, content, status) ->
+    let identifier = Id.from_string niceid in
+    let tid = Typeid.of_string typeid in
+    try
+      print_endline (Todo.show
+        (Todo.make tid identifier (Title.make title) (Content.make content) status))
+    with Invalid_argument msg -> Printf.printf "ERR: %s\n" msg
+  ) test_cases;
   [%expect {|
-    Todo Title -> id=todo-1 status=open
-    Todo Title -> id=todo-1 status=in-progress
-    Todo Title -> id=todo-1 status=done
+    { Todo.id = todo_01h455vb4pex5vsknk084sn02q; niceid = task-1;
+      title = "Todo Title"; content = "Simple content"; status = Todo.Open }
+    { Todo.id = todo_0123456789abcdefghjkmnpqrs; niceid = abc-0;
+      title = "Todo Title"; content = "Content with zero ID";
+      status = Todo.In_Progress }
+    ERR: todo TypeId prefix must be "todo", got "note"
   |}]
+
+let%expect_test "make_id generation" =
+  let id = Todo.make_id () in
+  Printf.printf "Prefix: %s\n" (Typeid.get_prefix id);
+  [%expect {| Prefix: todo |}]
+
+let%expect_test "accessor functions" =
+  let identifier = Id.from_string "task-42" in
+  let tid = Typeid.of_string "todo_01h455vb4pex5vsknk084sn02r" in
+  let todo = Todo.make tid identifier (Title.make "My Title") (Content.make "My content") Todo.Done in
+  Printf.printf "TypeId: %s\n" (Typeid.to_string (Todo.id todo));
+  Printf.printf "NiceId: %s\n" (Id.to_string (Todo.niceid todo));
+  Printf.printf "Title: %S\n" (Title.to_string (Todo.title todo));
+  Printf.printf "Content: %S\n" (Content.to_string (Todo.content todo));
+  Printf.printf "Status: %s\n" (Todo.status_to_string (Todo.status todo));
+  [%expect {|
+    TypeId: todo_01h455vb4pex5vsknk084sn02r
+    NiceId: task-42
+    Title: "My Title"
+    Content: "My content"
+    Status: done
+  |}]
+
+let%expect_test "make boundary lengths" =
+  let identifier = Id.from_string "bound-7" in
+  let todo_min =
+    Todo.make
+      (Typeid.of_string "todo_01h455vb4pex5vsknk084sn02q")
+      identifier
+      (Title.make (String.make 1 't'))
+      (Content.make (String.make 1 'c'))
+      Todo.Open
+  in
+  let todo_max =
+    Todo.make
+      (Typeid.of_string "todo_0123456789abcdefghjkmnpqrs")
+      identifier
+      (Title.make (String.make 100 't'))
+      (Content.make (String.make 10000 'c'))
+      Todo.Open
+  in
+  Printf.printf "Boundary lengths: min title=%d content=%d; max title=%d content=%d\n"
+    (String.length (Title.to_string (Todo.title todo_min)))
+    (String.length (Content.to_string (Todo.content todo_min)))
+    (String.length (Title.to_string (Todo.title todo_max)))
+    (String.length (Content.to_string (Todo.content todo_max)));
+  [%expect {| Boundary lengths: min title=1 content=1; max title=100 content=10000 |}]
 
 let%expect_test "status conversions" =
   List.iter (fun status ->
@@ -42,13 +100,10 @@ let%expect_test "status_from_string invalid input" =
 
 let%expect_test "pretty printing" =
   let identifier = Id.from_string "todo-5" in
-  let note = Note.make sample_note_id identifier "Task" "Review" in
-  let todo = Todo.make note Todo.In_Progress in
+  let todo = Todo.make sample_todo_id identifier
+    (Title.make "Task") (Content.make "Review") Todo.In_Progress in
   Format.printf "%a@." Todo.pp todo;
   [%expect {|
-    { Todo.note =
-      { Note.id = note_0123456789abcdefghjkmnpqrs; niceid = todo-5;
-        title = "Task"; content = "Review" };
-      status = Todo.In_Progress }
-  |}]
-
+    { Todo.id = todo_0123456789abcdefghjkmnpqrs; niceid = todo-5; title = "Task";
+      content = "Review"; status = Todo.In_Progress }
+    |}]

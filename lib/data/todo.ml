@@ -1,6 +1,9 @@
+module CA = Control.Assert
 module CE = Control.Exception
+module Typeid = Uuid.Typeid
 
-(** Status of a todo item. *)
+let _typeid_prefix = "todo"
+
 type status = Open | In_Progress | Done [@@deriving show]
 
 let status_to_string = function Open -> "open" | In_Progress -> "in-progress" | Done -> "done"
@@ -8,18 +11,39 @@ let status_to_string = function Open -> "open" | In_Progress -> "in-progress" | 
 let status_from_string = function "open" -> Open | "in-progress" -> In_Progress | "done" -> Done
   | s -> CE.invalid_argf "Invalid status \"%s\"" s
 
+type id = Typeid.t
+
+let show_id = Typeid.to_string
+let pp_id fmt id = Format.pp_print_string fmt (show_id id)
+
 type t = {
-  note   : Note.t;
-  status : status;
+  id      : id;
+  niceid  : Identifier.t;
+  title   : Title.t;
+  content : Content.t;
+  status  : status;
 }
 [@@deriving show]
 
-let note   { note;   _ } = note
-let status { status; _ } = status
+let _validate_id typeid =
+  let prefix = Typeid.get_prefix typeid in
+  CA.requiref (String.equal prefix _typeid_prefix)
+    "todo TypeId prefix must be \"%s\", got \"%s\""
+    _typeid_prefix prefix;
+  typeid
 
-let id t = note t |> Note.niceid
+let make_id () = Typeid.make _typeid_prefix
 
-let make note status = {
-  note   = note;
-  status = status;
+let id      { id;      _ } = id
+let niceid  { niceid;  _ } = niceid
+let title   { title;   _ } = title
+let content { content; _ } = content
+let status  { status;  _ } = status
+
+let make id niceid title content status = {
+  id      = _validate_id id;
+  niceid  = niceid;
+  title   = title;
+  content = content;
+  status  = status;
 }
