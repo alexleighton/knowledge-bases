@@ -31,6 +31,7 @@ library and external packages — **never** on other `lib/` modules.
 A Data module encapsulates a concept: it defines an abstract type `t`,
 exposes a smart constructor that validates invariants (raising
 `Invalid_argument` on failure), and provides accessors and formatters.
+Design Data modules according to [Correct Construction](correct-construction.md).
 
 Examples:
 

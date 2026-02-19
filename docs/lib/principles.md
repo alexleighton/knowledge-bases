@@ -31,7 +31,14 @@ diverge silently over time, producing subtle inconsistencies that are hard to
 diagnose. A single source of truth is easier to test, easier to reason about,
 and cheaper to evolve.
 
-## 2. File length
+## 2. Correct Construction
+
+When modeling domain types and value objects, follow the Correct Construction
+pattern: validate on construction, keep values immutable, and encapsulate
+primitives. See [Correct Construction](correct-construction.md) for the full
+treatment.
+
+## 3. File length
 
 Keep files below approximately 300 lines. Larger files are harder to read and
 understand. A file approaching this limit is often a sign that the concept it
