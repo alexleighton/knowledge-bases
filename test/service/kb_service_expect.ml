@@ -192,3 +192,62 @@ let%expect_test "add_todo accepts explicit status" =
        Printf.printf "status=%s\n" (Todo.status_to_string (Todo.status todo))
    | Error err -> pp_error err);
   [%expect {| status=in-progress |}]
+
+let%expect_test "open_kb succeeds and returns functional service" =
+  let root = create_git_root "kb-open-happy-" in
+  let original = Sys.getcwd () in
+  Fun.protect
+    ~finally:(fun () -> Sys.chdir original)
+    (fun () ->
+      (match Service.init_kb ~directory:(Some root) ~namespace:(Some "kb") with
+       | Error err -> pp_error err
+       | Ok _ -> ());
+      Sys.chdir root;
+      match Service.open_kb () with
+      | Error err -> pp_error err
+      | Ok (opened_root, service) ->
+          Fun.protect
+            ~finally:(fun () -> Root.close opened_root)
+            (fun () ->
+              match Service.add_note service
+                      ~title:(Title.make "From open_kb")
+                      ~content:(Content.make "Works")
+              with
+              | Error err -> pp_error err
+              | Ok note ->
+                  Printf.printf "niceid=%s title=%s\n"
+                    (Identifier.to_string (Note.niceid note))
+                    (Title.to_string (Note.title note))));
+  [%expect {| niceid=kb-0 title=From open_kb |}]
+
+let%expect_test "open_kb fails when not in a git repo" =
+  let dir = Filename.temp_dir "kb-open-no-git-" "" in
+  let original = Sys.getcwd () in
+  Fun.protect
+    ~finally:(fun () -> Sys.chdir original)
+    (fun () ->
+      Sys.chdir dir;
+      match Service.open_kb () with
+      | Ok _ -> print_endline "unexpected success"
+      | Error (Service.Repository_error msg) ->
+          Printf.printf "repo error: %s\n" msg
+      | Error (Service.Validation_error msg) -> print_endline msg);
+  [%expect {|
+    Not inside a git repository. Run 'bs add' from within a git repository.
+  |}]
+
+let%expect_test "open_kb fails when KB not initialised" =
+  let root = create_git_root "kb-open-no-init-" in
+  let original = Sys.getcwd () in
+  Fun.protect
+    ~finally:(fun () -> Sys.chdir original)
+    (fun () ->
+      Sys.chdir root;
+      match Service.open_kb () with
+      | Ok _ -> print_endline "unexpected success"
+      | Error (Service.Repository_error msg) ->
+          Printf.printf "repo error: %s\n" msg
+      | Error (Service.Validation_error msg) -> print_endline msg);
+  [%expect {|
+    No knowledge base found. Run 'bs init' first.
+  |}]

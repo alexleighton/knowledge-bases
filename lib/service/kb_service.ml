@@ -5,6 +5,8 @@ module Config = Repository.Config
 module Git = Control.Git
 module Namespace = Data.Namespace
 
+let _db_filename = ".kbases.db"
+
 type t = {
   note_repo : Note.t;
   todo_repo : Todo.t;
@@ -81,11 +83,30 @@ let resolve_namespace ~directory = function
                   "Derived namespace \"%s\" is invalid (%s). Use -n to specify one."
                   derived reason))
 
+let db_filename = _db_filename
+
+let open_kb () =
+  match Git.find_repo_root () with
+  | None ->
+      Error
+        (Validation_error
+           "Not inside a git repository. Run 'bs add' from within a git repository.")
+  | Some dir ->
+      let db_file = Filename.concat dir _db_filename in
+      if not (Sys.file_exists db_file) then
+        Error
+          (Validation_error "No knowledge base found. Run 'bs init' first.")
+      else
+        Root.init ~db_file ~namespace:None
+        |> Result.map_error (fun (Root.Backend_failure msg) ->
+               Repository_error msg)
+        |> Result.map (fun root -> (root, init root))
+
 let init_kb ~directory ~namespace =
   let open Result.Syntax in
   let* directory = resolve_directory directory in
   let* namespace = resolve_namespace ~directory namespace in
-  let db_file = Filename.concat directory ".kbases.db" in
+  let db_file = Filename.concat directory _db_filename in
   if Sys.file_exists db_file then
     Error
       (Validation_error

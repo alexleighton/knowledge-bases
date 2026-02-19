@@ -7,10 +7,9 @@
 (** Abstract application context. *)
 type t
 
-(** [init ~db_file ~namespace] opens the database, initialises all
-    repositories, and constructs the service layer. Exits the process on
-    failure. *)
-val init : db_file:string -> namespace:string option -> t
+(** [init ()] finds the git root, opens the knowledge base at [.kbases.db],
+    and constructs the service layer. Exits the process on failure. *)
+val init : unit -> t
 
 (** [service t] returns the knowledge-base service handle. *)
 val service : t -> Kbases.Service.Kb_service.t

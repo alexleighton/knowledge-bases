@@ -22,6 +22,14 @@ type init_result = {
     handle. The service does not own the root — callers manage its lifecycle. *)
 val init : Repository.Root.t -> t
 
+(** Database filename used for knowledge bases (e.g. [.kbases.db]). *)
+val db_filename : string
+
+(** [open_kb ()] finds the git root from the current directory, opens the
+    knowledge base at [.kbases.db], and returns the root and service handle.
+    Callers must close the root when done. *)
+val open_kb : unit -> (Repository.Root.t * t, error) result
+
 (** [init_kb ~directory ~namespace] initializes a knowledge base in a git
     repository, creates [.kbases.db], and persists the effective namespace. *)
 val init_kb :

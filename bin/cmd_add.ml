@@ -1,6 +1,5 @@
 module Cmd = Cmdliner.Cmd
 module Term = Cmdliner.Term
-module Arg = Cmdliner.Arg
 
 module Common = Cmdline_common
 module Service = Kbases.Service.Kb_service
@@ -45,9 +44,8 @@ let todo_info = Cmd.info "todo" ~doc:todo_doc ~man:todo_man
 let service_error_msg = function
   | Service.Repository_error text | Service.Validation_error text -> text
 
-let run_note db_override title =
-  let db_file = Common.resolve_db_file ~override:db_override in
-  let ctx = App_context.init ~db_file ~namespace:None in
+let run_note title =
+  let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
     let content = Io.read_all_stdin () in
     let title   = try Title.make   title   with Invalid_argument msg -> Common.exit_with msg in
@@ -59,9 +57,8 @@ let run_note db_override title =
         Printf.printf "Created note: %s (%s)\n" niceid typeid
     | Error err -> Common.exit_with (service_error_msg err))
 
-let run_todo db_override title =
-  let db_file = Common.resolve_db_file ~override:db_override in
-  let ctx = App_context.init ~db_file ~namespace:None in
+let run_todo title =
+  let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
     let content = Io.read_all_stdin () in
     let title = try Title.make title with Invalid_argument msg -> Common.exit_with msg in
@@ -75,18 +72,14 @@ let run_todo db_override title =
 
 let title_arg =
   let doc = "Title of the resource to create." in
-  Arg.(required & pos 0 (some string) None & info [] ~docv:"TITLE" ~doc)
+  Cmdliner.Arg.(required & pos 0 (some string) None & info [] ~docv:"TITLE" ~doc)
 
 let note_cmd =
-  let term =
-    Term.(const run_note $ Common.db_file_arg $ title_arg)
-  in
+  let term = Term.(const run_note $ title_arg) in
   Cmd.v note_info term
 
 let todo_cmd =
-  let term =
-    Term.(const run_todo $ Common.db_file_arg $ title_arg)
-  in
+  let term = Term.(const run_todo $ title_arg) in
   Cmd.v todo_info term
 
 let cmd = Cmd.group add_info [note_cmd; todo_cmd]

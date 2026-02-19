@@ -49,12 +49,6 @@ down: add a Service function that accepts the raw inputs and does the
 resolution internally, returning a `result` that `bin/` can handle by printing
 an error and exiting.
 
-**Example violation:** `Cmdline_common.resolve_db_file` calls `Control.Git`
-directly to find the git root and hardcodes the `.kbases.db` filename — the
-same constant that `Kb_service.init_kb` already knows. The resolution belongs
-in Service; `bin/` should only define the Cmdliner term and forward the raw
-option value.
-
 ## 4. File length
 
 Keep files below approximately 300 lines. Larger files are harder to read and
