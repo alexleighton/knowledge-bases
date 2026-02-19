@@ -20,6 +20,7 @@ val init :
 (** Accessors for shared repositories and the underlying db connection. *)
 val niceid : t -> Niceid.t
 val note : t -> Note.t
+val todo : t -> Todo.t
 val config : t -> Config.t
 val db : t -> Sql.db
 

@@ -2,6 +2,10 @@ module Arg = Cmdliner.Arg
 
 module Git = Kbases.Control.Git
 
+let exit_with msg =
+  prerr_endline ("Error: " ^ msg);
+  exit 1
+
 let db_file_arg =
   let doc =
     "Override the SQLite database file path. Defaults to <repo>/.kbases.db when \

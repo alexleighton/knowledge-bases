@@ -113,3 +113,8 @@ let print_result ~dir result =
   Printf.printf "[exit %d]\n" result.exit_code;
   if result.stdout <> "" then Printf.printf "%s" (norm result.stdout);
   if result.stderr <> "" then Printf.printf "STDERR: %s" (norm result.stderr)
+
+let init_kb dir =
+  let result = run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"] in
+  if result.exit_code <> 0 then
+    failwith ("init_kb setup failed: " ^ result.stderr)

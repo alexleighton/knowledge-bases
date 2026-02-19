@@ -2,6 +2,7 @@ module Root = Kbases.Repository.Root
 module Config = Kbases.Repository.Config
 module Service = Kbases.Service.Kb_service
 module Note = Kbases.Data.Note
+module Todo = Kbases.Data.Todo
 module Title = Kbases.Data.Title
 module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
@@ -163,3 +164,31 @@ let%expect_test "add_note returns a note on success" =
          (Content.to_string (Note.content note))
    | Error err -> pp_error err);
   [%expect {| niceid=kb-0 title=Reminder content=Pay bills |}]
+
+let%expect_test "add_todo returns a todo on success" =
+  (match with_service (fun svc ->
+     Service.add_todo svc
+       ~title:(Title.make "Fix bug")
+       ~content:(Content.make "Details")
+       ()) with
+   | Ok todo ->
+       Printf.printf
+         "niceid=%s title=%s content=%s status=%s\n"
+         (Identifier.to_string (Todo.niceid todo))
+         (Title.to_string (Todo.title todo))
+         (Content.to_string (Todo.content todo))
+         (Todo.status_to_string (Todo.status todo))
+   | Error err -> pp_error err);
+  [%expect {| niceid=kb-0 title=Fix bug content=Details status=open |}]
+
+let%expect_test "add_todo accepts explicit status" =
+  (match with_service (fun svc ->
+     Service.add_todo svc
+       ~title:(Title.make "Ship")
+       ~content:(Content.make "Soon")
+       ~status:Todo.In_Progress
+       ()) with
+   | Ok todo ->
+       Printf.printf "status=%s\n" (Todo.status_to_string (Todo.status todo))
+   | Error err -> pp_error err);
+  [%expect {| status=in-progress |}]

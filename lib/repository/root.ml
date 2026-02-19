@@ -4,6 +4,7 @@ type t = {
   db     : Sql.db;
   niceid : Niceid.t;
   note   : Note.t;
+  todo   : Todo.t;
   config : Config.t;
 }
 
@@ -11,6 +12,7 @@ type error = Backend_failure of string
 
 let niceid t = t.niceid
 let note t = t.note
+let todo t = t.todo
 let config t = t.config
 let db t = t.db
 
@@ -51,10 +53,18 @@ let init ~db_file ~namespace =
       | Error (Note.Not_found _ | Note.Duplicate_niceid _) ->
           fail "Unexpected error during note repository initialization"
     in
+    let todo_repo =
+      match Todo.init ~db ~niceid_repo with
+      | Ok repo -> repo
+      | Error (Todo.Backend_failure msg) -> fail msg
+      | Error (Todo.Not_found _ | Todo.Duplicate_niceid _) ->
+          fail "Unexpected error during todo repository initialization"
+    in
     Ok {
       db;
       niceid = niceid_repo;
       note = note_repo;
+      todo = todo_repo;
       config = config_repo;
     }
   with

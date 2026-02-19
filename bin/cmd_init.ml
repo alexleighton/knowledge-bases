@@ -2,11 +2,8 @@ module Cmd = Cmdliner.Cmd
 module Term = Cmdliner.Term
 module Arg = Cmdliner.Arg
 
+module Common = Cmdline_common
 module Service = Kbases.Service.Kb_service
-
-let exit_with msg =
-  prerr_endline ("Error: " ^ msg);
-  exit 1
 
 let run directory namespace =
   match Service.init_kb ~directory ~namespace with
@@ -16,7 +13,7 @@ let run directory namespace =
       Printf.printf "  Namespace: %s\n" namespace;
       Printf.printf "  Database:  %s\n" db_file
   | Error (Service.Validation_error msg | Service.Repository_error msg) ->
-      exit_with msg
+      Common.exit_with msg
 
 let directory_arg =
   let doc = "Git repository directory for the knowledge base." in
@@ -32,7 +29,13 @@ let namespace_arg =
     & opt (some string) None
     & info [ "n"; "namespace" ] ~docv:"NAMESPACE" ~doc)
 
-let cmd_info = Cmd.info "init" ~doc:"Initialise a new knowledge base."
+let cmd_man = [
+  `S "EXAMPLES";
+  `P "bs init";
+  `P "bs init -d /path/to/repo -n ns";
+]
+
+let cmd_info = Cmd.info "init" ~doc:"Initialise a new knowledge base." ~man:cmd_man
 
 let cmd =
   let term = Term.(const run $ directory_arg $ namespace_arg) in

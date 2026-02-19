@@ -30,3 +30,10 @@ every copy must be found and updated in lockstep. Worse, near-duplicates
 diverge silently over time, producing subtle inconsistencies that are hard to
 diagnose. A single source of truth is easier to test, easier to reason about,
 and cheaper to evolve.
+
+## 2. File length
+
+Keep files below approximately 300 lines. Larger files are harder to read and
+understand. A file approaching this limit is often a sign that the concept it
+represents is too complex and should be broken into smaller, composable
+modules.

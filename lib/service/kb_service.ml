@@ -1,4 +1,5 @@
 module Note = Repository.Note
+module Todo = Repository.Todo
 module Root = Repository.Root
 module Config = Repository.Config
 module Git = Control.Git
@@ -6,6 +7,7 @@ module Namespace = Data.Namespace
 
 type t = {
   note_repo : Note.t;
+  todo_repo : Todo.t;
 }
 
 type init_result = {
@@ -19,7 +21,7 @@ type error =
   | Validation_error of string
 
 let init root =
-  { note_repo = Repository.Root.note root }
+  { note_repo = Repository.Root.note root; todo_repo = Repository.Root.todo root }
 
 let repository_error_label = function
   | Note.Backend_failure msg -> Repository_error msg
@@ -27,9 +29,19 @@ let repository_error_label = function
       Repository_error ("duplicate nice id " ^ Data.Identifier.to_string niceid)
   | Note.Not_found _ -> Repository_error "note not found"
 
+let todo_repository_error_label = function
+  | Todo.Backend_failure msg -> Repository_error msg
+  | Todo.Duplicate_niceid niceid ->
+      Repository_error ("duplicate nice id " ^ Data.Identifier.to_string niceid)
+  | Todo.Not_found _ -> Repository_error "todo not found"
+
 let add_note t ~title ~content =
   Note.create t.note_repo ~title ~content
   |> Result.map_error repository_error_label
+
+let add_todo t ~title ~content ?status () =
+  Todo.create t.todo_repo ~title ~content ?status ()
+  |> Result.map_error todo_repository_error_label
 
 let resolve_directory = function
   | None -> (

@@ -32,3 +32,14 @@ val init_kb :
 (** [add_note t ~title ~content] creates and persists a new note.
     @return the created note on success. *)
 val add_note : t -> title:Data.Title.t -> content:Data.Content.t -> (Data.Note.t, error) result
+
+(** [add_todo t ~title ~content ?status ()] creates and persists a new todo.
+    [status] defaults to [Data.Todo.Open].
+    @return the created todo on success. *)
+val add_todo :
+  t ->
+  title:Data.Title.t ->
+  content:Data.Content.t ->
+  ?status:Data.Todo.status ->
+  unit ->
+  (Data.Todo.t, error) result
