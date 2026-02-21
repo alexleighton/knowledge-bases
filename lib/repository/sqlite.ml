@@ -20,13 +20,29 @@ let _step_failed rc =
   Step_failed (Printf.sprintf "sqlite step failed: %s" (Sql.Rc.to_string rc))
 
 let exec db sql =
-  match Sql.exec db sql with
-  | Sql.Rc.OK -> Ok ()
-  | rc -> Error (Printf.sprintf "sqlite exec failed: %s" (Sql.Rc.to_string rc))
+  try
+    match Sql.exec db sql with
+    | Sql.Rc.OK -> Ok ()
+    | rc -> Error (Printf.sprintf "sqlite exec failed: %s" (Sql.Rc.to_string rc))
+  with Sql.Error msg -> Error (Printf.sprintf "sqlite exec failed: %s" msg)
 
 let commit db = exec db "COMMIT"
 
 let rollback db = exec db "ROLLBACK"
+
+let with_transaction db ~on_begin_error f =
+  match exec db "BEGIN IMMEDIATE" with
+  | Error msg -> Error (on_begin_error msg)
+  | Ok () ->
+      (try
+         let result = f () in
+         (match result with
+          | Ok _ -> ignore (commit db)
+          | Error _ -> ignore (rollback db));
+         result
+       with exn ->
+         ignore (rollback db);
+         raise exn)
 
 let _finalize stmt =
   match Sql.finalize stmt with

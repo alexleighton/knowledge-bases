@@ -21,6 +21,15 @@ val commit : Sqlite3.db -> (unit, string) result
 (** [rollback db] attempts to roll back the current transaction on [db]. *)
 val rollback : Sqlite3.db -> (unit, string) result
 
+(** [with_transaction db ~on_begin_error f] begins a transaction, runs [f],
+    commits on [Ok], rolls back on [Error], and returns the result of [f].
+    Maps a begin failure string via [on_begin_error]. *)
+val with_transaction :
+  Sqlite3.db ->
+  on_begin_error:(string -> 'e) ->
+  (unit -> ('a, 'e) result) ->
+  ('a, 'e) result
+
 (** [with_stmt db sql params row_fn] prepares [sql] on [db], binds [params],
     steps through all rows, applies [row_fn] to build a list, and always
     finalizes the statement. Returns [Error] on bind, step, or row parse failures. *)

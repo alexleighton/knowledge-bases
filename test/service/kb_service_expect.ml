@@ -37,20 +37,33 @@ let pp_error err =
   | Service.Repository_error msg -> Printf.printf "repository error: %s\n" msg
   | Service.Validation_error msg -> Printf.printf "validation error: %s\n" msg
 
+let with_chdir dir f =
+  let original = Sys.getcwd () in
+  Fun.protect ~finally:(fun () -> Sys.chdir original) (fun () -> Sys.chdir dir; f ())
+
+let expect_ok result f =
+  match result with
+  | Error err -> pp_error err
+  | Ok v -> f v
+
+let with_open_kb f =
+  expect_ok (Service.open_kb ()) (fun (root, service) ->
+    Fun.protect ~finally:(fun () -> Root.close root) (fun () -> f service))
+
+let with_root db_file f =
+  match Root.init ~db_file ~namespace:None with
+  | Error (Root.Backend_failure msg) -> Printf.printf "root open failed: %s\n" msg
+  | Ok opened ->
+      Fun.protect ~finally:(fun () -> Root.close opened) (fun () -> f opened)
+
 let%expect_test "init_kb succeeds with explicit directory and namespace" =
   let root = create_git_root "kb-init-explicit-" in
-  match Service.init_kb ~directory:(Some root) ~namespace:(Some "kb") with
-  | Error err -> pp_error err
-  | Ok result ->
-      Printf.printf "db exists: %b\n" (Sys.file_exists result.db_file);
-      (match Root.init ~db_file:result.db_file ~namespace:None with
-       | Error (Root.Backend_failure msg) ->
-           Printf.printf "root open failed: %s\n" msg
-       | Ok opened ->
-           (match Config.get (Root.config opened) "namespace" with
-            | Ok ns -> Printf.printf "namespace persisted: %b\n" (ns = "kb")
-            | Error _ -> print_endline "namespace persisted: false");
-           Root.close opened);
+  expect_ok (Service.init_kb ~directory:(Some root) ~namespace:(Some "kb")) (fun result ->
+    Printf.printf "db exists: %b\n" (Sys.file_exists result.db_file);
+    with_root result.db_file (fun opened ->
+      match Config.get (Root.config opened) "namespace" with
+      | Ok ns -> Printf.printf "namespace persisted: %b\n" (ns = "kb")
+      | Error _ -> print_endline "namespace persisted: false"));
   [%expect {|
     db exists: true
     namespace persisted: true
@@ -99,17 +112,13 @@ let%expect_test "init_kb resolves repo root from cwd when directory is None" =
   let root = create_git_root "kb-init-no-args-" in
   let nested = Filename.concat root "nested" in
   Unix.mkdir nested 0o755;
-  let original = Sys.getcwd () in
-  Fun.protect
-    ~finally:(fun () -> Sys.chdir original)
-    (fun () ->
-      Sys.chdir nested;
-      match Service.init_kb ~directory:None ~namespace:(Some "kb") with
-      | Error err -> pp_error err
-      | Ok result ->
-          Printf.printf "dir resolved: %b\n"
-            (normalize result.directory = normalize root);
-          Printf.printf "db exists: %b\n" (Sys.file_exists result.db_file));
+  with_chdir nested (fun () ->
+    match Service.init_kb ~directory:None ~namespace:(Some "kb") with
+    | Error err -> pp_error err
+    | Ok result ->
+        Printf.printf "dir resolved: %b\n"
+          (normalize result.directory = normalize root);
+        Printf.printf "db exists: %b\n" (Sys.file_exists result.db_file));
   [%expect {|
     dir resolved: true
     db exists: true
@@ -117,15 +126,11 @@ let%expect_test "init_kb resolves repo root from cwd when directory is None" =
 
 let%expect_test "init_kb without directory fails outside git repos" =
   let dir = Filename.temp_dir "kb-init-outside-" "" in
-  let original = Sys.getcwd () in
-  Fun.protect
-    ~finally:(fun () -> Sys.chdir original)
-    (fun () ->
-      Sys.chdir dir;
-      match Service.init_kb ~directory:None ~namespace:(Some "kb") with
-      | Ok _ -> print_endline "unexpected success"
-      | Error (Service.Repository_error msg) -> Printf.printf "repo error: %s\n" msg
-      | Error (Service.Validation_error msg) -> print_endline msg);
+  with_chdir dir (fun () ->
+    match Service.init_kb ~directory:None ~namespace:(Some "kb") with
+    | Ok _ -> print_endline "unexpected success"
+    | Error (Service.Repository_error msg) -> Printf.printf "repo error: %s\n" msg
+    | Error (Service.Validation_error msg) -> print_endline msg);
   [%expect {|
     Not inside a git repository. Use -d to specify a directory.
   |}]
@@ -137,16 +142,12 @@ let%expect_test "init_kb reports invalid derived namespace" =
   Unix.mkdir (Filename.concat root ".git") 0o755;
   let nested = Filename.concat root "nested" in
   Unix.mkdir nested 0o755;
-  let original = Sys.getcwd () in
-  Fun.protect
-    ~finally:(fun () -> Sys.chdir original)
-    (fun () ->
-      Sys.chdir nested;
-      match Service.init_kb ~directory:None ~namespace:None with
-      | Ok _ -> print_endline "unexpected success"
-      | Error (Service.Repository_error msg) -> Printf.printf "repo error: %s\n" msg
-      | Error (Service.Validation_error msg) ->
-          Printf.printf "derived-error: %b\n" (starts_with msg "Derived namespace"));
+  with_chdir nested (fun () ->
+    match Service.init_kb ~directory:None ~namespace:None with
+    | Ok _ -> print_endline "unexpected success"
+    | Error (Service.Repository_error msg) -> Printf.printf "repo error: %s\n" msg
+    | Error (Service.Validation_error msg) ->
+        Printf.printf "derived-error: %b\n" (starts_with msg "Derived namespace"));
   [%expect {|
     derived-error: true
   |}]
@@ -195,59 +196,41 @@ let%expect_test "add_todo accepts explicit status" =
 
 let%expect_test "open_kb succeeds and returns functional service" =
   let root = create_git_root "kb-open-happy-" in
-  let original = Sys.getcwd () in
-  Fun.protect
-    ~finally:(fun () -> Sys.chdir original)
-    (fun () ->
-      (match Service.init_kb ~directory:(Some root) ~namespace:(Some "kb") with
-       | Error err -> pp_error err
-       | Ok _ -> ());
-      Sys.chdir root;
-      match Service.open_kb () with
-      | Error err -> pp_error err
-      | Ok (opened_root, service) ->
-          Fun.protect
-            ~finally:(fun () -> Root.close opened_root)
-            (fun () ->
-              match Service.add_note service
-                      ~title:(Title.make "From open_kb")
-                      ~content:(Content.make "Works")
-              with
-              | Error err -> pp_error err
-              | Ok note ->
-                  Printf.printf "niceid=%s title=%s\n"
-                    (Identifier.to_string (Note.niceid note))
-                    (Title.to_string (Note.title note))));
+  with_chdir root (fun () ->
+    expect_ok
+      (Service.init_kb ~directory:(Some root) ~namespace:(Some "kb"))
+      (fun _ ->
+        with_open_kb (fun service ->
+          expect_ok
+            (Service.add_note service
+               ~title:(Title.make "From open_kb")
+               ~content:(Content.make "Works"))
+            (fun note ->
+              Printf.printf "niceid=%s title=%s\n"
+                (Identifier.to_string (Note.niceid note))
+                (Title.to_string (Note.title note))))));
   [%expect {| niceid=kb-0 title=From open_kb |}]
 
 let%expect_test "open_kb fails when not in a git repo" =
   let dir = Filename.temp_dir "kb-open-no-git-" "" in
-  let original = Sys.getcwd () in
-  Fun.protect
-    ~finally:(fun () -> Sys.chdir original)
-    (fun () ->
-      Sys.chdir dir;
-      match Service.open_kb () with
-      | Ok _ -> print_endline "unexpected success"
-      | Error (Service.Repository_error msg) ->
-          Printf.printf "repo error: %s\n" msg
-      | Error (Service.Validation_error msg) -> print_endline msg);
+  with_chdir dir (fun () ->
+    match Service.open_kb () with
+    | Ok _ -> print_endline "unexpected success"
+    | Error (Service.Repository_error msg) ->
+        Printf.printf "repo error: %s\n" msg
+    | Error (Service.Validation_error msg) -> print_endline msg);
   [%expect {|
     Not inside a git repository. Run 'bs add' from within a git repository.
   |}]
 
 let%expect_test "open_kb fails when KB not initialised" =
   let root = create_git_root "kb-open-no-init-" in
-  let original = Sys.getcwd () in
-  Fun.protect
-    ~finally:(fun () -> Sys.chdir original)
-    (fun () ->
-      Sys.chdir root;
-      match Service.open_kb () with
-      | Ok _ -> print_endline "unexpected success"
-      | Error (Service.Repository_error msg) ->
-          Printf.printf "repo error: %s\n" msg
-      | Error (Service.Validation_error msg) -> print_endline msg);
+  with_chdir root (fun () ->
+    match Service.open_kb () with
+    | Ok _ -> print_endline "unexpected success"
+    | Error (Service.Repository_error msg) ->
+        Printf.printf "repo error: %s\n" msg
+    | Error (Service.Validation_error msg) -> print_endline msg);
   [%expect {|
     No knowledge base found. Run 'bs init' first.
   |}]

@@ -7,3 +7,4 @@
 * `docs/lib/principles.md`: Rules for code that lives in `lib/`.
 * `docs/test/principles.md`: Rules for code that lives in `test`.
 * `docs/test-integration/architecture.md`: Structure and conventions for integration tests in `test-integration/`.
+* `docs/test-integration/principles.md`: Rules for code that lives in `test-integration/`.

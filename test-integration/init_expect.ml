@@ -2,6 +2,12 @@ module Helper = Test_helper
 module Root = Kbases.Repository.Root
 module Config = Kbases.Repository.Config
 
+let with_root db_file f =
+  match Root.init ~db_file ~namespace:None with
+  | Error (Root.Backend_failure msg) -> Printf.printf "root open failed: %s\n" msg
+  | Ok root ->
+      Fun.protect ~finally:(fun () -> Root.close root) (fun () -> f root)
+
 let%expect_test "bs init with explicit directory and namespace" =
   Helper.with_git_root (fun dir ->
     let result = Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"] in
@@ -24,16 +30,10 @@ let%expect_test "bs init creates database with correct namespace" =
         (try Unix.realpath dir with Unix.Unix_error _ -> dir)
         ".kbases.db"
     in
-    match Root.init ~db_file:real_db ~namespace:None with
-    | Error (Root.Backend_failure msg) ->
-        Printf.printf "open failed: %s\n" msg
-    | Ok opened ->
-        Fun.protect
-          ~finally:(fun () -> Root.close opened)
-          (fun () ->
-            match Config.get (Root.config opened) "namespace" with
-            | Ok ns -> Printf.printf "namespace: %s\n" ns
-            | Error _ -> print_endline "namespace: not found"));
+    with_root real_db (fun opened ->
+      match Config.get (Root.config opened) "namespace" with
+      | Ok ns -> Printf.printf "namespace: %s\n" ns
+      | Error _ -> print_endline "namespace: not found"));
   [%expect {|
     db exists: true
     namespace: test
