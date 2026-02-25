@@ -1,4 +1,20 @@
-(** Utilities for integration tests that invoke the [bs] binary as a subprocess. *)
+(** Utilities for integration tests that invoke the [bs] binary as a subprocess.
+
+    {2 Environment normalisation}
+
+    The subprocess is run with [TERM=dumb] to force cmdliner into its Plain
+    formatting mode.  Cmdliner 2.x chooses between two error styles at startup
+    based {e solely} on environment variables (it does not call [isatty]):
+
+    - {b Ansi} (any [TERM] value other than ["dumb"]): values in error messages
+      are rendered with ANSI bold escapes, e.g. [\x1b\[01mbanana\x1b\[m].
+    - {b Plain} ([TERM] unset or ["dumb"], or [NO_COLOR] set): values are
+      wrapped in single quotes, e.g. ['banana'].
+
+    See [Cmdliner_base.Fmt.styler'] in the cmdliner source.  Because the
+    subprocess inherits the caller's environment, a developer's [TERM=xterm-256color]
+    would otherwise leak into the captured stderr and produce ANSI-escaped text
+    that doesn't match the plain-text expect-test expectations. *)
 
 type run_result = {
   exit_code : int;
@@ -72,7 +88,7 @@ let run_bs ~dir ?stdin args =
   in
   let quoted_args = String.concat " " (List.map Filename.quote args) in
   let cmd =
-    Printf.sprintf "cd %s && %s %s <%s >%s 2>%s"
+    Printf.sprintf "cd %s && TERM=dumb %s %s <%s >%s 2>%s"
       (Filename.quote dir)
       (Filename.quote exe)
       quoted_args
