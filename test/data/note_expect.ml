@@ -21,19 +21,21 @@ let%expect_test "make comprehensive test" =
     let tid = Typeid.of_string typeid in
     try
       print_endline (Note.show
-        (Note.make tid identifier (Title.make title) (Content.make content)))
+        (Note.make tid identifier (Title.make title) (Content.make content) Note.Active))
     with Invalid_argument msg -> Printf.printf "ERR: %s\n" msg
   ) test_cases;
   [%expect {|
     { Note.id = note_01h455vb4pex5vsknk084sn02q; niceid = test-1;
-      title = "Test Title"; content = "Simple note" }
+      title = "Test Title"; content = "Simple note"; status = Note.Active }
     { Note.id = note_0123456789abcdefghjkmnpqrs; niceid = abc-0;
-      title = "Test Title"; content = "Note with zero ID" }
+      title = "Test Title"; content = "Note with zero ID"; status = Note.Active }
     { Note.id = note_01h455vb4pex5vsknk084sn02r; niceid = data-999;
-      title = "Test Title"; content = "Note with larger ID" }
+      title = "Test Title"; content = "Note with larger ID"; status = Note.Active
+      }
     { Note.id = note_01h455vb4pex5vsknk084sn02s; niceid = note-42;
       title = "Test Title";
-      content = "Longer content with special chars: \"quotes\" and | pipes" }
+      content = "Longer content with special chars: \"quotes\" and | pipes";
+      status = Note.Active }
     ERR: note TypeId prefix must be "note", got "task"
     |}]
 
@@ -45,6 +47,7 @@ let%expect_test "make boundary lengths" =
       identifier
       (Title.make (String.make 1 't'))
       (Content.make (String.make 1 'c'))
+      Note.Active
   in
   let note_max =
     Note.make
@@ -52,6 +55,7 @@ let%expect_test "make boundary lengths" =
       identifier
       (Title.make (String.make 100 't'))
       (Content.make (String.make 10000 'c'))
+      Note.Archived
   in
   Printf.printf "Boundary lengths: min title=%d content=%d; max title=%d content=%d\n"
     (String.length (Title.to_string (Note.title note_min)))
@@ -63,16 +67,18 @@ let%expect_test "make boundary lengths" =
 let%expect_test "accessor functions" =
   let identifier = Id.from_string "test-42" in
   let tid = Typeid.of_string "note_01h455vb4pex5vsknk084sn02r" in
-  let note = Note.make tid identifier (Title.make "My Title") (Content.make "My content") in
+  let note = Note.make tid identifier (Title.make "My Title") (Content.make "My content") Note.Archived in
   Printf.printf "TypeId: %s\n" (Typeid.to_string (Note.id note));
   Printf.printf "NiceId: %s\n" (Id.to_string (Note.niceid note));
   Printf.printf "Title: %S\n" (Title.to_string (Note.title note));
   Printf.printf "Content: %S\n" (Content.to_string (Note.content note));
+  Printf.printf "Status: %s\n" (Note.status_to_string (Note.status note));
   [%expect {|
     TypeId: note_01h455vb4pex5vsknk084sn02r
     NiceId: test-42
     Title: "My Title"
     Content: "My content"
+    Status: archived
     |}]
 
 let%expect_test "to_string with special characters" =
@@ -82,20 +88,23 @@ let%expect_test "to_string with special characters" =
     Note.make tid identifier
       (Title.make "Title with | pipe")
       (Content.make "Content with \"quotes\" and \\ backslash")
+      Note.Active
   in
   let note2 =
     Note.make tid identifier
       (Title.make "Normal Title")
       (Content.make "Normal content")
+      Note.Active
   in
   print_endline (Note.show note1);
   print_endline (Note.show note2);
   [%expect {|
     { Note.id = note_01h455vb4pex5vsknk084sn02q; niceid = test-1;
       title = "Title with | pipe";
-      content = "Content with \"quotes\" and \\ backslash" }
+      content = "Content with \"quotes\" and \\ backslash"; status = Note.Active
+      }
     { Note.id = note_01h455vb4pex5vsknk084sn02q; niceid = test-1;
-      title = "Normal Title"; content = "Normal content" }
+      title = "Normal Title"; content = "Normal content"; status = Note.Active }
     |}]
 
 let%expect_test "pretty printing" =
@@ -106,9 +115,32 @@ let%expect_test "pretty printing" =
       identifier
       (Title.make "Sample Title")
       (Content.make "Sample content with \"quotes\".")
+      Note.Active
   in
   Format.printf "%a@." Note.pp note;
   [%expect {|
     { Note.id = note_01h455vb4pex5vsknk084sn02r; niceid = demo-123;
-      title = "Sample Title"; content = "Sample content with \"quotes\"." }
+      title = "Sample Title"; content = "Sample content with \"quotes\".";
+      status = Note.Active }
+    |}]
+
+let%expect_test "status conversion helpers" =
+  let open Note in
+  let statuses = [Active; Archived] in
+  List.iter (fun s ->
+    let as_string = status_to_string s in
+    let round_trip = status_from_string as_string in
+    Printf.printf "%s -> %s\n" as_string (status_to_string round_trip)
+  ) statuses;
+  [%expect {|
+    active -> active
+    archived -> archived
+  |}]
+
+let%expect_test "status_from_string rejects invalid input" =
+  (try
+     ignore (Note.status_from_string "bad-status")
+   with Invalid_argument msg -> Printf.printf "ERR: %s\n" msg);
+  [%expect {|
+    ERR: Invalid status "bad-status"
     |}]

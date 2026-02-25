@@ -41,9 +41,6 @@ let todo_man = [
 
 let todo_info = Cmd.info "todo" ~doc:todo_doc ~man:todo_man
 
-let service_error_msg = function
-  | Service.Repository_error text | Service.Validation_error text -> text
-
 let run_note title =
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
@@ -55,7 +52,7 @@ let run_note title =
         let niceid = Identifier.to_string (Note.niceid note) in
         let typeid = Typeid.to_string (Note.id note) in
         Printf.printf "Created note: %s (%s)\n" niceid typeid
-    | Error err -> Common.exit_with (service_error_msg err))
+    | Error err -> Common.exit_with (Common.service_error_msg err))
 
 let run_todo title =
   let ctx = App_context.init () in
@@ -68,7 +65,7 @@ let run_todo title =
         let niceid = Identifier.to_string (Todo.niceid todo) in
         let typeid = Typeid.to_string (Todo.id todo) in
         Printf.printf "Created todo: %s (%s)\n" niceid typeid
-    | Error err -> Common.exit_with (service_error_msg err))
+    | Error err -> Common.exit_with (Common.service_error_msg err))
 
 let title_arg =
   let doc = "Title of the resource to create." in

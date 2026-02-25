@@ -119,3 +119,30 @@ let delete repo niceid =
   in
   let changes = Sql.changes repo.db in
   if changes = 0 then Error (Not_found (`Niceid niceid)) else Ok ()
+
+let list repo ~statuses =
+  let sql, params =
+    match statuses with
+    | [] ->
+        "SELECT id, niceid, title, content, status \
+         FROM todo WHERE status != ? ORDER BY niceid;",
+        [ (1, Sql.Data.TEXT (Data.Todo.status_to_string Data.Todo.Done)) ]
+    | statuses ->
+        let placeholders =
+          statuses
+          |> List.mapi (fun idx _ -> Printf.sprintf "?%d" (idx + 1))
+          |> String.concat ", "
+        in
+        let params =
+          statuses
+          |> List.mapi (fun idx status ->
+              (idx + 1, Sql.Data.TEXT (Data.Todo.status_to_string status)))
+        in
+        (Printf.sprintf
+           "SELECT id, niceid, title, content, status \
+            FROM todo WHERE status IN (%s) ORDER BY niceid;"
+           placeholders,
+         params)
+  in
+  Sqlite.with_stmt repo.db sql params _todo_of_row
+  |> map_sqlite_error

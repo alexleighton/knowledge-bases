@@ -1,5 +1,7 @@
 module Root = Kbases.Repository.Root
 module Config = Kbases.Repository.Config
+module NoteRepo = Kbases.Repository.Note
+module TodoRepo = Kbases.Repository.Todo
 module Service = Kbases.Service.Kb_service
 module Note = Kbases.Data.Note
 module Todo = Kbases.Data.Todo
@@ -36,6 +38,44 @@ let pp_error err =
   match err with
   | Service.Repository_error msg -> Printf.printf "repository error: %s\n" msg
   | Service.Validation_error msg -> Printf.printf "validation error: %s\n" msg
+
+let with_service_and_root f =
+  let root =
+    match Root.init ~db_file:":memory:" ~namespace:(Some "kb") with
+    | Ok root -> root
+    | Error (Root.Backend_failure msg) -> failwith ("init error: " ^ msg)
+  in
+  let service = Service.init root in
+  Fun.protect
+    ~finally:(fun () -> Root.close root)
+    (fun () -> f root service)
+
+let unwrap_result = function
+  | Ok v -> v
+  | Error err ->
+      pp_error err;
+      failwith "unexpected error"
+
+let unwrap_note_repo = function
+  | Ok v -> v
+  | Error (NoteRepo.Backend_failure msg) -> failwith ("backend failure: " ^ msg)
+  | Error (NoteRepo.Duplicate_niceid niceid) ->
+      failwith ("duplicate niceid: " ^ Identifier.to_string niceid)
+  | Error (NoteRepo.Not_found _) -> failwith "note not found"
+
+let print_items items =
+  List.iter (function
+    | Service.Todo_item todo ->
+        Printf.printf "%s todo %s %s\n"
+          (Identifier.to_string (Todo.niceid todo))
+          (Todo.status_to_string (Todo.status todo))
+          (Title.to_string (Todo.title todo))
+    | Service.Note_item note ->
+        Printf.printf "%s note %s %s\n"
+          (Identifier.to_string (Note.niceid note))
+          (Note.status_to_string (Note.status note))
+          (Title.to_string (Note.title note)))
+    items
 
 let with_chdir dir f =
   let original = Sys.getcwd () in
@@ -233,4 +273,89 @@ let%expect_test "open_kb fails when KB not initialised" =
     | Error (Service.Validation_error msg) -> print_endline msg);
   [%expect {|
     No knowledge base found. Run 'bs init' first.
+  |}]
+
+let%expect_test "list defaults exclude done and archived" =
+  with_service_and_root (fun root service ->
+    ignore (unwrap_result (Service.add_todo service
+      ~title:(Title.make "Open todo")
+      ~content:(Content.make "Body")
+      ()));
+    ignore (unwrap_result (Service.add_note service
+      ~title:(Title.make "Active note")
+      ~content:(Content.make "Body")));
+    ignore (unwrap_result (Service.add_todo service
+      ~title:(Title.make "Done todo")
+      ~content:(Content.make "Body")
+      ~status:Todo.Done ()));
+    ignore (unwrap_note_repo (NoteRepo.create (Root.note root)
+      ~title:(Title.make "Archived note")
+      ~content:(Content.make "Body")
+      ~status:Note.Archived ()));
+    unwrap_result (Service.list service ~entity_type:None ~statuses:[])
+    |> print_items);
+  [%expect {|
+    kb-0 todo open Open todo
+    kb-1 note active Active note
+  |}]
+
+let%expect_test "list filters by type and status" =
+  with_service (fun service ->
+    ignore (unwrap_result (Service.add_todo service
+      ~title:(Title.make "Open todo")
+      ~content:(Content.make "Body")
+      ()));
+    ignore (unwrap_result (Service.add_todo service
+      ~title:(Title.make "Done todo")
+      ~content:(Content.make "Body")
+      ~status:Todo.Done ()));
+    ignore (unwrap_result (Service.add_note service
+      ~title:(Title.make "Active note")
+      ~content:(Content.make "Body")));
+    unwrap_result (Service.list service
+      ~entity_type:(Some "todo")
+      ~statuses:["open"])
+    |> print_items);
+  [%expect {|
+    kb-0 todo open Open todo
+  |}]
+
+let%expect_test "list combines statuses across types" =
+  with_service (fun service ->
+    ignore (unwrap_result (Service.add_todo service
+      ~title:(Title.make "Open todo")
+      ~content:(Content.make "Body")
+      ()));
+    ignore (unwrap_result (Service.add_todo service
+      ~title:(Title.make "In progress")
+      ~content:(Content.make "Body")
+      ~status:Todo.In_Progress ()));
+    ignore (unwrap_result (Service.add_note service
+      ~title:(Title.make "Active note")
+      ~content:(Content.make "Body")));
+    unwrap_result (Service.list service
+      ~entity_type:None
+      ~statuses:["open"; "active"])
+    |> print_items);
+  [%expect {|
+    kb-0 todo open Open todo
+    kb-2 note active Active note
+  |}]
+
+let%expect_test "list rejects invalid status for entity type" =
+  with_service (fun service ->
+    match Service.list service ~entity_type:(Some "note") ~statuses:["done"] with
+    | Ok _ -> print_endline "unexpected success"
+    | Error err -> pp_error err);
+  [%expect {|
+    validation error: invalid status "done" for note
+  |}]
+
+let%expect_test "list rejects invalid entity type" =
+  with_service (fun service ->
+    match Service.list service ~entity_type:(Some "banana") ~statuses:[] with
+    | Ok _ -> print_endline "unexpected success"
+    | Error err -> pp_error err);
+  [%expect {|
+    validation error: invalid entity type "banana"
   |}]

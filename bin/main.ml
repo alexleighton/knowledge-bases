@@ -11,6 +11,7 @@ let root_man = [
   `P "init        Initialise a new knowledge base in a git repository.";
   `P "add note    Create a note from stdin.";
   `P "add todo    Create a todo from stdin.";
+  `P "list        List todos and notes.";
   `S "EXAMPLES";
   `P "bs init";
   `P "echo \"Content\" | bs add note \"Title\"";
@@ -19,6 +20,6 @@ let root_man = [
 
 let root_info = Cmd.info "bs" ~doc:root_doc ~man:root_man
 
-let root_cmd = Cmd.group root_info [ Cmd_init.cmd; Cmd_add.cmd ]
+let root_cmd = Cmd.group root_info [ Cmd_init.cmd; Cmd_add.cmd; Cmd_list.cmd ]
 
 let () = exit (Cmd.eval root_cmd)

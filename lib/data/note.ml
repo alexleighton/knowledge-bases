@@ -1,9 +1,19 @@
 module CA = Control.Assert
+module CE = Control.Exception
 module Typeid = Uuid.Typeid
 
 let _typeid_prefix = "note"
 
 type id = Typeid.t
+
+type status = Active | Archived [@@deriving show]
+
+let status_to_string = function Active -> "active" | Archived -> "archived"
+
+let status_from_string = function
+  | "active" -> Active
+  | "archived" -> Archived
+  | s -> CE.invalid_argf "Invalid status \"%s\"" s
 
 let show_id = Typeid.to_string
 let pp_id fmt id = Format.pp_print_string fmt (show_id id)
@@ -13,6 +23,7 @@ type t = {
   niceid  : Identifier.t;
   title   : Title.t;
   content : Content.t;
+  status  : status;
 }
 [@@deriving show]
 
@@ -29,10 +40,12 @@ let id      { id;      _ } = id
 let niceid  { niceid;  _ } = niceid
 let title   { title;   _ } = title
 let content { content; _ } = content
+let status  { status;  _ } = status
 
-let make id niceid title content = {
+let make id niceid title content status = {
   id      = _validate_id id;
   niceid  = niceid;
   title   = title;
   content = content;
+  status  = status;
 }

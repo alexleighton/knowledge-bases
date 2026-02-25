@@ -11,11 +11,7 @@ let init () =
   match Service.open_kb () with
   | Ok (root, service) -> { root; service }
   | Error err ->
-      let msg =
-        match err with
-        | Service.Repository_error text | Service.Validation_error text -> text
-      in
-      Common.exit_with msg
+      Common.exit_with (Common.service_error_msg err)
 
 let service t = t.service
 

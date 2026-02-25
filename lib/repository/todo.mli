@@ -41,3 +41,11 @@ val update : t -> Data.Todo.t -> (Data.Todo.t, error) result
 
 (** [delete repo niceid] removes the todo identified by [niceid]. *)
 val delete : t -> Data.Identifier.t -> (unit, error) result
+
+(** [list repo ~statuses] returns todos filtered by [statuses].
+
+    When [statuses] is empty, all todos except those with status [Done] are returned. *)
+val list :
+  t ->
+  statuses:Data.Todo.status list ->
+  (Data.Todo.t list, error) result

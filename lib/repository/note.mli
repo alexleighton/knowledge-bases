@@ -20,8 +20,8 @@ val init :
   niceid_repo:Niceid.t ->
   (t, error) result
 
-(** [create repo ~title ~content] stores a new note, generating identifiers
-    for it.
+(** [create repo ~title ~content ?status] stores a new note, generating identifiers
+    for it. [status] defaults to [Data.Note.Active].
 
     @return the newly stored note on success.
     @return [Error Duplicate_niceid _] if the generated nice id already exists.
@@ -30,6 +30,8 @@ val create :
   t ->
   title:Data.Title.t ->
   content:Data.Content.t ->
+  ?status:Data.Note.status ->
+  unit ->
   (Data.Note.t, error) result
 
 (** [get repo id] fetches the note identified by TypeId [id].
@@ -56,3 +58,11 @@ val update : t -> Data.Note.t -> (Data.Note.t, error) result
     @return [Error Not_found _] if the note does not exist.
     @return [Error Backend_failure _] if the underlying storage fails. *)
 val delete : t -> Data.Identifier.t -> (unit, error) result
+
+(** [list repo ~statuses] returns notes filtered by [statuses].
+
+    When [statuses] is empty, all notes except those with status [Archived] are returned. *)
+val list :
+  t ->
+  statuses:Data.Note.status list ->
+  (Data.Note.t list, error) result

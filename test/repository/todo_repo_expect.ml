@@ -103,3 +103,60 @@ let%expect_test "todo repo not found cases" =
     missing by id
     missing delete
     |}]
+
+let%expect_test "todo repo list filters by status" =
+  let db = Sqlite3.db_open ":memory:" in
+  let niceid_repo = _unwrap_niceid (Niceid.init ~db ~namespace:"td") in
+  let todo_repo = _unwrap_todo (TodoRepo.init ~db ~niceid_repo) in
+
+  ignore (_unwrap_todo (TodoRepo.create todo_repo
+    ~title:(Title.make "Open work") ~content:(Content.make "Body") ()));
+  ignore (_unwrap_todo (TodoRepo.create todo_repo
+    ~title:(Title.make "In progress") ~content:(Content.make "Body")
+    ~status:Todo.In_Progress ()));
+  ignore (_unwrap_todo (TodoRepo.create todo_repo
+    ~title:(Title.make "Done item") ~content:(Content.make "Body")
+    ~status:Todo.Done ()));
+
+  let print label statuses =
+    match TodoRepo.list todo_repo ~statuses with
+    | Ok todos ->
+        Printf.printf "%s:\n" label;
+        List.iter (fun todo ->
+          Printf.printf "%s %s\n"
+            (Identifier.to_string (Todo.niceid todo))
+            (Todo.status_to_string (Todo.status todo))
+        ) todos
+    | Error _ -> print_endline "list error"
+  in
+
+  print "default" [];
+  print "open-only" [Todo.Open];
+  print "done-only" [Todo.Done];
+  print "open+in-progress" [Todo.Open; Todo.In_Progress];
+
+  ignore (Sqlite3.db_close db);
+  [%expect {|
+    default:
+    td-0 open
+    td-1 in-progress
+    open-only:
+    td-0 open
+    done-only:
+    td-2 done
+    open+in-progress:
+    td-0 open
+    td-1 in-progress
+    |}]
+
+let%expect_test "todo repo list empty table" =
+  let db = Sqlite3.db_open ":memory:" in
+  let niceid_repo = _unwrap_niceid (Niceid.init ~db ~namespace:"td") in
+  let todo_repo = _unwrap_todo (TodoRepo.init ~db ~niceid_repo) in
+  (match TodoRepo.list todo_repo ~statuses:[] with
+   | Ok todos -> Printf.printf "count=%d\n" (List.length todos)
+   | Error _ -> print_endline "unexpected error");
+  ignore (Sqlite3.db_close db);
+  [%expect {|
+    count=0
+    |}]
