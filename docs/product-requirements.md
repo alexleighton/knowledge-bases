@@ -134,8 +134,19 @@ Incoming:
   depends-on  kb-8  todo  Add timeout configuration flag
 ```
 
-Items are looked up by their human-friendly identifier (niceid). Both
-outgoing relations (this item → other) and incoming relations (other → this
+Items can be looked up by either their human-friendly identifier (niceid) or
+their stable TypeId:
+
+```
+$ bs show kb-0
+$ bs show todo_01jmq...
+```
+
+Both forms produce identical output. Niceids (`kb-0`) are the ergonomic
+default for interactive use. TypeIds (`todo_01jmq...`) are useful in scripts
+and agents that hold stable references across knowledge-base rebuilds.
+
+Both outgoing relations (this item → other) and incoming relations (other → this
 item) are displayed. For bidirectional relations like `related-to`, the
 relation appears under whichever side is being viewed.
 
@@ -469,7 +480,7 @@ knowledge base found by walking up from the current directory to the git root.
 | `bs add todo TITLE`            | Implemented | Create a todo (content from stdin)   |
 | `bs add note TITLE`            | Implemented | Create a note (content from stdin)   |
 | `bs list [TYPE] [--status S]`  | Planned     | List items, optionally filtered      |
-| `bs show NICEID`               | Planned     | Display full details of an item      |
+| `bs show IDENTIFIER`           | Implemented  | Display full details of an item     |
 | `bs update NICEID [OPTIONS]`   | Planned     | Modify an existing item              |
 | `bs resolve NICEID`            | Planned     | Mark a todo as done                  |
 | `bs archive NICEID`            | Planned     | Archive a note                       |

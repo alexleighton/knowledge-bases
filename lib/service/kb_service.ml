@@ -59,3 +59,6 @@ let add_todo t ~title ~content ?status () =
 
 let list t ~entity_type ~statuses =
   Query.list t.query ~entity_type ~statuses
+
+let show t ~identifier =
+  Query.show t.query ~identifier

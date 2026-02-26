@@ -29,3 +29,10 @@ val init : Repository.Root.t -> t
 val list :
   t -> entity_type:string option -> statuses:string list ->
   (item list, error) result
+
+(** [show t ~identifier] looks up a single item by niceid or TypeId.
+
+    [identifier] is parsed first as a niceid (e.g. ["kb-0"]); if that fails,
+    as a TypeId (e.g. ["todo_01jmq..."]). Returns a [Validation_error] if the
+    item is not found or the identifier format is unrecognised. *)
+val show : t -> identifier:string -> (item, error) result
