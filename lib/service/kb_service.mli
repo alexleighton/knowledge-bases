@@ -75,3 +75,21 @@ val list :
     as a TypeId (e.g. ["todo_01jmq..."]). Returns a [Validation_error] if the
     item is not found or the identifier format is unrecognised. *)
 val show : t -> identifier:string -> (item, error) result
+
+(** [update t ~identifier ?status ?title ?content ()] applies changes to the
+    item identified by [identifier].  At least one of [status], [title], or
+    [content] must be provided. *)
+val update :
+  t ->
+  identifier:string ->
+  ?status:string ->
+  ?title:Data.Title.t ->
+  ?content:Data.Content.t ->
+  unit ->
+  (item, error) result
+
+(** [resolve t ~identifier] sets a todo's status to [Done]. *)
+val resolve : t -> identifier:string -> (Data.Todo.t, error) result
+
+(** [archive t ~identifier] sets a note's status to [Archived]. *)
+val archive : t -> identifier:string -> (Data.Note.t, error) result

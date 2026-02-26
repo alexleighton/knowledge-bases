@@ -1,18 +1,20 @@
 module Note = Note_service
 module Todo = Todo_service
 module Query = Query_service
+module Mutation = Mutation_service
 
 type t = {
-  notes : Note.t;
-  todos : Todo.t;
-  query : Query.t;
+  notes    : Note.t;
+  todos    : Todo.t;
+  query    : Query.t;
+  mutation : Mutation.t;
 }
 
-type error = Query.error =
+type error = Item_service.error =
   | Repository_error of string
   | Validation_error of string
 
-type item = Query.item =
+type item = Item_service.item =
   | Todo_item of Data.Todo.t
   | Note_item of Data.Note.t
 
@@ -23,9 +25,10 @@ type init_result = Lifecycle.init_result = {
 }
 
 let init root = {
-  notes = Note.init root;
-  todos = Todo.init root;
-  query = Query.init root;
+  notes    = Note.init root;
+  todos    = Todo.init root;
+  query    = Query.init root;
+  mutation = Mutation.init root;
 }
 
 let db_filename = Lifecycle.db_filename
@@ -62,3 +65,12 @@ let list t ~entity_type ~statuses =
 
 let show t ~identifier =
   Query.show t.query ~identifier
+
+let update t ~identifier ?status ?title ?content () =
+  Mutation.update t.mutation ~identifier ?status ?title ?content ()
+
+let resolve t ~identifier =
+  Mutation.resolve t.mutation ~identifier
+
+let archive t ~identifier =
+  Mutation.archive t.mutation ~identifier

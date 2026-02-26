@@ -13,6 +13,9 @@ let root_man = [
   `P "add todo    Create a todo from stdin.";
   `P "list        List todos and notes.";
   `P "show        Display full details of an item.";
+  `P "update      Update an existing item.";
+  `P "resolve     Mark a todo as done.";
+  `P "archive     Mark a note as archived.";
   `S "EXAMPLES";
   `P "bs init";
   `P "echo \"Content\" | bs add note \"Title\"";
@@ -21,6 +24,9 @@ let root_man = [
 
 let root_info = Cmd.info "bs" ~doc:root_doc ~man:root_man
 
-let root_cmd = Cmd.group root_info [ Cmd_init.cmd; Cmd_add.cmd; Cmd_list.cmd; Cmd_show.cmd ]
+let root_cmd = Cmd.group root_info [
+  Cmd_init.cmd; Cmd_add.cmd; Cmd_list.cmd; Cmd_show.cmd;
+  Cmd_update.cmd; Cmd_resolve.cmd; Cmd_archive.cmd;
+]
 
 let () = exit (Cmd.eval root_cmd)

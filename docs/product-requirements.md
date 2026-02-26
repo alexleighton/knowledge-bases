@@ -159,7 +159,7 @@ title or content of an item to reflect new understanding.
 $ bs update kb-0 --status in-progress
 Updated todo: kb-0
 
-$ echo "Revised description..." | bs update kb-0 --content -
+$ echo "Revised description..." | bs update kb-0 --content
 Updated todo: kb-0
 ```
 
@@ -479,11 +479,11 @@ knowledge base found by walking up from the current directory to the git root.
 | `bs init [-d DIR] [-n NS]`     | Implemented | Create a new knowledge base          |
 | `bs add todo TITLE`            | Implemented | Create a todo (content from stdin)   |
 | `bs add note TITLE`            | Implemented | Create a note (content from stdin)   |
-| `bs list [TYPE] [--status S]`  | Planned     | List items, optionally filtered      |
-| `bs show IDENTIFIER`           | Implemented  | Display full details of an item     |
-| `bs update NICEID [OPTIONS]`   | Planned     | Modify an existing item              |
-| `bs resolve NICEID`            | Planned     | Mark a todo as done                  |
-| `bs archive NICEID`            | Planned     | Archive a note                       |
+| `bs list [TYPE] [--status S]`  | Implemented | List items, optionally filtered      |
+| `bs show IDENTIFIER`           | Implemented | Display full details of an item      |
+| `bs update NICEID [OPTIONS]`   | Implemented | Modify an existing item              |
+| `bs resolve NICEID`            | Implemented | Mark a todo as done                  |
+| `bs archive NICEID`            | Implemented | Archive a note                       |
 | `bs relate SRC --KIND TARGET`  | Planned     | Create a built-in relation           |
 | `bs relate SRC --uni\|--bi NAME TARGET` | Planned | Create a user-defined relation |
 | `bs flush`                     | Planned     | Serialize SQLite to JSONL            |

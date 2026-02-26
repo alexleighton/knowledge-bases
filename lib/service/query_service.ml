@@ -3,34 +3,24 @@ module Todo = Repository.Todo
 module Result_data = Data.Result
 
 type t = {
+  items     : Item_service.t;
   note_repo : Note.t;
   todo_repo : Todo.t;
 }
 
-type error =
+type error = Item_service.error =
   | Repository_error of string
   | Validation_error of string
 
-type item =
+type item = Item_service.item =
   | Todo_item of Data.Todo.t
   | Note_item of Data.Note.t
 
 let init root = {
+  items     = Item_service.init root;
   note_repo = Repository.Root.note root;
   todo_repo = Repository.Root.todo root;
 }
-
-let repository_error_label = function
-  | Note.Backend_failure msg -> Repository_error msg
-  | Note.Duplicate_niceid niceid ->
-      Repository_error ("duplicate nice id " ^ Data.Identifier.to_string niceid)
-  | Note.Not_found _ -> Repository_error "note not found"
-
-let todo_repository_error_label = function
-  | Todo.Backend_failure msg -> Repository_error msg
-  | Todo.Duplicate_niceid niceid ->
-      Repository_error ("duplicate nice id " ^ Data.Identifier.to_string niceid)
-  | Todo.Not_found _ -> Repository_error "todo not found"
 
 let raw_id_of_item = function
   | Todo_item todo -> Data.Identifier.raw_id (Data.Todo.niceid todo)
@@ -60,10 +50,10 @@ let list t ~entity_type ~statuses =
         Error (Validation_error (Printf.sprintf "invalid status \"%s\" for note" status))
   in
   let fetch_todos statuses =
-    Todo.list t.todo_repo ~statuses |> Result.map_error todo_repository_error_label
+    Todo.list t.todo_repo ~statuses |> Result.map_error Item_service.map_todo_repo_error
   in
   let fetch_notes statuses =
-    Note.list t.note_repo ~statuses |> Result.map_error repository_error_label
+    Note.list t.note_repo ~statuses |> Result.map_error Item_service.map_note_repo_error
   in
   match entity_type with
   | Some "todo" ->
@@ -103,56 +93,5 @@ let list t ~entity_type ~statuses =
       in
       Ok (sort_items items)
 
-let show_by_niceid t niceid =
-  match Todo.get_by_niceid t.todo_repo niceid with
-  | Ok todo -> Ok (Todo_item todo)
-  | Error (Todo.Not_found _) ->
-      Note.get_by_niceid t.note_repo niceid
-      |> Result.map (fun note -> Note_item note)
-      |> Result.map_error (function
-        | Note.Not_found _ ->
-            Validation_error ("item not found: " ^ Data.Identifier.to_string niceid)
-        | (Note.Backend_failure _ | Note.Duplicate_niceid _) as err ->
-            repository_error_label err)
-  | Error ((Todo.Backend_failure _ | Todo.Duplicate_niceid _) as err) ->
-      Error (todo_repository_error_label err)
-
-let show_todo_by_typeid t typeid =
-  Todo.get t.todo_repo typeid
-  |> Result.map (fun todo -> Todo_item todo)
-  |> Result.map_error (function
-    | Todo.Not_found _ ->
-        Validation_error ("item not found: " ^ Data.Uuid.Typeid.to_string typeid)
-    | (Todo.Backend_failure _ | Todo.Duplicate_niceid _) as err ->
-        todo_repository_error_label err)
-
-let show_note_by_typeid t typeid =
-  Note.get t.note_repo typeid
-  |> Result.map (fun note -> Note_item note)
-  |> Result.map_error (function
-    | Note.Not_found _ ->
-        Validation_error ("item not found: " ^ Data.Uuid.Typeid.to_string typeid)
-    | (Note.Backend_failure _ | Note.Duplicate_niceid _) as err ->
-        repository_error_label err)
-
-let show_by_typeid t typeid =
-  match Data.Uuid.Typeid.get_prefix typeid with
-  | "todo" -> show_todo_by_typeid t typeid
-  | "note" -> show_note_by_typeid t typeid
-  | prefix ->
-      Error (Validation_error (Printf.sprintf "unknown typeid prefix %S" prefix))
-
 let show t ~identifier =
-  let try_niceid () =
-    try Some (Data.Identifier.from_string identifier) with Invalid_argument _ -> None
-  in
-  let try_typeid () =
-    try Some (Data.Uuid.Typeid.of_string identifier) with Invalid_argument _ -> None
-  in
-  match try_niceid (), try_typeid () with
-  | Some niceid, _ -> show_by_niceid t niceid
-  | _, Some typeid -> show_by_typeid t typeid
-  | None, None ->
-      Error (Validation_error (Printf.sprintf
-        "invalid identifier %S — expected a niceid (e.g. kb-0) or typeid (e.g. todo_01abc...)"
-        identifier))
+  Item_service.find t.items ~identifier

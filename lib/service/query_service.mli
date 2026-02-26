@@ -6,12 +6,12 @@
 type t
 
 (** Errors that can arise from query operations. *)
-type error =
+type error = Item_service.error =
   | Repository_error of string
   | Validation_error of string
 
 (** Unified item type returned by listing operations. *)
-type item =
+type item = Item_service.item =
   | Todo_item of Data.Todo.t
   | Note_item of Data.Note.t
 

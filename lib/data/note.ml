@@ -49,3 +49,7 @@ let make id niceid title content status = {
   content = content;
   status  = status;
 }
+
+let with_status  t status  = { t with status }
+let with_title   t title   = { t with title }
+let with_content t content = { t with content }

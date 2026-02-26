@@ -50,3 +50,12 @@ val content : t -> Content.t
 
 (** [status t] returns the status of the note. *)
 val status : t -> status
+
+(** [with_status t status] returns a copy of [t] with [status] replaced. *)
+val with_status : t -> status -> t
+
+(** [with_title t title] returns a copy of [t] with [title] replaced. *)
+val with_title : t -> Title.t -> t
+
+(** [with_content t content] returns a copy of [t] with [content] replaced. *)
+val with_content : t -> Content.t -> t

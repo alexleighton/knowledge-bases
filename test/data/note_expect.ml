@@ -144,3 +144,49 @@ let%expect_test "status_from_string rejects invalid input" =
   [%expect {|
     ERR: Invalid status "bad-status"
     |}]
+
+let%expect_test "with_status changes status, preserves other fields" =
+  let identifier = Id.from_string "test-1" in
+  let tid = Typeid.of_string "note_01h455vb4pex5vsknk084sn02q" in
+  let note = Note.make tid identifier (Title.make "My note") (Content.make "Body") Note.Active in
+  let updated = Note.with_status note Note.Archived in
+  Printf.printf "Status: %s\n" (Note.status_to_string (Note.status updated));
+  Printf.printf "Title: %s\n" (Title.to_string (Note.title updated));
+  Printf.printf "Content: %s\n" (Content.to_string (Note.content updated));
+  Printf.printf "NiceId: %s\n" (Id.to_string (Note.niceid updated));
+  Printf.printf "Id: %s\n" (Typeid.to_string (Note.id updated));
+  [%expect {|
+    Status: archived
+    Title: My note
+    Content: Body
+    NiceId: test-1
+    Id: note_01h455vb4pex5vsknk084sn02q
+  |}]
+
+let%expect_test "with_title changes title, preserves other fields" =
+  let identifier = Id.from_string "test-2" in
+  let tid = Typeid.of_string "note_01h455vb4pex5vsknk084sn02r" in
+  let note = Note.make tid identifier (Title.make "Old title") (Content.make "Body") Note.Archived in
+  let updated = Note.with_title note (Title.make "New title") in
+  Printf.printf "Title: %s\n" (Title.to_string (Note.title updated));
+  Printf.printf "Status: %s\n" (Note.status_to_string (Note.status updated));
+  Printf.printf "Content: %s\n" (Content.to_string (Note.content updated));
+  [%expect {|
+    Title: New title
+    Status: archived
+    Content: Body
+  |}]
+
+let%expect_test "with_content changes content, preserves other fields" =
+  let identifier = Id.from_string "test-3" in
+  let tid = Typeid.of_string "note_01h455vb4pex5vsknk084sn02s" in
+  let note = Note.make tid identifier (Title.make "Title") (Content.make "Old body") Note.Active in
+  let updated = Note.with_content note (Content.make "New body") in
+  Printf.printf "Content: %s\n" (Content.to_string (Note.content updated));
+  Printf.printf "Title: %s\n" (Title.to_string (Note.title updated));
+  Printf.printf "Status: %s\n" (Note.status_to_string (Note.status updated));
+  [%expect {|
+    Content: New body
+    Title: Title
+    Status: active
+  |}]

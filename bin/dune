@@ -10,4 +10,4 @@
  (public_name bs)
  (package knowledge-bases)
  (libraries cmdliner kbases)
-(modules Main Cmd_add Cmd_init Cmd_list Cmd_show Cmdline_common App_context))
+(modules Main Cmd_add Cmd_init Cmd_list Cmd_show Cmd_update Cmd_resolve Cmd_archive Cmdline_common App_context))

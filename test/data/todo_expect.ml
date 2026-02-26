@@ -107,3 +107,49 @@ let%expect_test "pretty printing" =
     { Todo.id = todo_0123456789abcdefghjkmnpqrs; niceid = todo-5; title = "Task";
       content = "Review"; status = Todo.In_Progress }
     |}]
+
+let%expect_test "with_status changes status, preserves other fields" =
+  let identifier = Id.from_string "task-1" in
+  let tid = Typeid.of_string "todo_01h455vb4pex5vsknk084sn02q" in
+  let todo = Todo.make tid identifier (Title.make "Fix bug") (Content.make "Details") Todo.Open in
+  let updated = Todo.with_status todo Todo.Done in
+  Printf.printf "Status: %s\n" (Todo.status_to_string (Todo.status updated));
+  Printf.printf "Title: %s\n" (Title.to_string (Todo.title updated));
+  Printf.printf "Content: %s\n" (Content.to_string (Todo.content updated));
+  Printf.printf "NiceId: %s\n" (Id.to_string (Todo.niceid updated));
+  Printf.printf "Id: %s\n" (Typeid.to_string (Todo.id updated));
+  [%expect {|
+    Status: done
+    Title: Fix bug
+    Content: Details
+    NiceId: task-1
+    Id: todo_01h455vb4pex5vsknk084sn02q
+  |}]
+
+let%expect_test "with_title changes title, preserves other fields" =
+  let identifier = Id.from_string "task-2" in
+  let tid = Typeid.of_string "todo_01h455vb4pex5vsknk084sn02r" in
+  let todo = Todo.make tid identifier (Title.make "Old title") (Content.make "Body") Todo.In_Progress in
+  let updated = Todo.with_title todo (Title.make "New title") in
+  Printf.printf "Title: %s\n" (Title.to_string (Todo.title updated));
+  Printf.printf "Status: %s\n" (Todo.status_to_string (Todo.status updated));
+  Printf.printf "Content: %s\n" (Content.to_string (Todo.content updated));
+  [%expect {|
+    Title: New title
+    Status: in-progress
+    Content: Body
+  |}]
+
+let%expect_test "with_content changes content, preserves other fields" =
+  let identifier = Id.from_string "task-3" in
+  let tid = Typeid.of_string "todo_01h455vb4pex5vsknk084sn02s" in
+  let todo = Todo.make tid identifier (Title.make "Title") (Content.make "Old body") Todo.Open in
+  let updated = Todo.with_content todo (Content.make "New body") in
+  Printf.printf "Content: %s\n" (Content.to_string (Todo.content updated));
+  Printf.printf "Title: %s\n" (Title.to_string (Todo.title updated));
+  Printf.printf "Status: %s\n" (Todo.status_to_string (Todo.status updated));
+  [%expect {|
+    Content: New body
+    Title: Title
+    Status: open
+  |}]
