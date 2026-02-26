@@ -57,3 +57,39 @@ discovers and runs the tests. Follow the existing pattern:
 **Why:** Keeping the test layout parallel to the source layout makes it easy to
 locate the tests for any given module. It also keeps dune libraries focused and
 avoids a single catch-all test library that grows without bound.
+
+## 3. Assert on state, not just return values
+
+When a unit test exercises code that produces side effects — writing to a
+database, creating files, allocating IDs — the test should verify the
+**persisted state**, not only the value returned by the function under test.
+
+A test that calls a service method and inspects only the returned domain object
+is doing the same work as an integration test that calls the CLI and inspects
+stdout. Both confirm "given these inputs, the output looks like X." Neither
+confirms that the side effect actually happened correctly.
+
+To make unit tests earn their keep:
+
+* **Query the database directly.** After calling a service or repository
+  method, run a small SQL query against the in-memory database to verify the
+  expected rows exist with the correct column values. Use the `query_db` test
+  helper for this.
+
+* **Check absence as well as presence.** Verify that no unexpected rows were
+  created (e.g., `SELECT count(*) FROM todo` returns exactly the expected
+  count), not just that the right row is there.
+
+* **Reserve return-value assertions for error mapping and shaping.** When the
+  function under test returns a validation error or maps a repository error into
+  a service error, a return-value assertion is the right tool — there is no
+  database state to inspect. The rule of thumb: if the test exercises a code
+  path that writes nothing, assert on the return value; if it exercises a code
+  path that writes something, assert on what was written.
+
+**Why:** Unit tests that only check return values are redundant with integration
+tests. State-based assertions catch bugs that return-value tests cannot — for
+instance, a service that returns a correct object but fails to persist it, or
+persists extra or incorrect data. This gives each test layer a distinct role:
+unit tests verify side effects, integration tests verify end-to-end CLI
+behaviour.

@@ -3,7 +3,13 @@ module TodoService = Kbases.Service.Todo_service
 module Todo = Kbases.Data.Todo
 module Title = Kbases.Data.Title
 module Content = Kbases.Data.Content
-module Identifier = Kbases.Data.Identifier
+
+let query_count = Test_helpers.query_count
+let query_rows = Test_helpers.query_rows
+
+let unwrap = function
+  | Ok v -> v
+  | Error (TodoService.Repository_error msg) -> failwith ("repository error: " ^ msg)
 
 let with_todo_service f =
   let root =
@@ -14,35 +20,27 @@ let with_todo_service f =
   let service = TodoService.init root in
   Fun.protect
     ~finally:(fun () -> Root.close root)
-    (fun () -> f service)
+    (fun () -> f root service)
 
-let pp_error = function
-  | TodoService.Repository_error msg -> Printf.printf "repository error: %s\n" msg
-
-let%expect_test "add returns a todo on success" =
-  (match with_todo_service (fun svc ->
-     TodoService.add svc
-       ~title:(Title.make "Fix bug")
-       ~content:(Content.make "Details")
-       ()) with
-   | Ok todo ->
-       Printf.printf
-         "niceid=%s title=%s content=%s status=%s\n"
-         (Identifier.to_string (Todo.niceid todo))
-         (Title.to_string (Todo.title todo))
-         (Content.to_string (Todo.content todo))
-         (Todo.status_to_string (Todo.status todo))
-   | Error err -> pp_error err);
-  [%expect {| niceid=kb-0 title=Fix bug content=Details status=open |}]
+let%expect_test "add persists a todo row" =
+  with_todo_service (fun root svc ->
+    ignore (unwrap (TodoService.add svc
+      ~title:(Title.make "Fix bug")
+      ~content:(Content.make "Details") ()));
+    query_count root "todo";
+    query_rows root "SELECT niceid, title, content, status FROM todo" [];
+    query_count root "niceid");
+  [%expect {|
+    todo=1
+    kb-0|Fix bug|Details|open
+    niceid=1
+  |}]
 
 let%expect_test "add accepts explicit status" =
-  (match with_todo_service (fun svc ->
-     TodoService.add svc
-       ~title:(Title.make "Ship")
-       ~content:(Content.make "Soon")
-       ~status:Todo.In_Progress
-       ()) with
-   | Ok todo ->
-       Printf.printf "status=%s\n" (Todo.status_to_string (Todo.status todo))
-   | Error err -> pp_error err);
-  [%expect {| status=in-progress |}]
+  with_todo_service (fun root svc ->
+    ignore (unwrap (TodoService.add svc
+      ~title:(Title.make "Ship")
+      ~content:(Content.make "Soon")
+      ~status:Todo.In_Progress ()));
+    query_rows root "SELECT niceid, status FROM todo" []);
+  [%expect {| kb-0|in-progress |}]

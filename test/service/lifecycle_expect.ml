@@ -7,6 +7,7 @@ let starts_with = Test_helpers.starts_with
 let normalize = Test_helpers.normalize
 let with_chdir = Test_helpers.with_chdir
 let with_root = Test_helpers.with_root
+let query_count = Test_helpers.query_count
 
 let pp_error err =
   match err with
@@ -23,12 +24,18 @@ let%expect_test "init_kb succeeds with explicit directory and namespace" =
   expect_ok (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb")) (fun result ->
     Printf.printf "db exists: %b\n" (Sys.file_exists result.db_file);
     with_root result.db_file (fun opened ->
-      match Config.get (Root.config opened) "namespace" with
+      (match Config.get (Root.config opened) "namespace" with
       | Ok ns -> Printf.printf "namespace persisted: %b\n" (ns = "kb")
-      | Error _ -> print_endline "namespace persisted: false"));
+      | Error _ -> print_endline "namespace persisted: false");
+      query_count opened "niceid";
+      query_count opened "todo";
+      query_count opened "note"));
   [%expect {|
     db exists: true
     namespace persisted: true
+    niceid=0
+    todo=0
+    note=0
   |}]
 
 let%expect_test "init_kb rejects non-git root directory" =

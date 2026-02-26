@@ -9,13 +9,8 @@ module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
 
 let unwrap_note_repo = Test_helpers.unwrap_note_repo
-
-let unwrap_todo_repo = function
-  | Ok v -> v
-  | Error (TodoRepo.Backend_failure msg) -> failwith ("backend failure: " ^ msg)
-  | Error (TodoRepo.Duplicate_niceid niceid) ->
-      failwith ("duplicate niceid: " ^ Identifier.to_string niceid)
-  | Error (TodoRepo.Not_found _) -> failwith "todo not found"
+let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
+let query_count = Test_helpers.query_count
 
 let with_query_service f =
   let root =
@@ -64,9 +59,15 @@ let%expect_test "list defaults exclude done and archived" =
     ignore (unwrap_note_repo (NoteRepo.create (Root.note root)
       ~title:(Title.make "Archived note") ~content:(Content.make "Body")
       ~status:Note.Archived ()));
+    (* Verify all four rows exist in the DB *)
+    query_count root "todo";
+    query_count root "note";
+    (* Service filtering returns only open/active items *)
     unwrap_query (QueryService.list service ~entity_type:None ~statuses:[])
     |> print_items);
   [%expect {|
+    todo=2
+    note=2
     kb-0 todo open Open todo
     kb-1 note active Active note
   |}]

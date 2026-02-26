@@ -13,6 +13,12 @@ Repository-local issue and note tracker.
 
 `dune exec bs`
 
+## Library Sources
+
+OCaml source (`.ml`/`.mli`) for installed dependencies is available under
+`~/.opam/default/lib/<package>/`. Read these files to understand library APIs
+when documentation is insufficient.
+
 ## Additional Documentation
 
 All documentation related to coding principles and practices, project
