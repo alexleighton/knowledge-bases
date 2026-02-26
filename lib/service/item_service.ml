@@ -19,17 +19,11 @@ let init root = {
   todo_repo = Repository.Root.todo root;
 }
 
-let map_note_repo_error = function
-  | Note.Backend_failure msg -> Repository_error msg
-  | Note.Duplicate_niceid niceid ->
+let map_repo_error ~entity_name = function
+  | Repository.Entity_repo.Backend_failure msg -> Repository_error msg
+  | Repository.Entity_repo.Duplicate_niceid niceid ->
       Repository_error ("duplicate nice id " ^ Data.Identifier.to_string niceid)
-  | Note.Not_found _ -> Repository_error "note not found"
-
-let map_todo_repo_error = function
-  | Todo.Backend_failure msg -> Repository_error msg
-  | Todo.Duplicate_niceid niceid ->
-      Repository_error ("duplicate nice id " ^ Data.Identifier.to_string niceid)
-  | Todo.Not_found _ -> Repository_error "todo not found"
+  | Repository.Entity_repo.Not_found _ -> Repository_error (entity_name ^ " not found")
 
 let find_by_niceid t niceid =
   match Todo.get_by_niceid t.todo_repo niceid with
@@ -41,9 +35,9 @@ let find_by_niceid t niceid =
         | Note.Not_found _ ->
             Validation_error ("item not found: " ^ Data.Identifier.to_string niceid)
         | (Note.Backend_failure _ | Note.Duplicate_niceid _) as err ->
-            map_note_repo_error err)
+            map_repo_error ~entity_name:"note" err)
   | Error ((Todo.Backend_failure _ | Todo.Duplicate_niceid _) as err) ->
-      Error (map_todo_repo_error err)
+      Error (map_repo_error ~entity_name:"todo" err)
 
 let find_todo_by_typeid t typeid =
   Todo.get t.todo_repo typeid
@@ -52,7 +46,7 @@ let find_todo_by_typeid t typeid =
     | Todo.Not_found _ ->
         Validation_error ("item not found: " ^ Data.Uuid.Typeid.to_string typeid)
     | (Todo.Backend_failure _ | Todo.Duplicate_niceid _) as err ->
-        map_todo_repo_error err)
+        map_repo_error ~entity_name:"todo" err)
 
 let find_note_by_typeid t typeid =
   Note.get t.note_repo typeid
@@ -61,7 +55,7 @@ let find_note_by_typeid t typeid =
     | Note.Not_found _ ->
         Validation_error ("item not found: " ^ Data.Uuid.Typeid.to_string typeid)
     | (Note.Backend_failure _ | Note.Duplicate_niceid _) as err ->
-        map_note_repo_error err)
+        map_repo_error ~entity_name:"note" err)
 
 let find_by_typeid t typeid =
   match Data.Uuid.Typeid.get_prefix typeid with

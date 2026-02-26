@@ -13,15 +13,25 @@ let init root = {
   note_repo = Repository.Root.note root;
 }
 
-let parse_todo_status s =
-  try Ok (Data.Todo.status_from_string s)
+let parse_status ~entity_name ~from_string s =
+  try Ok (from_string s)
   with Invalid_argument _ ->
-    Error (Item_service.Validation_error (Printf.sprintf "invalid status %S for todo" s))
+    Error (Item_service.Validation_error (Printf.sprintf "invalid status %S for %s" s entity_name))
 
-let parse_note_status s =
-  try Ok (Data.Note.status_from_string s)
-  with Invalid_argument _ ->
-    Error (Item_service.Validation_error (Printf.sprintf "invalid status %S for note" s))
+let apply_field_updates
+    (type a s) (module E : Data.Entity.S with type t = a and type status = s)
+    ~entity_name entity ?status ?title ?content () =
+  let open Result.Syntax in
+  let* entity =
+    match status with
+    | None -> Ok entity
+    | Some s ->
+        let+ s = parse_status ~entity_name ~from_string:E.status_from_string s in
+        E.with_status entity s
+  in
+  let entity = match title with None -> entity | Some t -> E.with_title entity t in
+  let entity = match content with None -> entity | Some c -> E.with_content entity c in
+  Ok entity
 
 let update t ~identifier ?status ?title ?content () =
   let open Item_service in
@@ -33,23 +43,23 @@ let update t ~identifier ?status ?title ?content () =
       match item with
       | Todo_item todo ->
           let* todo =
-            match status with
-            | None -> Ok todo
-            | Some s -> let+ s = parse_todo_status s in Data.Todo.with_status todo s
+            apply_field_updates (module Data.Todo) ~entity_name:"todo"
+              todo ?status ?title ?content ()
           in
-          let todo = match title with None -> todo | Some t -> Data.Todo.with_title todo t in
-          let todo = match content with None -> todo | Some c -> Data.Todo.with_content todo c in
-          let+ todo = TodoRepo.update t.todo_repo todo |> Result.map_error map_todo_repo_error in
+          let+ todo =
+            TodoRepo.update t.todo_repo todo
+            |> Result.map_error (map_repo_error ~entity_name:"todo")
+          in
           Todo_item todo
       | Note_item note ->
           let* note =
-            match status with
-            | None -> Ok note
-            | Some s -> let+ s = parse_note_status s in Data.Note.with_status note s
+            apply_field_updates (module Data.Note) ~entity_name:"note"
+              note ?status ?title ?content ()
           in
-          let note = match title with None -> note | Some t -> Data.Note.with_title note t in
-          let note = match content with None -> note | Some c -> Data.Note.with_content note c in
-          let+ note = NoteRepo.update t.note_repo note |> Result.map_error map_note_repo_error in
+          let+ note =
+            NoteRepo.update t.note_repo note
+            |> Result.map_error (map_repo_error ~entity_name:"note")
+          in
           Note_item note
 
 let resolve t ~identifier =
@@ -63,7 +73,7 @@ let resolve t ~identifier =
         (Printf.sprintf "resolve applies only to todos, but %s is a note" niceid_str))
   | Todo_item todo ->
       let todo = Data.Todo.with_status todo Data.Todo.Done in
-      TodoRepo.update t.todo_repo todo |> Result.map_error map_todo_repo_error
+      TodoRepo.update t.todo_repo todo |> Result.map_error (map_repo_error ~entity_name:"todo")
 
 let archive t ~identifier =
   let open Item_service in
@@ -76,4 +86,4 @@ let archive t ~identifier =
         (Printf.sprintf "archive applies only to notes, but %s is a todo" niceid_str))
   | Note_item note ->
       let note = Data.Note.with_status note Data.Note.Archived in
-      NoteRepo.update t.note_repo note |> Result.map_error map_note_repo_error
+      NoteRepo.update t.note_repo note |> Result.map_error (map_repo_error ~entity_name:"note")

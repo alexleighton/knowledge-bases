@@ -4,8 +4,8 @@
 type t
 
 (** Errors that can arise while interacting with stored todos. *)
-type error =
-  | Not_found of [ `Id of Data.Todo.id | `Niceid of Data.Identifier.t ]
+type error = Entity_repo.error =
+  | Not_found of [ `Id of Data.Uuid.Typeid.t | `Niceid of Data.Identifier.t ]
   | Duplicate_niceid of Data.Identifier.t
   | Backend_failure of string
 

@@ -28,19 +28,17 @@ let with_root db_file f =
   | Ok opened ->
       Fun.protect ~finally:(fun () -> Root.close opened) (fun () -> f opened)
 
-let unwrap_note_repo = function
+let unwrap_repo ~entity_name = function
   | Ok v -> v
-  | Error (NoteRepo.Backend_failure msg) -> failwith ("backend failure: " ^ msg)
-  | Error (NoteRepo.Duplicate_niceid niceid) ->
+  | Error (Kbases.Repository.Entity_repo.Backend_failure msg) ->
+      failwith ("backend failure: " ^ msg)
+  | Error (Kbases.Repository.Entity_repo.Duplicate_niceid niceid) ->
       failwith ("duplicate niceid: " ^ Identifier.to_string niceid)
-  | Error (NoteRepo.Not_found _) -> failwith "note not found"
+  | Error (Kbases.Repository.Entity_repo.Not_found _) ->
+      failwith (entity_name ^ " not found")
 
-let unwrap_todo_repo = function
-  | Ok v -> v
-  | Error (TodoRepo.Backend_failure msg) -> failwith ("backend failure: " ^ msg)
-  | Error (TodoRepo.Duplicate_niceid niceid) ->
-      failwith ("duplicate niceid: " ^ Identifier.to_string niceid)
-  | Error (TodoRepo.Not_found _) -> failwith "todo not found"
+let unwrap_note_repo r = unwrap_repo ~entity_name:"note" r
+let unwrap_todo_repo r = unwrap_repo ~entity_name:"todo" r
 
 let query_db root sql params row_printer =
   let db = Root.db root in

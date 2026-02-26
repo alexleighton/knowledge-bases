@@ -6,6 +6,7 @@ val starts_with : string -> string -> bool
 val normalize : string -> string
 val with_chdir : string -> (unit -> 'a) -> 'a
 val with_root : string -> (Kbases.Repository.Root.t -> unit) -> unit
+val unwrap_repo : entity_name:string -> ('a, Kbases.Repository.Entity_repo.error) result -> 'a
 val unwrap_note_repo : ('a, NoteRepo.error) result -> 'a
 val unwrap_todo_repo : ('a, TodoRepo.error) result -> 'a
 val query_db :

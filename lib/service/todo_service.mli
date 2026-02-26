@@ -6,8 +6,9 @@
 type t
 
 (** Errors that can arise from todo operations. *)
-type error =
+type error = Item_service.error =
   | Repository_error of string
+  | Validation_error of string
 
 (** [init root] initializes the todo service from a shared
     {!Repository.Root.t} handle. *)

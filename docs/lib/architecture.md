@@ -38,6 +38,7 @@ Examples:
 | Module       | Purpose                                           |
 |--------------|---------------------------------------------------|
 | `Char`       | Extended character predicates (shadows Stdlib)    |
+| `Entity`     | Shared module type satisfied by `Todo` and `Note` |
 | `String`     | Extended string helpers (shadows Stdlib)          |
 | `Identifier` | Human-friendly `<namespace>-<raw_id>` identifiers |
 | `Namespace`  | Acronym generation from human names               |
@@ -107,13 +108,14 @@ Key conventions:
 
 Examples:
 
-| Module   | Purpose                                                 |
-|----------|---------------------------------------------------------|
-| `Sqlite` | Thin helpers over `Sqlite3` (exec, bind, step)          |
-| `Config` | Key-value configuration store                           |
-| `Niceid` | Sequential nice-id allocator (per namespace)            |
-| `Note`   | Note CRUD (create, get, update, delete)                 |
-| `Root`   | Opens the DB, initialises all repos, provides accessors |
+| Module        | Purpose                                                 |
+|---------------|---------------------------------------------------------|
+| `Sqlite`      | Thin helpers over `Sqlite3` (exec, bind, step)          |
+| `Config`      | Key-value configuration store                           |
+| `Entity_repo` | Functor generating entity CRUD from `Data.Entity.S`     |
+| `Niceid`      | Sequential nice-id allocator (per namespace)            |
+| `Note`        | Note CRUD (create, get, update, delete)                 |
+| `Root`        | Opens the DB, initialises all repos, provides accessors |
 
 Note: `Repository.Note` and `Data.Note` share a name deliberately.
 `Data.Note` is the domain type; `Repository.Note` knows how to persist

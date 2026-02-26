@@ -1,15 +1,11 @@
-(** Note repository API.
-
-    This module defines the CRUD surface that higher layers should use to
-    persist {!Note_data.t} values. The implementation will be backed by a database
-    in a later iteration. *)
+(** Note repository API. *)
 
 (** Abstract handle to the repository backend. *)
 type t
 
 (** Errors that can arise while interacting with stored notes. *)
-type error =
-  | Not_found of [ `Id of Data.Note.id | `Niceid of Data.Identifier.t ]
+type error = Entity_repo.error =
+  | Not_found of [ `Id of Data.Uuid.Typeid.t | `Niceid of Data.Identifier.t ]
   | Duplicate_niceid of Data.Identifier.t
   | Backend_failure of string
 

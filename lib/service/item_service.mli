@@ -26,8 +26,6 @@ val init : Repository.Root.t -> t
     item is not found or the identifier format is unrecognised. *)
 val find : t -> identifier:string -> (item, error) result
 
-(** [map_todo_repo_error err] maps a todo repository error to a service error. *)
-val map_todo_repo_error : Repository.Todo.error -> error
-
-(** [map_note_repo_error err] maps a note repository error to a service error. *)
-val map_note_repo_error : Repository.Note.error -> error
+(** [map_repo_error ~entity_name err] maps a repository error to a service error.
+    [entity_name] (e.g. ["todo"], ["note"]) is used in the not-found message. *)
+val map_repo_error : entity_name:string -> Repository.Entity_repo.error -> error

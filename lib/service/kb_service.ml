@@ -37,12 +37,6 @@ let map_lifecycle_error = function
   | Lifecycle.Repository_error msg -> Repository_error msg
   | Lifecycle.Validation_error msg -> Validation_error msg
 
-let map_note_error = function
-  | Note.Repository_error msg -> Repository_error msg
-
-let map_todo_error = function
-  | Todo.Repository_error msg -> Repository_error msg
-
 let open_kb () =
   Lifecycle.open_kb ()
   |> Result.map (fun root -> (root, init root))
@@ -54,11 +48,9 @@ let init_kb ~directory ~namespace =
 
 let add_note t ~title ~content =
   Note.add t.notes ~title ~content
-  |> Result.map_error map_note_error
 
 let add_todo t ~title ~content ?status () =
   Todo.add t.todos ~title ~content ?status ()
-  |> Result.map_error map_todo_error
 
 let list t ~entity_type ~statuses =
   Query.list t.query ~entity_type ~statuses

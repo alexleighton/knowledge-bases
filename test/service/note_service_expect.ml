@@ -9,6 +9,7 @@ let query_rows = Test_helpers.query_rows
 let unwrap = function
   | Ok v -> v
   | Error (NoteService.Repository_error msg) -> failwith ("repository error: " ^ msg)
+  | Error (NoteService.Validation_error msg) -> failwith ("validation error: " ^ msg)
 
 let with_note_service f =
   let root =
