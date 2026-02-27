@@ -23,6 +23,21 @@ type init_result = {
   db_file   : string;
 }
 
+(** A resolved relation entry for display. *)
+type relation_entry = {
+  kind        : Data.Relation_kind.t;
+  niceid      : Data.Identifier.t;
+  entity_type : string;
+  title       : Data.Title.t;
+}
+
+(** Result of showing a single item, including its relations. *)
+type show_result = {
+  item     : item;
+  outgoing : relation_entry list;
+  incoming : relation_entry list;
+}
+
 (** Result of a successful relate operation. *)
 type relate_result = {
   relation      : Data.Relation.t;
@@ -73,12 +88,13 @@ val list :
   statuses:string list ->
   (item list, error) result
 
-(** [show t ~identifier] looks up a single item by niceid or TypeId.
+(** [show t ~identifier] looks up a single item by niceid or TypeId, including
+    its outgoing and incoming relations.
 
     [identifier] is parsed first as a niceid (e.g. ["kb-0"]); if that fails,
     as a TypeId (e.g. ["todo_01jmq..."]). Returns a [Validation_error] if the
     item is not found or the identifier format is unrecognised. *)
-val show : t -> identifier:string -> (item, error) result
+val show : t -> identifier:string -> (show_result, error) result
 
 (** [update t ~identifier ?status ?title ?content ()] applies changes to the
     item identified by [identifier].  At least one of [status], [title], or

@@ -90,6 +90,24 @@ let list_all repo =
     _relation_of_row
   |> map_sqlite_error
 
+let find_by_source repo typeid =
+  let id = Data.Uuid.Typeid.to_string typeid in
+  Sqlite.with_stmt repo.db
+    "SELECT source, target, kind, bidirectional \
+     FROM relation WHERE source = ? ORDER BY target, kind;"
+    [(1, Sql.Data.TEXT id)]
+    _relation_of_row
+  |> map_sqlite_error
+
+let find_by_target repo typeid =
+  let id = Data.Uuid.Typeid.to_string typeid in
+  Sqlite.with_stmt repo.db
+    "SELECT source, target, kind, bidirectional \
+     FROM relation WHERE target = ? ORDER BY source, kind;"
+    [(1, Sql.Data.TEXT id)]
+    _relation_of_row
+  |> map_sqlite_error
+
 let delete_all repo =
   Sqlite.with_stmt_cmd repo.db "DELETE FROM relation;" []
   |> map_sqlite_error

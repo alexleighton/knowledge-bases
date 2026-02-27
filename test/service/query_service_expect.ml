@@ -149,7 +149,7 @@ let%expect_test "show todo by niceid" =
       ~title:(Title.make "Fix the bug") ~content:(Content.make "Details here") ()) in
     let niceid_str = Identifier.to_string (Todo.niceid todo) in
     match QueryService.show service ~identifier:niceid_str with
-    | Ok item -> print_item item
+    | Ok QueryService.{ item; _ } -> print_item item
     | Error err -> pp_error err);
   [%expect {|
     todo kb-0 (todo_<ID>)
@@ -165,7 +165,7 @@ let%expect_test "show note by niceid" =
       ~title:(Title.make "Research notes") ~content:(Content.make "Findings") ()) in
     let niceid_str = Identifier.to_string (Note.niceid note) in
     match QueryService.show service ~identifier:niceid_str with
-    | Ok item -> print_item item
+    | Ok QueryService.{ item; _ } -> print_item item
     | Error err -> pp_error err);
   [%expect {|
     note kb-0 (note_<ID>)
@@ -181,7 +181,7 @@ let%expect_test "show todo by typeid" =
       ~title:(Title.make "Fix the bug") ~content:(Content.make "Details here") ()) in
     let typeid_str = Typeid.to_string (Todo.id todo) in
     match QueryService.show service ~identifier:typeid_str with
-    | Ok item -> print_item item
+    | Ok QueryService.{ item; _ } -> print_item item
     | Error err -> pp_error err);
   [%expect {|
     todo kb-0 (todo_<ID>)
@@ -197,7 +197,7 @@ let%expect_test "show note by typeid" =
       ~title:(Title.make "Research notes") ~content:(Content.make "Findings") ()) in
     let typeid_str = Typeid.to_string (Note.id note) in
     match QueryService.show service ~identifier:typeid_str with
-    | Ok item -> print_item item
+    | Ok QueryService.{ item; _ } -> print_item item
     | Error err -> pp_error err);
   [%expect {|
     note kb-0 (note_<ID>)

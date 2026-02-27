@@ -27,6 +27,19 @@ type init_result = Lifecycle.init_result = {
   db_file   : string;
 }
 
+type relation_entry = Query.relation_entry = {
+  kind        : Data.Relation_kind.t;
+  niceid      : Data.Identifier.t;
+  entity_type : string;
+  title       : Data.Title.t;
+}
+
+type show_result = Query.show_result = {
+  item     : item;
+  outgoing : relation_entry list;
+  incoming : relation_entry list;
+}
+
 type relate_result = Relation.relate_result = {
   relation      : Data.Relation.t;
   source_niceid : Data.Identifier.t;

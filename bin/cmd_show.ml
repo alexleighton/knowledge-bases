@@ -10,6 +10,7 @@ module Title = Kbases.Data.Title
 module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
 module Typeid = Kbases.Data.Uuid.Typeid
+module Relation_kind = Kbases.Data.Relation_kind
 
 let format_item = function
   | Service.Todo_item todo ->
@@ -27,11 +28,30 @@ let format_item = function
         (Title.to_string (Note.title note))
         (Content.to_string (Note.content note))
 
+let format_relation_entry (entry : Service.relation_entry) =
+  Printf.printf "  %s  %s  %s  %s\n"
+    (Relation_kind.to_string entry.Service.kind)
+    (Identifier.to_string entry.Service.niceid)
+    entry.Service.entity_type
+    (Title.to_string entry.Service.title)
+
+let format_relations ~outgoing ~incoming =
+  if outgoing <> [] then begin
+    Printf.printf "\nOutgoing:\n";
+    List.iter format_relation_entry outgoing
+  end;
+  if incoming <> [] then begin
+    Printf.printf "\nIncoming:\n";
+    List.iter format_relation_entry incoming
+  end
+
 let run identifier =
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
     match Service.show (App_context.service ctx) ~identifier with
-    | Ok item -> format_item item
+    | Ok Service.{ item; outgoing; incoming } ->
+        format_item item;
+        format_relations ~outgoing ~incoming
     | Error err -> Common.exit_with (Common.service_error_msg err))
 
 let identifier_arg =

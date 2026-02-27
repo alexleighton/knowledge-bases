@@ -15,6 +15,21 @@ type item = Item_service.item =
   | Todo_item of Data.Todo.t
   | Note_item of Data.Note.t
 
+(** A resolved relation entry for display. *)
+type relation_entry = {
+  kind        : Data.Relation_kind.t;
+  niceid      : Data.Identifier.t;
+  entity_type : string;
+  title       : Data.Title.t;
+}
+
+(** Result of showing a single item, including its relations. *)
+type show_result = {
+  item     : item;
+  outgoing : relation_entry list;
+  incoming : relation_entry list;
+}
+
 (** [init root] initializes the query service from a shared
     {!Repository.Root.t} handle. *)
 val init : Repository.Root.t -> t
@@ -30,9 +45,10 @@ val list :
   t -> entity_type:string option -> statuses:string list ->
   (item list, error) result
 
-(** [show t ~identifier] looks up a single item by niceid or TypeId.
+(** [show t ~identifier] looks up a single item by niceid or TypeId, including
+    its outgoing and incoming relations.
 
     [identifier] is parsed first as a niceid (e.g. ["kb-0"]); if that fails,
     as a TypeId (e.g. ["todo_01jmq..."]). Returns a [Validation_error] if the
     item is not found or the identifier format is unrecognised. *)
-val show : t -> identifier:string -> (item, error) result
+val show : t -> identifier:string -> (show_result, error) result

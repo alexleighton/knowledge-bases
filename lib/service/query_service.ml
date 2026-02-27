@@ -1,11 +1,13 @@
 module Note = Repository.Note
 module Todo = Repository.Todo
+module RelationRepo = Repository.Relation
 module Result_data = Data.Result
 
 type t = {
-  items     : Item_service.t;
-  note_repo : Note.t;
-  todo_repo : Todo.t;
+  items         : Item_service.t;
+  note_repo     : Note.t;
+  todo_repo     : Todo.t;
+  relation_repo : RelationRepo.t;
 }
 
 type error = Item_service.error =
@@ -16,10 +18,24 @@ type item = Item_service.item =
   | Todo_item of Data.Todo.t
   | Note_item of Data.Note.t
 
+type relation_entry = {
+  kind        : Data.Relation_kind.t;
+  niceid      : Data.Identifier.t;
+  entity_type : string;
+  title       : Data.Title.t;
+}
+
+type show_result = {
+  item     : item;
+  outgoing : relation_entry list;
+  incoming : relation_entry list;
+}
+
 let init root = {
-  items     = Item_service.init root;
-  note_repo = Repository.Root.note root;
-  todo_repo = Repository.Root.todo root;
+  items         = Item_service.init root;
+  note_repo     = Repository.Root.note root;
+  todo_repo     = Repository.Root.todo root;
+  relation_repo = Repository.Root.relation root;
 }
 
 let raw_id_of_item = function
@@ -82,5 +98,56 @@ let list t ~entity_type ~statuses =
       in
       Ok (sort_items items)
 
+let _typeid_of_item = function
+  | Todo_item t -> Data.Todo.id t
+  | Note_item n -> Data.Note.id n
+
+let _entry_of_typeid items typeid rel_kind =
+  let identifier = Data.Uuid.Typeid.to_string typeid in
+  match Item_service.find items ~identifier with
+  | Ok (Todo_item t) ->
+      Some { kind = rel_kind;
+             niceid = Data.Todo.niceid t;
+             entity_type = "todo";
+             title = Data.Todo.title t }
+  | Ok (Note_item n) ->
+      Some { kind = rel_kind;
+             niceid = Data.Note.niceid n;
+             entity_type = "note";
+             title = Data.Note.title n }
+  | Error _ -> None
+
+let _map_relation_repo_error = function
+  | RelationRepo.Duplicate -> Item_service.Validation_error "unexpected"
+  | RelationRepo.Backend_failure msg -> Item_service.Repository_error msg
+
 let show t ~identifier =
-  Item_service.find t.items ~identifier
+  let open Result.Syntax in
+  let* item = Item_service.find t.items ~identifier in
+  let typeid = _typeid_of_item item in
+  let* from_source =
+    RelationRepo.find_by_source t.relation_repo typeid
+    |> Result.map_error _map_relation_repo_error
+  in
+  let* from_target =
+    RelationRepo.find_by_target t.relation_repo typeid
+    |> Result.map_error _map_relation_repo_error
+  in
+  let outgoing =
+    List.filter_map (fun rel ->
+      _entry_of_typeid t.items (Data.Relation.target rel) (Data.Relation.kind rel)
+    ) from_source
+    @ List.filter_map (fun rel ->
+        if Data.Relation.is_bidirectional rel then
+          _entry_of_typeid t.items (Data.Relation.source rel) (Data.Relation.kind rel)
+        else None
+      ) from_target
+  in
+  let incoming =
+    List.filter_map (fun rel ->
+      if not (Data.Relation.is_bidirectional rel) then
+        _entry_of_typeid t.items (Data.Relation.source rel) (Data.Relation.kind rel)
+      else None
+    ) from_target
+  in
+  Ok { item; outgoing; incoming }
