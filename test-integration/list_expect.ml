@@ -116,6 +116,40 @@ let%expect_test "bs list fails when not in git repo" =
     STDERR: Error: Not inside a git repository. Run 'bs add' from within a git repository.
   |}]
 
+let%expect_test "bs list excludes done todos by default" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body A" ["add"; "todo"; "Todo A"]);
+    ignore (Helper.run_bs ~dir ~stdin:"Body B" ["add"; "todo"; "Todo B"]);
+    ignore (Helper.run_bs ~dir ["resolve"; "kb-0"]);
+    let list_default = Helper.run_bs ~dir ["list"] in
+    let list_done = Helper.run_bs ~dir ["list"; "--status"; "done"] in
+    Helper.print_result ~dir list_default;
+    Helper.print_result ~dir list_done);
+  [%expect {|
+    [exit 0]
+    kb-1    todo  open          Todo B
+    [exit 0]
+    kb-0    todo  done          Todo A
+    |}]
+
+let%expect_test "bs list excludes archived notes by default" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body A" ["add"; "note"; "Note A"]);
+    ignore (Helper.run_bs ~dir ~stdin:"Body B" ["add"; "note"; "Note B"]);
+    ignore (Helper.run_bs ~dir ["archive"; "kb-0"]);
+    let list_default = Helper.run_bs ~dir ["list"] in
+    let list_archived = Helper.run_bs ~dir ["list"; "--status"; "archived"] in
+    Helper.print_result ~dir list_default;
+    Helper.print_result ~dir list_archived);
+  [%expect {|
+    [exit 0]
+    kb-1    note  active        Note B
+    [exit 0]
+    kb-0    note  archived      Note A
+    |}]
+
 let%expect_test "bs list fails when KB not initialised" =
   Helper.with_git_root (fun dir ->
     let result = Helper.run_bs ~dir ["list"] in

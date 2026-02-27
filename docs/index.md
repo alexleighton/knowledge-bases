@@ -6,5 +6,7 @@
 * `docs/lib/correct-construction.md`: Pattern for modeling data — validate on construction, immutability, encapsulate primitives.
 * `docs/lib/principles.md`: Rules for code that lives in `lib/`.
 * `docs/test/principles.md`: Rules for code that lives in `test`.
+* `docs/product-requirements.md`: Product requirements and domain model for `bs`.
 * `docs/test-integration/architecture.md`: Structure and conventions for integration tests in `test-integration/`.
+* `docs/test-integration/deferred-tests.md`: Backlog of integration tests blocked on missing CLI functionality.
 * `docs/test-integration/principles.md`: Rules for code that lives in `test-integration/`.
