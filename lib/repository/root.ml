@@ -1,11 +1,12 @@
 module Sql = Sqlite3
 
 type t = {
-  db     : Sql.db;
-  niceid : Niceid.t;
-  note   : Note.t;
-  todo   : Todo.t;
-  config : Config.t;
+  db       : Sql.db;
+  niceid   : Niceid.t;
+  note     : Note.t;
+  todo     : Todo.t;
+  relation : Relation.t;
+  config   : Config.t;
 }
 
 type error = Backend_failure of string
@@ -13,6 +14,7 @@ type error = Backend_failure of string
 let niceid t = t.niceid
 let note t = t.note
 let todo t = t.todo
+let relation t = t.relation
 let config t = t.config
 let db t = t.db
 
@@ -60,11 +62,19 @@ let init ~db_file ~namespace =
       | Error (Todo.Not_found _ | Todo.Duplicate_niceid _) ->
           fail "Unexpected error during todo repository initialization"
     in
+    let relation_repo =
+      match Relation.init ~db with
+      | Ok repo -> repo
+      | Error (Relation.Backend_failure msg) -> fail msg
+      | Error Relation.Duplicate ->
+          fail "Unexpected error during relation repository initialization"
+    in
     Ok {
       db;
       niceid = niceid_repo;
       note = note_repo;
       todo = todo_repo;
+      relation = relation_repo;
       config = config_repo;
     }
   with

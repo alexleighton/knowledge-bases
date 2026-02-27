@@ -204,13 +204,13 @@ Related: kb-3 depends-on kb-5 (unidirectional)
 $ bs relate kb-3 --related-to kb-1
 Related: kb-3 related-to kb-1 (bidirectional)
 
-$ bs relate kb-7 --uni designed-by kb-2
+$ bs relate kb-7 --uni designed-by,kb-2
 Related: kb-7 designed-by kb-2 (unidirectional)
 ```
 
 The built-in `--depends-on` and `--related-to` flags are shorthand for the
 two privileged relation kinds. User-defined relations use `--uni` or `--bi`
-followed by the relation name.
+with a comma-separated `KIND,TARGET` value.
 
 Relations are used to navigate the knowledge base: "what are the open
 prerequisites for this todo?" or "what implementation tasks relate to this
@@ -343,10 +343,10 @@ Beyond the built-in kinds, users can create relations with arbitrary names and
 specify their directionality:
 
 ```
-$ bs relate kb-7 --uni designed-by kb-2
+$ bs relate kb-7 --uni designed-by,kb-2
 Related: kb-7 designed-by kb-2 (unidirectional)
 
-$ bs relate kb-4 --bi reviews kb-6
+$ bs relate kb-4 --bi reviews,kb-6
 Related: kb-4 reviews kb-6 (bidirectional)
 ```
 
@@ -484,8 +484,8 @@ knowledge base found by walking up from the current directory to the git root.
 | `bs update NICEID [OPTIONS]`   | Implemented | Modify an existing item              |
 | `bs resolve NICEID`            | Implemented | Mark a todo as done                  |
 | `bs archive NICEID`            | Implemented | Archive a note                       |
-| `bs relate SRC --KIND TARGET`  | Planned     | Create a built-in relation           |
-| `bs relate SRC --uni\|--bi NAME TARGET` | Planned | Create a user-defined relation |
+| `bs relate SRC --KIND TARGET`  | Implemented | Create a built-in relation           |
+| `bs relate SRC --uni\|--bi KIND,TARGET` | Implemented | Create a user-defined relation |
 | `bs flush`                     | Planned     | Serialize SQLite to JSONL            |
 | `bs rebuild`                   | Planned     | Reconstruct SQLite from JSONL        |
 

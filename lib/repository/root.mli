@@ -21,6 +21,7 @@ val init :
 val niceid : t -> Niceid.t
 val note : t -> Note.t
 val todo : t -> Todo.t
+val relation : t -> Relation.t
 val config : t -> Config.t
 val db : t -> Sql.db
 

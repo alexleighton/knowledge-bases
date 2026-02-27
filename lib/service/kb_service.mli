@@ -23,6 +23,13 @@ type init_result = {
   db_file   : string;
 }
 
+(** Result of a successful relate operation. *)
+type relate_result = {
+  relation      : Data.Relation.t;
+  source_niceid : Data.Identifier.t;
+  target_niceid : Data.Identifier.t;
+}
+
 (** [init root] initializes the service from a shared {!Repository.Root.t}
     handle. The service does not own the root — callers manage its lifecycle. *)
 val init : Repository.Root.t -> t
@@ -93,3 +100,17 @@ val resolve : t -> identifier:string -> (Data.Todo.t, error) result
 
 (** [archive t ~identifier] sets a note's status to [Archived]. *)
 val archive : t -> identifier:string -> (Data.Note.t, error) result
+
+(** [relate t ~source ~target ~kind ~bidirectional] creates a relation
+    between the items identified by [source] and [target].
+
+    @return [Ok relate_result] on success.
+    @return [Validation_error] if either item is not found, the kind is
+            invalid, or the relation already exists. *)
+val relate :
+  t ->
+  source:string ->
+  target:string ->
+  kind:string ->
+  bidirectional:bool ->
+  (relate_result, error) result

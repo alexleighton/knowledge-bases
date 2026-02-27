@@ -2,12 +2,14 @@ module Note = Note_service
 module Todo = Todo_service
 module Query = Query_service
 module Mutation = Mutation_service
+module Relation = Relation_service
 
 type t = {
-  notes    : Note.t;
-  todos    : Todo.t;
-  query    : Query.t;
-  mutation : Mutation.t;
+  notes        : Note.t;
+  todos        : Todo.t;
+  query        : Query.t;
+  mutation     : Mutation.t;
+  relation_svc : Relation.t;
 }
 
 type error = Item_service.error =
@@ -24,11 +26,18 @@ type init_result = Lifecycle.init_result = {
   db_file   : string;
 }
 
+type relate_result = Relation.relate_result = {
+  relation      : Data.Relation.t;
+  source_niceid : Data.Identifier.t;
+  target_niceid : Data.Identifier.t;
+}
+
 let init root = {
   notes    = Note.init root;
   todos    = Todo.init root;
   query    = Query.init root;
   mutation = Mutation.init root;
+  relation_svc = Relation.init root;
 }
 
 let db_filename = Lifecycle.db_filename
@@ -74,3 +83,6 @@ let resolve t ~identifier =
 
 let archive t ~identifier =
   Mutation.archive t.mutation ~identifier
+
+let relate t ~source ~target ~kind ~bidirectional =
+  Relation.relate t.relation_svc ~source ~target ~kind ~bidirectional
