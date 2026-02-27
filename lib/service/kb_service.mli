@@ -37,6 +37,9 @@ val init : Repository.Root.t -> t
 (** Database filename used for knowledge bases (e.g. [.kbases.db]). *)
 val db_filename : string
 
+(** JSONL filename used for the git-tracked snapshot (e.g. [.kbases.jsonl]). *)
+val jsonl_filename : string
+
 (** [open_kb ()] finds the git root from the current directory, opens the
     knowledge base at [.kbases.db], and returns the root and service handle.
     Callers must close the root when done. *)
@@ -114,3 +117,11 @@ val relate :
   kind:string ->
   bidirectional:bool ->
   (relate_result, error) result
+
+(** [flush t] forces a flush of all SQLite data to the JSONL file.
+    Returns an error if sync is not enabled. *)
+val flush : t -> (unit, error) result
+
+(** [force_rebuild t] unconditionally replaces all SQLite data with the
+    contents of the JSONL file. Returns an error if sync is not enabled. *)
+val force_rebuild : t -> (unit, error) result

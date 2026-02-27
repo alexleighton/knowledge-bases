@@ -4,6 +4,7 @@ module Git = Control.Git
 module Namespace = Data.Namespace
 
 let db_filename = ".kbases.db"
+let jsonl_filename = ".kbases.jsonl"
 
 type error =
   | Repository_error of string
@@ -66,6 +67,7 @@ let open_kb () =
           (Validation_error "No knowledge base found. Run 'bs init' first.")
       else
         Root.init ~db_file ~namespace:None
+        |> Result.map (fun root -> (root, dir))
         |> Result.map_error (fun (Root.Backend_failure msg) ->
                Repository_error msg)
 

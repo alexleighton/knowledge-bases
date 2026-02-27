@@ -18,3 +18,6 @@ val allocate :
   t ->
   Data.Uuid.Typeid.t ->
   (Data.Identifier.t, error) result
+
+(** [delete_all repo] removes every niceid mapping from the table. *)
+val delete_all : t -> (unit, error) result

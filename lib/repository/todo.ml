@@ -56,9 +56,8 @@ let init ~db ~niceid_repo =
   with
   | Sql.Error msg -> Error (Backend_failure msg)
 
-let create repo ~title ~content ?(status = Data.Todo.Open) () =
+let _insert repo ~todo_id ~title ~content ~status =
   let open Result.Syntax in
-  let todo_id = Data.Todo.make_id () in
   let* niceid =
     Niceid.allocate repo.niceid_repo todo_id
     |> Result.map_error (function Niceid.Backend_failure msg -> Backend_failure msg)
@@ -77,6 +76,12 @@ let create repo ~title ~content ?(status = Data.Todo.Open) () =
     |> map_sqlite_error ~niceid:niceid
   in
   todo
+
+let create repo ~title ~content ?(status = Data.Todo.Open) () =
+  _insert repo ~todo_id:(Data.Todo.make_id ()) ~title ~content ~status
+
+let import repo ~id ~title ~content ?(status = Data.Todo.Open) () =
+  _insert repo ~todo_id:id ~title ~content ~status
 
 let get repo id =
   Sqlite.with_stmt_single repo.db
@@ -145,4 +150,15 @@ let list repo ~statuses =
          params)
   in
   Sqlite.with_stmt repo.db sql params _todo_of_row
+  |> map_sqlite_error
+
+let list_all repo =
+  Sqlite.with_stmt repo.db
+    "SELECT id, niceid, title, content, status FROM todo ORDER BY id;"
+    []
+    _todo_of_row
+  |> map_sqlite_error
+
+let delete_all repo =
+  Sqlite.with_stmt_cmd repo.db "DELETE FROM todo;" []
   |> map_sqlite_error

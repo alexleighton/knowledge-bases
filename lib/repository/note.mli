@@ -66,3 +66,21 @@ val list :
   t ->
   statuses:Data.Note.status list ->
   (Data.Note.t list, error) result
+
+(** [list_all repo] returns every note regardless of status, ordered by id. *)
+val list_all : t -> (Data.Note.t list, error) result
+
+(** [delete_all repo] removes every note from the table. *)
+val delete_all : t -> (unit, error) result
+
+(** [import repo ~id ~title ~content ?status ()] inserts a note with a
+    caller-provided TypeId, allocating a fresh niceid. Used during rebuild
+    from JSONL. [status] defaults to [Data.Note.Active]. *)
+val import :
+  t ->
+  id:Data.Note.id ->
+  title:Data.Title.t ->
+  content:Data.Content.t ->
+  ?status:Data.Note.status ->
+  unit ->
+  (Data.Note.t, error) result

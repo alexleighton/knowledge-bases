@@ -110,6 +110,61 @@ let%expect_test "unidirectional reverse is allowed" =
     | Error err -> pp_error err);
   [%expect {| created reverse: kind=depends-on |}]
 
+let%expect_test "list_all returns all relations" =
+  with_root (fun root ->
+    let t1 = make_todo root "First" in
+    let t2 = make_todo root "Second" in
+    let t3 = make_todo root "Third" in
+    let src1 = Kbases.Data.Todo.id t1 in
+    let tgt1 = Kbases.Data.Todo.id t2 in
+    let src2 = Kbases.Data.Todo.id t2 in
+    let tgt2 = Kbases.Data.Todo.id t3 in
+    let k1 = Relation_kind.make "depends-on" in
+    let k2 = Relation_kind.make "related-to" in
+    let r1 = Relation.make ~source:src1 ~target:tgt1 ~kind:k1 ~bidirectional:false in
+    let r2 = Relation.make ~source:src2 ~target:tgt2 ~kind:k2 ~bidirectional:true in
+    ignore (RelationRepo.create (Root.relation root) r1);
+    ignore (RelationRepo.create (Root.relation root) r2);
+    match RelationRepo.list_all (Root.relation root) with
+    | Ok rels ->
+        Printf.printf "list_all count=%d\n" (List.length rels);
+        let sorted = List.sort (fun a b ->
+          compare
+            (Relation_kind.to_string (Relation.kind a))
+            (Relation_kind.to_string (Relation.kind b))
+        ) rels in
+        List.iter (fun rel ->
+          Printf.printf "kind=%s bidi=%b\n"
+            (Relation_kind.to_string (Relation.kind rel))
+            (Relation.is_bidirectional rel)
+        ) sorted
+    | Error err -> pp_error err);
+  [%expect {|
+    list_all count=2
+    kind=depends-on bidi=false
+    kind=related-to bidi=true
+  |}]
+
+let%expect_test "delete_all removes all relations" =
+  with_root (fun root ->
+    let t1 = make_todo root "First" in
+    let t2 = make_todo root "Second" in
+    let src = Kbases.Data.Todo.id t1 in
+    let tgt = Kbases.Data.Todo.id t2 in
+    let kind = Relation_kind.make "depends-on" in
+    let rel = Relation.make ~source:src ~target:tgt ~kind ~bidirectional:false in
+    ignore (RelationRepo.create (Root.relation root) rel);
+    (match RelationRepo.delete_all (Root.relation root) with
+     | Ok () -> print_endline "delete_all ok"
+     | Error err -> pp_error err);
+    match RelationRepo.list_all (Root.relation root) with
+    | Ok rels -> Printf.printf "after delete_all count=%d\n" (List.length rels)
+    | Error err -> pp_error err);
+  [%expect {|
+    delete_all ok
+    after delete_all count=0
+  |}]
+
 let%expect_test "same pair with different kind is allowed" =
   with_root (fun root ->
     let t1 = make_todo root "First" in

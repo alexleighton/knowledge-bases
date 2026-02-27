@@ -1,6 +1,6 @@
 (library
  (name kbases)
- (libraries unix str uuidm stdint sqlite3)
+ (libraries unix str uuidm stdint sqlite3 yojson)
  (preprocess
   (pps ppx_deriving.show))
 )

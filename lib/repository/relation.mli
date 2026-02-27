@@ -21,3 +21,9 @@ val init : db:Sqlite3.db -> (t, error) result
             bidirectional relations) already exists.
     @return [Error (Backend_failure _)] if the underlying storage fails. *)
 val create : t -> Data.Relation.t -> (Data.Relation.t, error) result
+
+(** [list_all repo] returns every relation, ordered by source, target, kind. *)
+val list_all : t -> (Data.Relation.t list, error) result
+
+(** [delete_all repo] removes every relation from the table. *)
+val delete_all : t -> (unit, error) result

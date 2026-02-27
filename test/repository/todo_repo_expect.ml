@@ -149,6 +149,61 @@ let%expect_test "todo repo list filters by status" =
     td-1 in-progress
     |}]
 
+let%expect_test "todo repo list_all returns all statuses" =
+  let db = Sqlite3.db_open ":memory:" in
+  let niceid_repo = _unwrap_niceid (Niceid.init ~db ~namespace:"td") in
+  let todo_repo = _unwrap_todo (TodoRepo.init ~db ~niceid_repo) in
+
+  ignore (_unwrap_todo (TodoRepo.create todo_repo
+    ~title:(Title.make "Open work") ~content:(Content.make "Body") ()));
+  ignore (_unwrap_todo (TodoRepo.create todo_repo
+    ~title:(Title.make "In progress") ~content:(Content.make "Body")
+    ~status:Todo.In_Progress ()));
+  ignore (_unwrap_todo (TodoRepo.create todo_repo
+    ~title:(Title.make "Done item") ~content:(Content.make "Body")
+    ~status:Todo.Done ()));
+
+  (match TodoRepo.list_all todo_repo with
+   | Ok todos ->
+       Printf.printf "list_all count=%d\n" (List.length todos);
+       let sorted = List.sort (fun a b ->
+         compare (Identifier.raw_id (Todo.niceid a)) (Identifier.raw_id (Todo.niceid b))
+       ) todos in
+       List.iter (fun todo ->
+         Printf.printf "%s %s\n"
+           (Identifier.to_string (Todo.niceid todo))
+           (Todo.status_to_string (Todo.status todo))
+       ) sorted
+   | Error _ -> print_endline "list_all error");
+
+  ignore (Sqlite3.db_close db);
+  [%expect {|
+    list_all count=3
+    td-0 open
+    td-1 in-progress
+    td-2 done
+    |}]
+
+let%expect_test "todo repo delete_all removes everything" =
+  let db = Sqlite3.db_open ":memory:" in
+  let niceid_repo = _unwrap_niceid (Niceid.init ~db ~namespace:"td") in
+  let todo_repo = _unwrap_todo (TodoRepo.init ~db ~niceid_repo) in
+
+  ignore (_unwrap_todo (TodoRepo.create todo_repo
+    ~title:(Title.make "First") ~content:(Content.make "Body") ()));
+  ignore (_unwrap_todo (TodoRepo.create todo_repo
+    ~title:(Title.make "Second") ~content:(Content.make "Body") ()));
+
+  let () = _unwrap_todo (TodoRepo.delete_all todo_repo) in
+  (match TodoRepo.list_all todo_repo with
+   | Ok todos -> Printf.printf "after delete_all count=%d\n" (List.length todos)
+   | Error _ -> print_endline "list_all error");
+
+  ignore (Sqlite3.db_close db);
+  [%expect {|
+    after delete_all count=0
+    |}]
+
 let%expect_test "todo repo list empty table" =
   let db = Sqlite3.db_open ":memory:" in
   let niceid_repo = _unwrap_niceid (Niceid.init ~db ~namespace:"td") in
@@ -159,4 +214,42 @@ let%expect_test "todo repo list empty table" =
   ignore (Sqlite3.db_close db);
   [%expect {|
     count=0
+    |}]
+
+let%expect_test "todo repo import with caller-provided TypeId" =
+  let db = Sqlite3.db_open ":memory:" in
+  let niceid_repo = _unwrap_niceid (Niceid.init ~db ~namespace:"td") in
+  let todo_repo = _unwrap_todo (TodoRepo.init ~db ~niceid_repo) in
+  let tid = Typeid.of_string "todo_0123456789abcdefghjkmnpqrs" in
+
+  let todo = _unwrap_todo (TodoRepo.import todo_repo
+    ~id:tid ~title:(Title.make "Imported") ~content:(Content.make "Body")
+    ~status:Todo.In_Progress ()) in
+  Printf.printf "id=%s niceid=%s status=%s\n"
+    (Typeid.to_string (Todo.id todo))
+    (Identifier.to_string (Todo.niceid todo))
+    (Todo.status_to_string (Todo.status todo));
+
+  let fetched = _unwrap_todo (TodoRepo.get todo_repo tid) in
+  Printf.printf "fetched title=%s\n" (Title.to_string (Todo.title fetched));
+
+  ignore (Sqlite3.db_close db);
+  [%expect {|
+    id=todo_0123456789abcdefghjkmnpqrs niceid=td-0 status=in-progress
+    fetched title=Imported
+    |}]
+
+let%expect_test "todo repo import defaults to Open status" =
+  let db = Sqlite3.db_open ":memory:" in
+  let niceid_repo = _unwrap_niceid (Niceid.init ~db ~namespace:"td") in
+  let todo_repo = _unwrap_todo (TodoRepo.init ~db ~niceid_repo) in
+  let tid = Typeid.of_string "todo_0123456789abcdefghjkmnpqrs" in
+
+  let todo = _unwrap_todo (TodoRepo.import todo_repo
+    ~id:tid ~title:(Title.make "Default") ~content:(Content.make "Body") ()) in
+  Printf.printf "status=%s\n" (Todo.status_to_string (Todo.status todo));
+
+  ignore (Sqlite3.db_close db);
+  [%expect {|
+    status=open
     |}]

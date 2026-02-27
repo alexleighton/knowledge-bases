@@ -49,3 +49,21 @@ val list :
   t ->
   statuses:Data.Todo.status list ->
   (Data.Todo.t list, error) result
+
+(** [list_all repo] returns every todo regardless of status, ordered by id. *)
+val list_all : t -> (Data.Todo.t list, error) result
+
+(** [delete_all repo] removes every todo from the table. *)
+val delete_all : t -> (unit, error) result
+
+(** [import repo ~id ~title ~content ?status ()] inserts a todo with a
+    caller-provided TypeId, allocating a fresh niceid. Used during rebuild
+    from JSONL. [status] defaults to [Data.Todo.Open]. *)
+val import :
+  t ->
+  id:Data.Todo.id ->
+  title:Data.Title.t ->
+  content:Data.Content.t ->
+  ?status:Data.Todo.status ->
+  unit ->
+  (Data.Todo.t, error) result

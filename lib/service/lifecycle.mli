@@ -38,7 +38,10 @@ val init_kb :
   namespace:string option ->
   (init_result, error) result
 
+(** JSONL filename used for the git-tracked snapshot (e.g. [".kbases.jsonl"]). *)
+val jsonl_filename : string
+
 (** [open_kb ()] finds the git root from the current directory and opens the
-    knowledge base at [.kbases.db]. Callers must close the returned root when
-    done. *)
-val open_kb : unit -> (Repository.Root.t, error) result
+    knowledge base at [.kbases.db]. Returns the root handle and the git root
+    directory. Callers must close the root when done. *)
+val open_kb : unit -> (Repository.Root.t * string, error) result

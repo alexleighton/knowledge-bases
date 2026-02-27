@@ -17,6 +17,8 @@ let root_man = [
   `P "resolve     Mark a todo as done.";
   `P "archive     Mark a note as archived.";
   `P "relate      Create a relation between two items.";
+  `P "flush       Flush SQLite data to .kbases.jsonl.";
+  `P "rebuild     Rebuild SQLite from .kbases.jsonl.";
   `S "EXAMPLES";
   `P "bs init";
   `P "echo \"Content\" | bs add note \"Title\"";
@@ -28,6 +30,7 @@ let root_info = Cmd.info "bs" ~doc:root_doc ~man:root_man
 let root_cmd = Cmd.group root_info [
   Cmd_init.cmd; Cmd_add.cmd; Cmd_list.cmd; Cmd_show.cmd;
   Cmd_update.cmd; Cmd_resolve.cmd; Cmd_archive.cmd; Cmd_relate.cmd;
+  Cmd_flush.cmd; Cmd_rebuild.cmd;
 ]
 
 let () = exit (Cmd.eval root_cmd)

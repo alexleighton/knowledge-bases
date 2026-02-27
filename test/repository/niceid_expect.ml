@@ -24,3 +24,20 @@ let%expect_test "allocate increments from zero" =
     note_0123456789abcdefghjkmnpqrt -> 1
     |}]
 
+let%expect_test "delete_all clears all niceids and resets sequence" =
+  let db = Sqlite3.db_open ":memory:" in
+  let repo = _unwrap (Niceid.init ~db ~namespace:"nt") in
+  let tid1 = Typeid.of_string "note_0123456789abcdefghjkmnpqrs" in
+  let tid2 = Typeid.of_string "note_0123456789abcdefghjkmnpqrt" in
+  ignore (_unwrap (Niceid.allocate repo tid1));
+  ignore (_unwrap (Niceid.allocate repo tid2));
+  let () = _unwrap (Niceid.delete_all repo) in
+  let tid3 = Typeid.of_string "note_0123456789abcdefghjkmnpqrv" in
+  (match Niceid.allocate repo tid3 with
+   | Ok ident -> Printf.printf "after delete_all: %d\n" (Identifier.raw_id ident)
+   | Error (Niceid.Backend_failure msg) -> Printf.printf "alloc error: %s\n" msg);
+  ignore (Sqlite3.db_close db);
+  [%expect {|
+    after delete_all: 0
+    |}]
+

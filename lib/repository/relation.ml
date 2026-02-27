@@ -9,13 +9,13 @@ type error =
 let exec_sql db sql =
   Sqlite.exec db sql |> Result.map_error (fun msg -> Backend_failure msg)
 
-let map_sqlite_error = Result.map_error (function
+let map_sqlite_error r = Result.map_error (function
   | Sqlite.Constraint_violation -> Duplicate
   | Sqlite.No_row_found -> Backend_failure "no row found"
   | Sqlite.Step_failed _ | Sqlite.Bind_failed _
   | Sqlite.Row_parse_failed _ as err ->
       Backend_failure (Sqlite.error_message err)
-)
+) r
 
 let init ~db =
   let create_sql =
@@ -74,3 +74,22 @@ let create repo rel =
       ]
     |> map_sqlite_error
     |> Result.map (fun () -> rel)
+
+let _relation_of_row stmt =
+  let source = Data.Uuid.Typeid.of_string (Sql.column_text stmt 0) in
+  let target = Data.Uuid.Typeid.of_string (Sql.column_text stmt 1) in
+  let kind = Data.Relation_kind.make (Sql.column_text stmt 2) in
+  let bidirectional = Sql.column_int stmt 3 <> 0 in
+  Ok (Data.Relation.make ~source ~target ~kind ~bidirectional)
+
+let list_all repo =
+  Sqlite.with_stmt repo.db
+    "SELECT source, target, kind, bidirectional \
+     FROM relation ORDER BY source, target, kind;"
+    []
+    _relation_of_row
+  |> map_sqlite_error
+
+let delete_all repo =
+  Sqlite.with_stmt_cmd repo.db "DELETE FROM relation;" []
+  |> map_sqlite_error

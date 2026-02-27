@@ -58,3 +58,7 @@ let allocate { db; namespace } typeid =
          ]
        |> map_sqlite_error
        |> Result.map (fun () -> Data.Identifier.make namespace next_id))
+
+let delete_all { db; _ } =
+  Sqlite.with_stmt_cmd db "DELETE FROM niceid;" []
+  |> map_sqlite_error

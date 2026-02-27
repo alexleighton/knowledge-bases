@@ -147,6 +147,57 @@ let%expect_test "note repo list filters by status" =
     nt-1 archived
     |}]
 
+let%expect_test "note repo list_all returns all statuses" =
+  let db = Sqlite3.db_open ":memory:" in
+  let niceid_repo = _unwrap_niceid (Niceid.init ~db ~namespace:"nt") in
+  let note_repo = _unwrap_note (NoteRepo.init ~db ~niceid_repo) in
+
+  ignore (_unwrap_note (NoteRepo.create note_repo
+    ~title:(Title.make "Active note") ~content:(Content.make "Body") ()));
+  ignore (_unwrap_note (NoteRepo.create note_repo
+    ~title:(Title.make "Archived note") ~content:(Content.make "Body")
+    ~status:Note.Archived ()));
+
+  (match NoteRepo.list_all note_repo with
+   | Ok notes ->
+       Printf.printf "list_all count=%d\n" (List.length notes);
+       let sorted = List.sort (fun a b ->
+         compare (Identifier.raw_id (Note.niceid a)) (Identifier.raw_id (Note.niceid b))
+       ) notes in
+       List.iter (fun note ->
+         Printf.printf "%s %s\n"
+           (Identifier.to_string (Note.niceid note))
+           (Note.status_to_string (Note.status note))
+       ) sorted
+   | Error _ -> print_endline "list_all error");
+
+  ignore (Sqlite3.db_close db);
+  [%expect {|
+    list_all count=2
+    nt-0 active
+    nt-1 archived
+    |}]
+
+let%expect_test "note repo delete_all removes everything" =
+  let db = Sqlite3.db_open ":memory:" in
+  let niceid_repo = _unwrap_niceid (Niceid.init ~db ~namespace:"nt") in
+  let note_repo = _unwrap_note (NoteRepo.init ~db ~niceid_repo) in
+
+  ignore (_unwrap_note (NoteRepo.create note_repo
+    ~title:(Title.make "First") ~content:(Content.make "Body") ()));
+  ignore (_unwrap_note (NoteRepo.create note_repo
+    ~title:(Title.make "Second") ~content:(Content.make "Body") ()));
+
+  let () = _unwrap_note (NoteRepo.delete_all note_repo) in
+  (match NoteRepo.list_all note_repo with
+   | Ok notes -> Printf.printf "after delete_all count=%d\n" (List.length notes)
+   | Error _ -> print_endline "list_all error");
+
+  ignore (Sqlite3.db_close db);
+  [%expect {|
+    after delete_all count=0
+    |}]
+
 let%expect_test "note repo list empty table" =
   let db = Sqlite3.db_open ":memory:" in
   let niceid_repo = _unwrap_niceid (Niceid.init ~db ~namespace:"nt") in
@@ -159,3 +210,40 @@ let%expect_test "note repo list empty table" =
     count=0
     |}]
 
+let%expect_test "note repo import with caller-provided TypeId" =
+  let db = Sqlite3.db_open ":memory:" in
+  let niceid_repo = _unwrap_niceid (Niceid.init ~db ~namespace:"nt") in
+  let note_repo = _unwrap_note (NoteRepo.init ~db ~niceid_repo) in
+  let tid = Typeid.of_string "note_0123456789abcdefghjkmnpqrs" in
+
+  let note = _unwrap_note (NoteRepo.import note_repo
+    ~id:tid ~title:(Title.make "Imported") ~content:(Content.make "Body")
+    ~status:Note.Archived ()) in
+  Printf.printf "id=%s niceid=%s status=%s\n"
+    (Typeid.to_string (Note.id note))
+    (Identifier.to_string (Note.niceid note))
+    (Note.status_to_string (Note.status note));
+
+  let fetched = _unwrap_note (NoteRepo.get note_repo tid) in
+  Printf.printf "fetched title=%s\n" (Title.to_string (Note.title fetched));
+
+  ignore (Sqlite3.db_close db);
+  [%expect {|
+    id=note_0123456789abcdefghjkmnpqrs niceid=nt-0 status=archived
+    fetched title=Imported
+    |}]
+
+let%expect_test "note repo import defaults to Active status" =
+  let db = Sqlite3.db_open ":memory:" in
+  let niceid_repo = _unwrap_niceid (Niceid.init ~db ~namespace:"nt") in
+  let note_repo = _unwrap_note (NoteRepo.init ~db ~niceid_repo) in
+  let tid = Typeid.of_string "note_0123456789abcdefghjkmnpqrs" in
+
+  let note = _unwrap_note (NoteRepo.import note_repo
+    ~id:tid ~title:(Title.make "Default") ~content:(Content.make "Body") ()) in
+  Printf.printf "status=%s\n" (Note.status_to_string (Note.status note));
+
+  ignore (Sqlite3.db_close db);
+  [%expect {|
+    status=active
+    |}]

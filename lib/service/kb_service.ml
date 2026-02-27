@@ -10,6 +10,7 @@ type t = {
   query        : Query.t;
   mutation     : Mutation.t;
   relation_svc : Relation.t;
+  sync         : Sync_service.t option;
 }
 
 type error = Item_service.error =
@@ -38,9 +39,11 @@ let init root = {
   query    = Query.init root;
   mutation = Mutation.init root;
   relation_svc = Relation.init root;
+  sync     = None;
 }
 
 let db_filename = Lifecycle.db_filename
+let jsonl_filename = Lifecycle.jsonl_filename
 
 let map_lifecycle_error = function
   | Lifecycle.Repository_error msg -> Repository_error msg
@@ -52,22 +55,50 @@ let map_note_error = function
 let map_todo_error = function
   | Todo.Repository_error msg -> Repository_error msg
 
+let map_sync_error = function
+  | Sync_service.Sync_failed msg -> Repository_error msg
+
+let _with_flush t f =
+  let open Result.Syntax in
+  let* () = match t.sync with
+    | None -> Ok ()
+    | Some sync -> Sync_service.mark_dirty sync |> Result.map_error map_sync_error
+  in
+  let* result = f () in
+  let* () = match t.sync with
+    | None -> Ok ()
+    | Some sync -> Sync_service.flush sync |> Result.map_error map_sync_error
+  in
+  Ok result
+
 let open_kb () =
-  Lifecycle.open_kb ()
-  |> Result.map (fun root -> (root, init root))
-  |> Result.map_error map_lifecycle_error
+  let open Result.Syntax in
+  let* (root, dir) =
+    Lifecycle.open_kb ()
+    |> Result.map_error map_lifecycle_error
+  in
+  let jsonl_path = Filename.concat dir Lifecycle.jsonl_filename in
+  let sync = Sync_service.init root ~jsonl_path in
+  let* () =
+    Sync_service.rebuild_if_needed sync
+    |> Result.map_error map_sync_error
+  in
+  let t = { (init root) with sync = Some sync } in
+  Ok (root, t)
 
 let init_kb ~directory ~namespace =
   Lifecycle.init_kb ~directory ~namespace
   |> Result.map_error map_lifecycle_error
 
 let add_note t ~title ~content =
-  Note.add t.notes ~title ~content
-  |> Result.map_error map_note_error
+  _with_flush t (fun () ->
+    Note.add t.notes ~title ~content
+    |> Result.map_error map_note_error)
 
 let add_todo t ~title ~content ?status () =
-  Todo.add t.todos ~title ~content ?status ()
-  |> Result.map_error map_todo_error
+  _with_flush t (fun () ->
+    Todo.add t.todos ~title ~content ?status ()
+    |> Result.map_error map_todo_error)
 
 let list t ~entity_type ~statuses =
   Query.list t.query ~entity_type ~statuses
@@ -76,13 +107,31 @@ let show t ~identifier =
   Query.show t.query ~identifier
 
 let update t ~identifier ?status ?title ?content () =
-  Mutation.update t.mutation ~identifier ?status ?title ?content ()
+  _with_flush t (fun () ->
+    Mutation.update t.mutation ~identifier ?status ?title ?content ())
 
 let resolve t ~identifier =
-  Mutation.resolve t.mutation ~identifier
+  _with_flush t (fun () ->
+    Mutation.resolve t.mutation ~identifier)
 
 let archive t ~identifier =
-  Mutation.archive t.mutation ~identifier
+  _with_flush t (fun () ->
+    Mutation.archive t.mutation ~identifier)
 
 let relate t ~source ~target ~kind ~bidirectional =
-  Relation.relate t.relation_svc ~source ~target ~kind ~bidirectional
+  _with_flush t (fun () ->
+    Relation.relate t.relation_svc ~source ~target ~kind ~bidirectional)
+
+let flush t =
+  let open Result.Syntax in
+  match t.sync with
+  | None -> Error (Repository_error "Sync not enabled")
+  | Some sync ->
+      let* () = Sync_service.mark_dirty sync |> Result.map_error map_sync_error in
+      Sync_service.flush sync |> Result.map_error map_sync_error
+
+let force_rebuild t =
+  match t.sync with
+  | None -> Error (Repository_error "Sync not enabled")
+  | Some sync ->
+      Sync_service.force_rebuild sync |> Result.map_error map_sync_error
