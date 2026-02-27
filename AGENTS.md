@@ -6,6 +6,7 @@ Repository-local issue and note tracker.
 
 * Full compilation: `dune build`
 * Run tests: `dune runtest`
+* Run checks (unused code, etc.): `dune build @runcheck`
 * Run `dune` commands sequentially (not in parallel): `dune` uses a shared build
   lock, so concurrent `build`/`exec`/`runtest` commands can fail.
 

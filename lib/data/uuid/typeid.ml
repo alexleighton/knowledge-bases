@@ -2,7 +2,7 @@ module Str = String
 module CA = Control.Assert
 module CE = Control.Exception
 
-type t = { prefix : string; uuid : Uuidv7.t; suffix : string }
+type t = { prefix : string; suffix : string }
 
 let validate_prefix prefix =
   CA.require_strlen ~name:"prefix" ~min:1 ~max:63 prefix;
@@ -19,7 +19,7 @@ let validate_suffix suffix =
 let make prefix =
   validate_prefix prefix;
   let uuid = Uuidv7.make () in
-  { prefix; uuid; suffix = Uuidv7.to_uuidm uuid |> Base32.encode }
+  { prefix; suffix = Uuidv7.to_uuidm uuid |> Base32.encode }
 
 let to_string { prefix; suffix; _ } = prefix ^ "_" ^ suffix
 
@@ -28,15 +28,16 @@ let of_string str =
   | Some (prefix, suffix) ->
       validate_prefix prefix;
       validate_suffix suffix;
-        { prefix; suffix; uuid = Base32.decode suffix |> Uuidv7.of_uuidm }
+        (* Validate that the suffix decodes to a valid 128-bit UUID. *)
+        ignore (Base32.decode suffix |> Uuidv7.of_uuidm);
+        { prefix; suffix }
   | _ -> CE.invalid_argf "Unable to determine prefix: %s" str
 
 let parse s =
   try Ok (of_string s)
   with Invalid_argument msg -> Error msg
 
-let of_guid prefix uuid = { prefix; uuid; suffix = Uuidv7.to_uuidm uuid |> Base32.encode }
+let of_guid prefix uuid = { prefix; suffix = Uuidv7.to_uuidm uuid |> Base32.encode }
 
-let get_uuid t = t.uuid
 let get_prefix t = t.prefix
 let get_suffix t = t.suffix

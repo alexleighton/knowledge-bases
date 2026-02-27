@@ -1,0 +1,4 @@
+(rule
+ (alias find-unused)
+ (deps (alias_rec ../ocaml-index))
+ (action (run ./find-unused.py)))

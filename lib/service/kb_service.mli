@@ -34,12 +34,6 @@ type relate_result = {
     handle. The service does not own the root — callers manage its lifecycle. *)
 val init : Repository.Root.t -> t
 
-(** Database filename used for knowledge bases (e.g. [.kbases.db]). *)
-val db_filename : string
-
-(** JSONL filename used for the git-tracked snapshot (e.g. [.kbases.jsonl]). *)
-val jsonl_filename : string
-
 (** [open_kb ()] finds the git root from the current directory, opens the
     knowledge base at [.kbases.db], and returns the root and service handle.
     Callers must close the root when done. *)

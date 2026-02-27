@@ -32,9 +32,6 @@ val parse : string -> (t, string) result
 (** [of_guid prefix uuid] creates a TypeId from a prefix and existing UUID. *)
 val of_guid : string -> Uuidv7.t -> t
 
-(** [get_uuid t] returns the underlying UUID of the TypeId. *)
-val get_uuid : t -> Uuidv7.t
-
 (** [get_prefix t] returns the prefix of the TypeId. *)
 val get_prefix : t -> string
 

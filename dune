@@ -12,3 +12,11 @@
  (release
   ; Enable all warnings (+a) and treat them all as errors (-warn-error +a)
   (flags (:standard -w +a-42 -warn-error +a))))
+
+; runcheck: top-level check alias.  Composes all project-wide checks.
+; Exits non-zero if any check fails.  Currently runs:
+;   - find-unused: detects exported values with no external references
+(rule
+ (alias runcheck)
+ (deps (alias_rec find-unused))
+ (action (progn)))

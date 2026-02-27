@@ -42,9 +42,6 @@ let init root = {
   sync     = None;
 }
 
-let db_filename = Lifecycle.db_filename
-let jsonl_filename = Lifecycle.jsonl_filename
-
 let map_lifecycle_error = function
   | Lifecycle.Repository_error msg -> Repository_error msg
   | Lifecycle.Validation_error msg -> Validation_error msg

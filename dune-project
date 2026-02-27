@@ -16,5 +16,6 @@
   (uuidm (>= "0.9.10"))
   (cmdliner (>= "2.1.0"))
   (yojson (>= "2.2.0"))
+  (ocaml-lsp-server (and (>= "1.21.0") :with-dev-setup))
   )
 )
