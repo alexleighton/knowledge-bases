@@ -33,5 +33,9 @@ val to_string : t -> string
     validations fail. *)
 val from_string : string -> t
 
+(** [parse s] parses [s] as an identifier.
+    @return [Error msg] if [s] is not in the form ["<namespace>-<raw_id>"]. *)
+val parse : string -> (t, string) result
+
 (** Pretty-printer for identifiers, prints as ["<namespace>-<raw_id>"]. *)
 val pp : Format.formatter -> t -> unit

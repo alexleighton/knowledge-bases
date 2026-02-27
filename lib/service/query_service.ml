@@ -31,31 +31,13 @@ let sort_items items =
 
 let list t ~entity_type ~statuses =
   let open Result.Syntax in
-  let try_parse_todo status =
-    try Some (Data.Todo.status_from_string status) with Invalid_argument _ -> None
-  in
-  let try_parse_note status =
-    try Some (Data.Note.status_from_string status) with Invalid_argument _ -> None
-  in
   let try_parse_status status =
-    match try_parse_todo status with
-    | Some s -> `Todo s
-    | None ->
-      match try_parse_note status with
-      | Some s -> `Note s
-      | None -> `Invalid status
-  in
-  let parse_todo status =
-    match try_parse_todo status with
-    | Some s -> Ok s
-    | None ->
-        Error (Validation_error (Printf.sprintf "invalid status \"%s\" for todo" status))
-  in
-  let parse_note status =
-    match try_parse_note status with
-    | Some s -> Ok s
-    | None ->
-        Error (Validation_error (Printf.sprintf "invalid status \"%s\" for note" status))
+    match Data.Todo.status_of_string status with
+    | Ok s -> `Todo s
+    | Error _ ->
+        match Data.Note.status_of_string status with
+        | Ok s -> `Note s
+        | Error _ -> `Invalid status
   in
   let fetch_todos statuses =
     Todo.list t.todo_repo ~statuses |> Result.map_error Item_service.map_todo_repo_error
@@ -65,24 +47,25 @@ let list t ~entity_type ~statuses =
   in
   match entity_type with
   | Some "todo" ->
-      let* todo_statuses = Result_data.sequence (List.map parse_todo statuses) in
+      let* todo_statuses = Result_data.sequence (List.map Parse.todo_status statuses) in
       let+ todos = fetch_todos todo_statuses in
       todos |> List.map (fun todo -> Todo_item todo) |> sort_items
   | Some "note" ->
-      let* note_statuses = Result_data.sequence (List.map parse_note statuses) in
+      let* note_statuses = Result_data.sequence (List.map Parse.note_status statuses) in
       let+ notes = fetch_notes note_statuses in
       notes |> List.map (fun note -> Note_item note) |> sort_items
   | Some other ->
-      Error (Validation_error (Printf.sprintf "invalid entity type \"%s\"" other))
+      let+ _ = Parse.entity_type other in
+      []
   | None ->
       let rec partition todo_statuses note_statuses = function
         | [] -> Ok (List.rev todo_statuses, List.rev note_statuses)
         | status :: rest ->
-          match try_parse_status status with
-          | `Todo s -> partition (s :: todo_statuses) note_statuses rest
-          | `Note s -> partition todo_statuses (s :: note_statuses) rest
-          | `Invalid s ->
-              Error (Validation_error (Printf.sprintf "invalid status \"%s\"" s))
+            match try_parse_status status with
+            | `Todo s -> partition (s :: todo_statuses) note_statuses rest
+            | `Note s -> partition todo_statuses (s :: note_statuses) rest
+            | `Invalid s ->
+                Error (Validation_error (Printf.sprintf "invalid status \"%s\"" s))
       in
       let* todo_statuses, note_statuses = partition [] [] statuses in
       let should_query_todos = statuses = [] || todo_statuses <> [] in

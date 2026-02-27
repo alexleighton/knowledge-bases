@@ -57,6 +57,18 @@ let%expect_test "equal same kinds" =
   Printf.printf "%b\n" (Relation_kind.equal a b);
   [%expect {| true |}]
 
+let%expect_test "parse valid input" =
+  (match Relation_kind.parse "depends-on" with
+   | Ok k -> Printf.printf "Ok: %s\n" (Relation_kind.to_string k)
+   | Error msg -> Printf.printf "Error: %s\n" msg);
+  [%expect {| Ok: depends-on |}]
+
+let%expect_test "parse invalid input" =
+  (match Relation_kind.parse "BAD KIND" with
+   | Ok _ -> print_endline "unexpected Ok"
+   | Error msg -> Printf.printf "Error: %s\n" msg);
+  [%expect {| Error: relation kind must match [a-z0-9][a-z0-9-]* and not end with '-' |}]
+
 let%expect_test "unequal different kinds" =
   let a = Relation_kind.make "depends-on" in
   let b = Relation_kind.make "related-to" in

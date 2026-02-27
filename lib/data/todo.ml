@@ -11,6 +11,10 @@ let status_to_string = function Open -> "open" | In_Progress -> "in-progress" | 
 let status_from_string = function "open" -> Open | "in-progress" -> In_Progress | "done" -> Done
   | s -> CE.invalid_argf "Invalid status \"%s\"" s
 
+let status_of_string s =
+  try Ok (status_from_string s)
+  with Invalid_argument msg -> Error msg
+
 type id = Typeid.t
 
 let show_id = Typeid.to_string

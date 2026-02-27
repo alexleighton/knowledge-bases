@@ -20,6 +20,10 @@ let make s =
     (_valid_format s);
   s
 
+let parse s =
+  try Ok (make s)
+  with Invalid_argument msg -> Error msg
+
 let to_string t = t
 let equal = String.equal
 let pp fmt t = Format.pp_print_string fmt t

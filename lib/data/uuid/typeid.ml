@@ -31,6 +31,10 @@ let of_string str =
         { prefix; suffix; uuid = Base32.decode suffix |> Uuidv7.of_uuidm }
   | _ -> CE.invalid_argf "Unable to determine prefix: %s" str
 
+let parse s =
+  try Ok (of_string s)
+  with Invalid_argument msg -> Error msg
+
 let of_guid prefix uuid = { prefix; uuid; suffix = Uuidv7.to_uuidm uuid |> Base32.encode }
 
 let get_uuid t = t.uuid

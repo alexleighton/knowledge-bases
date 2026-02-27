@@ -31,6 +31,10 @@ val status_to_string : status -> string
     @raise Invalid_argument if parsing fails. *)
 val status_from_string : string -> status
 
+(** [status_of_string s] parses [s] as a status.
+    @return [Error msg] if [s] is not a recognised status string. *)
+val status_of_string : string -> (status, string) result
+
 (** [make id niceid title content status] constructs a note from already-validated inputs.
 
     @raise Invalid_argument if the [id] does not carry the ["note"] TypeId prefix. *)

@@ -14,6 +14,10 @@ type t
     @raise Invalid_argument if validation fails. *)
 val make : string -> t
 
+(** [parse s] parses [s] as a relation kind.
+    @return [Error msg] if [s] is not a valid kind string. *)
+val parse : string -> (t, string) result
+
 (** [to_string t] returns the underlying kind string. *)
 val to_string : t -> string
 

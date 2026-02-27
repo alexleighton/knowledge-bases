@@ -13,16 +13,6 @@ let init root = {
   note_repo = Repository.Root.note root;
 }
 
-let parse_todo_status s =
-  try Ok (Data.Todo.status_from_string s)
-  with Invalid_argument _ ->
-    Error (Item_service.Validation_error (Printf.sprintf "invalid status %S for todo" s))
-
-let parse_note_status s =
-  try Ok (Data.Note.status_from_string s)
-  with Invalid_argument _ ->
-    Error (Item_service.Validation_error (Printf.sprintf "invalid status %S for note" s))
-
 let update t ~identifier ?status ?title ?content () =
   let open Item_service in
   match status, title, content with
@@ -35,7 +25,7 @@ let update t ~identifier ?status ?title ?content () =
           let* todo =
             match status with
             | None -> Ok todo
-            | Some s -> let+ s = parse_todo_status s in Data.Todo.with_status todo s
+            | Some s -> let+ s = Parse.todo_status s in Data.Todo.with_status todo s
           in
           let todo = match title with None -> todo | Some t -> Data.Todo.with_title todo t in
           let todo = match content with None -> todo | Some c -> Data.Todo.with_content todo c in
@@ -45,7 +35,7 @@ let update t ~identifier ?status ?title ?content () =
           let* note =
             match status with
             | None -> Ok note
-            | Some s -> let+ s = parse_note_status s in Data.Note.with_status note s
+            | Some s -> let+ s = Parse.note_status s in Data.Note.with_status note s
           in
           let note = match title with None -> note | Some t -> Data.Note.with_title note t in
           let note = match content with None -> note | Some c -> Data.Note.with_content note c in

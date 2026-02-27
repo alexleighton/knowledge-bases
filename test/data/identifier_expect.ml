@@ -38,3 +38,19 @@ let%expect_test "from_string happy path" =
 let%expect_test "from_string invalid format" =
   (try ignore (Id.from_string "oops") with Invalid_argument msg -> print_endline msg);
   [%expect {| Invalid format "oops", expected "namespace-id" |}]
+
+let%expect_test "parse valid input" =
+  let result = Id.parse "kb-0" in
+  (match result with
+   | Ok id ->
+       Printf.printf "Ok: namespace=%s raw_id=%d\n"
+         (Namespace.to_string (Id.namespace id)) (Id.raw_id id)
+   | Error msg -> Printf.printf "Error: %s\n" msg);
+  [%expect {| Ok: namespace=kb raw_id=0 |}]
+
+let%expect_test "parse invalid input" =
+  let result = Id.parse "oops" in
+  (match result with
+   | Ok _ -> print_endline "unexpected Ok"
+   | Error msg -> Printf.printf "Error: %s\n" msg);
+  [%expect {| Error: Invalid format "oops", expected "namespace-id" |}]

@@ -25,6 +25,10 @@ val to_string : t -> string
     @raise Invalid_argument if the string is invalid. *)
 val of_string : string -> t
 
+(** [parse s] parses [s] as a TypeId.
+    @return [Error msg] if [s] is not a valid TypeId string. *)
+val parse : string -> (t, string) result
+
 (** [of_guid prefix uuid] creates a TypeId from a prefix and existing UUID. *)
 val of_guid : string -> Uuidv7.t -> t
 

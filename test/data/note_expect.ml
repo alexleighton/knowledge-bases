@@ -177,6 +177,27 @@ let%expect_test "with_title changes title, preserves other fields" =
     Content: Body
   |}]
 
+let%expect_test "status_of_string valid round-trip" =
+  let open Note in
+  List.iter (fun status ->
+    let s = status_to_string status in
+    Printf.printf "%s -> %s\n" s
+      (match status_of_string s with
+       | Ok v -> status_to_string v
+       | Error msg -> "Error: " ^ msg)
+  ) [Active; Archived];
+  [%expect {|
+    active -> active
+    archived -> archived
+  |}]
+
+let%expect_test "status_of_string invalid input" =
+  Printf.printf "%s\n"
+    (match Note.status_of_string "bad" with
+     | Ok _ -> "unexpected Ok"
+     | Error msg -> "Error: " ^ msg);
+  [%expect {| Error: Invalid status "bad" |}]
+
 let%expect_test "with_content changes content, preserves other fields" =
   let identifier = Id.from_string "test-3" in
   let tid = Typeid.of_string "note_01h455vb4pex5vsknk084sn02s" in

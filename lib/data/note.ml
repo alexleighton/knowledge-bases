@@ -15,6 +15,10 @@ let status_from_string = function
   | "archived" -> Archived
   | s -> CE.invalid_argf "Invalid status \"%s\"" s
 
+let status_of_string s =
+  try Ok (status_from_string s)
+  with Invalid_argument msg -> Error msg
+
 let show_id = Typeid.to_string
 let pp_id fmt id = Format.pp_print_string fmt (show_id id)
 

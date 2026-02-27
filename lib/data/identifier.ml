@@ -30,3 +30,7 @@ let from_string s =
   match Str.split _dash_re s with
   | [namespace; raw_id_str] -> make namespace (int_of_string raw_id_str)
   | _ -> CE.invalid_argf "Invalid format \"%s\", expected \"namespace-id\"" s
+
+let parse s =
+  try Ok (from_string s)
+  with Invalid_argument msg -> Error msg

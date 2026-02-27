@@ -30,15 +30,11 @@ let map_relation_repo_error = function
   | RelationRepo.Backend_failure msg ->
       Item_service.Repository_error msg
 
-let parse_kind s =
-  try Ok (Data.Relation_kind.make s)
-  with Invalid_argument msg -> Error (Item_service.Validation_error msg)
-
 let relate t ~source ~target ~kind ~bidirectional =
   let open Result.Syntax in
   let* source_item = Item_service.find t.items ~identifier:source in
   let* target_item = Item_service.find t.items ~identifier:target in
-  let* kind = parse_kind kind in
+  let* kind = Parse.relation_kind kind in
   let source_typeid = typeid_of_item source_item in
   let target_typeid = typeid_of_item target_item in
   let rel = Data.Relation.make ~source:source_typeid ~target:target_typeid

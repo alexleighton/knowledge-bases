@@ -140,6 +140,27 @@ let%expect_test "with_title changes title, preserves other fields" =
     Content: Body
   |}]
 
+let%expect_test "status_of_string valid round-trip" =
+  List.iter (fun status ->
+    let s = Todo.status_to_string status in
+    Printf.printf "%s -> %s\n" s
+      (match Todo.status_of_string s with
+       | Ok v -> Todo.status_to_string v
+       | Error msg -> "Error: " ^ msg)
+  ) statuses;
+  [%expect {|
+    open -> open
+    in-progress -> in-progress
+    done -> done
+  |}]
+
+let%expect_test "status_of_string invalid input" =
+  Printf.printf "%s\n"
+    (match Todo.status_of_string "pending" with
+     | Ok _ -> "unexpected Ok"
+     | Error msg -> "Error: " ^ msg);
+  [%expect {| Error: Invalid status "pending" |}]
+
 let%expect_test "with_content changes content, preserves other fields" =
   let identifier = Id.from_string "task-3" in
   let tid = Typeid.of_string "todo_01h455vb4pex5vsknk084sn02s" in

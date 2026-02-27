@@ -71,16 +71,12 @@ let find_by_typeid t typeid =
       Error (Validation_error (Printf.sprintf "unknown typeid prefix %S" prefix))
 
 let find t ~identifier =
-  let try_niceid () =
-    try Some (Data.Identifier.from_string identifier) with Invalid_argument _ -> None
-  in
-  let try_typeid () =
-    try Some (Data.Uuid.Typeid.of_string identifier) with Invalid_argument _ -> None
-  in
-  match try_niceid (), try_typeid () with
-  | Some niceid, _ -> find_by_niceid t niceid
-  | _, Some typeid -> find_by_typeid t typeid
-  | None, None ->
-      Error (Validation_error (Printf.sprintf
-        "invalid identifier %S — expected a niceid (e.g. kb-0) or typeid (e.g. todo_01abc...)"
-        identifier))
+  match Data.Identifier.parse identifier with
+  | Ok niceid -> find_by_niceid t niceid
+  | Error _ ->
+      match Data.Uuid.Typeid.parse identifier with
+      | Ok typeid -> find_by_typeid t typeid
+      | Error _ ->
+          Error (Validation_error (Printf.sprintf
+            "invalid identifier %S — expected a niceid (e.g. kb-0) or typeid (e.g. todo_01abc...)"
+            identifier))

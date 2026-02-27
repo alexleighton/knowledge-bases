@@ -135,6 +135,20 @@ let%expect_test "invalid suffix - overflow (first char > 7)" =
   print_parse_result "prefix_8zzzzzzzzzzzzzzzzzzzzzzzzz";
   [%expect {| Invalid (prefix_8zzzzzzzzzzzzzzzzzzzzzzzzz, Int1128.of_string) |}]
 
+let%expect_test "parse valid input" =
+  (match Typeid.parse "todo_01h455vb4pex5vsknk084sn02q" with
+   | Ok tid ->
+       Printf.printf "Ok: prefix=%s suffix=%s\n"
+         (Typeid.get_prefix tid) (Typeid.get_suffix tid)
+   | Error msg -> Printf.printf "Error: %s\n" msg);
+  [%expect {| Ok: prefix=todo suffix=01h455vb4pex5vsknk084sn02q |}]
+
+let%expect_test "parse invalid input" =
+  (match Typeid.parse "garbage" with
+   | Ok _ -> print_endline "unexpected Ok"
+   | Error msg -> Printf.printf "Error: %s\n" msg);
+  [%expect {| Error: Unable to determine prefix: garbage |}]
+
 let%expect_test "of_guid creates valid typeid" =
   let uuid_str = "01890a5d-ac96-774b-bcce-b302099a8057" in
   let uuid = Kbases.Data.Uuid.Uuidv7.of_string uuid_str in
