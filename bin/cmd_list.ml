@@ -32,10 +32,14 @@ let run entity_type statuses =
 
 let type_arg =
   let doc = "Optional entity type to list (todo|note)." in
-  Arg.(value & pos 0 (some (enum [ "todo", "todo"; "note", "note" ])) None & info [] ~docv:"TYPE" ~doc)
+  let types = Arg.enum [ "todo", "todo"; "note", "note" ] in
+  Arg.(value & pos 0 (some types) None & info [] ~docv:"TYPE" ~doc)
 
 let status_opt =
-  let doc = "Filter by status. Repeatable. Valid values: open, in-progress, done, active, archived." in
+  let doc =
+    "Filter by status. Repeatable. \
+     Valid values: open, in-progress, done, active, archived."
+  in
   let statuses = [
     "open", "open";
     "in-progress", "in-progress";

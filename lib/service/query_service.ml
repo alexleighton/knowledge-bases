@@ -37,6 +37,14 @@ let list t ~entity_type ~statuses =
   let try_parse_note status =
     try Some (Data.Note.status_from_string status) with Invalid_argument _ -> None
   in
+  let try_parse_status status =
+    match try_parse_todo status with
+    | Some s -> `Todo s
+    | None ->
+      match try_parse_note status with
+      | Some s -> `Note s
+      | None -> `Invalid status
+  in
   let parse_todo status =
     match try_parse_todo status with
     | Some s -> Ok s
@@ -69,14 +77,12 @@ let list t ~entity_type ~statuses =
   | None ->
       let rec partition todo_statuses note_statuses = function
         | [] -> Ok (List.rev todo_statuses, List.rev note_statuses)
-        | status :: rest -> (
-            match try_parse_todo status with
-            | Some todo_status -> partition (todo_status :: todo_statuses) note_statuses rest
-            | None -> (
-                match try_parse_note status with
-                | Some note_status -> partition todo_statuses (note_status :: note_statuses) rest
-                | None ->
-                    Error (Validation_error (Printf.sprintf "invalid status \"%s\"" status))))
+        | status :: rest ->
+          match try_parse_status status with
+          | `Todo s -> partition (s :: todo_statuses) note_statuses rest
+          | `Note s -> partition todo_statuses (s :: note_statuses) rest
+          | `Invalid s ->
+              Error (Validation_error (Printf.sprintf "invalid status \"%s\"" s))
       in
       let* todo_statuses, note_statuses = partition [] [] statuses in
       let should_query_todos = statuses = [] || todo_statuses <> [] in
