@@ -16,11 +16,15 @@ type item =
   | Todo_item of Data.Todo.t
   | Note_item of Data.Note.t
 
+(** Action taken on AGENTS.md during initialization. *)
+type agents_md_action = Created | Appended | Already_present
+
 (** Result of knowledge-base initialization. *)
 type init_result = {
-  directory : string;
-  namespace : string;
-  db_file   : string;
+  directory  : string;
+  namespace  : string;
+  db_file    : string;
+  agents_md  : agents_md_action;
 }
 
 (** A resolved relation entry for display. *)

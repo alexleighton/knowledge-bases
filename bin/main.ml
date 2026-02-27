@@ -6,7 +6,8 @@ let root_doc = "Knowledge base management CLI."
 
 let root_man = [
   `S "DESCRIPTION";
-  `P "Manage a local knowledge base backed by SQLite.";
+  `P "Track todos, notes, and relations in a local knowledge base. \
+      Designed for use by coding agents and humans alike.";
   `S "COMMANDS";
   `P "init        Initialise a new knowledge base in a git repository.";
   `P "add note    Create a note from stdin.";
@@ -23,6 +24,11 @@ let root_man = [
   `P "bs init";
   `P "echo \"Content\" | bs add note \"Title\"";
   `P "echo \"Content\" | bs add todo \"Title\"";
+  `P "bs list todo";
+  `P "bs show kb-0";
+  `P "bs update kb-0 --status in-progress";
+  `P "bs relate kb-0 --depends-on kb-1";
+  `P "bs flush";
 ]
 
 let root_info = Cmd.info "bs" ~doc:root_doc ~man:root_man

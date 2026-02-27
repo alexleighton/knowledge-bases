@@ -5,13 +5,19 @@ module Arg = Cmdliner.Arg
 module Common = Cmdline_common
 module Service = Kbases.Service.Kb_service
 
+let agents_md_msg = function
+  | Service.Created -> "created"
+  | Service.Appended -> "appended to existing file"
+  | Service.Already_present -> "section already present"
+
 let run directory namespace =
   match Service.init_kb ~directory ~namespace with
-  | Ok ({ Service.directory; namespace; db_file } : Service.init_result) ->
+  | Ok ({ Service.directory; namespace; db_file; agents_md } : Service.init_result) ->
       Printf.printf "Initialised knowledge base:\n";
       Printf.printf "  Directory: %s\n" directory;
       Printf.printf "  Namespace: %s\n" namespace;
-      Printf.printf "  Database:  %s\n" db_file
+      Printf.printf "  Database:  %s\n" db_file;
+      Printf.printf "  AGENTS.md: %s\n" (agents_md_msg agents_md)
   | Error (Service.Validation_error msg | Service.Repository_error msg) ->
       Common.exit_with msg
 

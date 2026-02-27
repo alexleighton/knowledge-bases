@@ -8,6 +8,8 @@ let with_root db_file f =
   | Ok root ->
       Fun.protect ~finally:(fun () -> Root.close root) (fun () -> f root)
 
+let contains_substring = Kbases.Data.String.contains_substring
+
 let%expect_test "bs init with explicit directory and namespace" =
   Helper.with_git_root (fun dir ->
     let result = Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"] in
@@ -18,6 +20,7 @@ let%expect_test "bs init with explicit directory and namespace" =
       Directory: <DIR>
       Namespace: kb
       Database:  <DIR>/.kbases.db
+      AGENTS.md: created
   |}]
 
 let%expect_test "bs init creates database with correct namespace" =
@@ -51,6 +54,7 @@ let%expect_test "bs init resolves git root from cwd" =
       Directory: <DIR>
       Namespace: kb
       Database:  <DIR>/.kbases.db
+      AGENTS.md: created
   |}]
 
 let%expect_test "bs init in non-git directory fails" =
@@ -88,4 +92,76 @@ let%expect_test "bs init outside git repo with no args fails" =
   [%expect {|
     [exit 1]
     STDERR: Error: Not inside a git repository. Use -d to specify a directory.
+  |}]
+
+let%expect_test "bs init creates AGENTS.md with expected content" =
+  Helper.with_git_root (fun dir ->
+    ignore (Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"]);
+    let agents_md_path = Filename.concat dir "AGENTS.md" in
+    Printf.printf "AGENTS.md exists: %b\n" (Sys.file_exists agents_md_path);
+    let contents = Helper.read_file agents_md_path in
+    Printf.printf "has section heading: %b\n"
+      (contains_substring ~needle:"## Knowledge Base" contents);
+    Printf.printf "has add todo example: %b\n"
+      (contains_substring ~needle:"bs add todo" contents);
+    Printf.printf "has --help pointer: %b\n"
+      (contains_substring ~needle:"bs --help" contents));
+  [%expect {|
+    AGENTS.md exists: true
+    has section heading: true
+    has add todo example: true
+    has --help pointer: true
+  |}]
+
+let%expect_test "bs init appends to existing AGENTS.md" =
+  Helper.with_git_root (fun dir ->
+    let agents_md_path = Filename.concat dir "AGENTS.md" in
+    let oc = open_out agents_md_path in
+    output_string oc "# Project\n\nExisting agent instructions.\n";
+    close_out oc;
+    let result = Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"] in
+    Helper.print_result ~dir result;
+    let contents = Helper.read_file agents_md_path in
+    Printf.printf "has original content: %b\n"
+      (contains_substring ~needle:"Existing agent instructions." contents);
+    Printf.printf "has kbases section: %b\n"
+      (contains_substring ~needle:"## Knowledge Base" contents));
+  [%expect {|
+    [exit 0]
+    Initialised knowledge base:
+      Directory: <DIR>
+      Namespace: kb
+      Database:  <DIR>/.kbases.db
+      AGENTS.md: appended to existing file
+    has original content: true
+    has kbases section: true
+  |}]
+
+let%expect_test "bs init is idempotent when AGENTS.md section already present" =
+  Helper.with_git_root (fun dir ->
+    let agents_md_path = Filename.concat dir "AGENTS.md" in
+    let oc = open_out agents_md_path in
+    output_string oc "# Project\n\n## Knowledge Base\n\nExisting section.\n";
+    close_out oc;
+    let result = Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"] in
+    Helper.print_result ~dir result;
+    let contents = Helper.read_file agents_md_path in
+    let count_occurrences needle haystack =
+      let nlen = String.length needle and hlen = String.length haystack in
+      let count = ref 0 in
+      for i = 0 to hlen - nlen do
+        if String.sub haystack i nlen = needle then incr count
+      done;
+      !count
+    in
+    Printf.printf "heading count: %d\n"
+      (count_occurrences "## Knowledge Base" contents));
+  [%expect {|
+    [exit 0]
+    Initialised knowledge base:
+      Directory: <DIR>
+      Namespace: kb
+      Database:  <DIR>/.kbases.db
+      AGENTS.md: section already present
+    heading count: 1
   |}]

@@ -21,10 +21,16 @@ type item = Item_service.item =
   | Todo_item of Data.Todo.t
   | Note_item of Data.Note.t
 
+type agents_md_action = Lifecycle.agents_md_action =
+  | Created
+  | Appended
+  | Already_present
+
 type init_result = Lifecycle.init_result = {
-  directory : string;
-  namespace : string;
-  db_file   : string;
+  directory  : string;
+  namespace  : string;
+  db_file    : string;
+  agents_md  : agents_md_action;
 }
 
 type relation_entry = Query.relation_entry = {

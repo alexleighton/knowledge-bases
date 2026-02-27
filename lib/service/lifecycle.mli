@@ -8,11 +8,15 @@ type error =
   | Repository_error of string
   | Validation_error of string
 
+(** Action taken on AGENTS.md during initialization. *)
+type agents_md_action = Created | Appended | Already_present
+
 (** Result of knowledge-base initialization. *)
 type init_result = {
-  directory : string;
-  namespace : string;
-  db_file   : string;
+  directory  : string;
+  namespace  : string;
+  db_file    : string;
+  agents_md  : agents_md_action;
 }
 
 (** [init_kb ~directory ~namespace] initializes a knowledge base in a git

@@ -11,7 +11,12 @@ let run () =
     | Ok () -> print_endline "Flushed to .kbases.jsonl"
     | Error err -> Common.exit_with (Common.service_error_msg err))
 
-let cmd_info = Cmd.info "flush" ~doc:"Flush SQLite data to .kbases.jsonl."
+let cmd_man = [
+  `S "EXAMPLES";
+  `P "bs flush";
+]
+
+let cmd_info = Cmd.info "flush" ~doc:"Flush SQLite data to .kbases.jsonl." ~man:cmd_man
 
 let cmd =
   let term = Term.(const run $ const ()) in

@@ -1,19 +1,39 @@
 module Root = Repository.Root
 module Config = Repository.Config
 module Git = Control.Git
+module Io = Control.Io
 module Namespace = Data.Namespace
 
 let db_filename = ".kbases.db"
 let jsonl_filename = ".kbases.jsonl"
+let agents_md_filename = "AGENTS.md"
+let agents_md_section_heading = "## Knowledge Base"
+
+let agents_md_template = {|## Knowledge Base
+
+This repository uses `bs` to track todos and notes. Use it to
+externalize work you've identified, decisions, and research.
+
+```
+echo "Description" | bs add todo "Title"
+bs list todo --status open
+bs show kb-0
+```
+
+Run `bs --help` for the full command reference.
+|}
 
 type error =
   | Repository_error of string
   | Validation_error of string
 
+type agents_md_action = Created | Appended | Already_present
+
 type init_result = {
-  directory : string;
-  namespace : string;
-  db_file   : string;
+  directory  : string;
+  namespace  : string;
+  db_file    : string;
+  agents_md  : agents_md_action;
 }
 
 let resolve_directory = function
@@ -53,6 +73,22 @@ let resolve_namespace ~directory = function
                (Printf.sprintf
                   "Derived namespace \"%s\" is invalid (%s). Use -n to specify one."
                   derived reason))
+
+let install_agents_md ~directory =
+  let path = Filename.concat directory agents_md_filename in
+  if Sys.file_exists path then begin
+    let existing = Io.read_file path in
+    if Data.String.contains_substring ~needle:agents_md_section_heading existing then
+      Already_present
+    else begin
+      let new_contents = existing ^ "\n" ^ agents_md_template in
+      Io.write_file ~path ~contents:new_contents;
+      Appended
+    end
+  end else begin
+    Io.write_file ~path ~contents:agents_md_template;
+    Created
+  end
 
 let open_kb () =
   match Git.find_repo_root () with
@@ -95,4 +131,6 @@ let init_kb ~directory ~namespace =
                | Config.Backend_failure msg -> Repository_error msg
                | Config.Not_found key ->
                    Repository_error ("Config key not found: " ^ key))
-        |> Result.map (fun () -> { directory; namespace; db_file }))
+        |> Result.map (fun () ->
+               let agents_md = install_agents_md ~directory in
+               { directory; namespace; db_file; agents_md }))

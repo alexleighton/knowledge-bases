@@ -11,7 +11,12 @@ let run () =
     | Ok () -> print_endline "Rebuilt SQLite from .kbases.jsonl"
     | Error err -> Common.exit_with (Common.service_error_msg err))
 
-let cmd_info = Cmd.info "rebuild" ~doc:"Rebuild SQLite from .kbases.jsonl."
+let cmd_man = [
+  `S "EXAMPLES";
+  `P "bs rebuild";
+]
+
+let cmd_info = Cmd.info "rebuild" ~doc:"Rebuild SQLite from .kbases.jsonl." ~man:cmd_man
 
 let cmd =
   let term = Term.(const run $ const ()) in
