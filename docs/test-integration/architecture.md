@@ -33,6 +33,11 @@ When adding a new CLI command, create a new file following this convention.
 When modifying an existing command's behaviour or output, extend the
 corresponding file.
 
+**Exception:** `workflow_expect.ml` contains cross-command scenario tests that
+chain many operations within a single knowledge base, simulating natural usage.
+These tests do not map to a single command and intentionally cut across the
+per-command boundary.
+
 ## Shared test helper
 
 `test_helper.ml` provides the infrastructure all integration tests share:
