@@ -3,6 +3,8 @@ module Uint48 = Stdint.Uint48
 
 module CE = Control.Exception
 
+let () = Random.self_init ()
+
 type t = Uuidm.t
 
 (* UUIDv7 layout: 48-bit timestamp + 0111 version + 12-bit rand + 10 variant + 62-bit rand *)
