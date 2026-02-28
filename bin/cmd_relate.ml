@@ -8,7 +8,7 @@ module Relation = Kbases.Data.Relation
 module Relation_kind = Kbases.Data.Relation_kind
 module Identifier = Kbases.Data.Identifier
 
-let run source depends_on related_to uni bi =
+let run source depends_on related_to uni bi json =
   let target, kind, bidirectional =
     match depends_on, related_to, uni, bi with
     | Some tgt, None, None, None -> (tgt, "depends-on", false)
@@ -24,12 +24,22 @@ let run source depends_on related_to uni bi =
     match Service.relate (App_context.service ctx) ~source ~target
             ~kind ~bidirectional with
     | Ok { Service.relation = rel; source_niceid; target_niceid } ->
-        Printf.printf "Related: %s %s %s (%s)\n"
-          (Identifier.to_string source_niceid)
-          (Relation_kind.to_string (Relation.kind rel))
-          (Identifier.to_string target_niceid)
-          (if Relation.is_bidirectional rel then "bidirectional"
-           else "unidirectional")
+        let dir = if Relation.is_bidirectional rel then "bidirectional"
+                  else "unidirectional" in
+        if json then
+          Common.print_json (`Assoc [
+            "ok", `Bool true;
+            "source", `String (Identifier.to_string source_niceid);
+            "kind", `String (Relation_kind.to_string (Relation.kind rel));
+            "target", `String (Identifier.to_string target_niceid);
+            "directionality", `String dir;
+          ])
+        else
+          Printf.printf "Related: %s %s %s (%s)\n"
+            (Identifier.to_string source_niceid)
+            (Relation_kind.to_string (Relation.kind rel))
+            (Identifier.to_string target_niceid)
+            dir
     | Error err -> Common.exit_with (Common.service_error_msg err))
 
 let source_arg =
@@ -70,6 +80,6 @@ let cmd_info = Cmd.info "relate" ~doc:"Create a relation between two items." ~ma
 
 let cmd =
   let term =
-    Term.(const run $ source_arg $ depends_on_opt $ related_to_opt $ uni_opt $ bi_opt)
+    Term.(const run $ source_arg $ depends_on_opt $ related_to_opt $ uni_opt $ bi_opt $ Common.json_flag)
   in
   Cmd.v cmd_info term

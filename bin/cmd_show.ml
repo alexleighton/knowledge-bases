@@ -45,13 +45,51 @@ let format_relations ~outgoing ~incoming =
     List.iter format_relation_entry incoming
   end
 
-let run identifier =
+let relation_entry_to_json (entry : Service.relation_entry) =
+  `Assoc [
+    "kind", `String (Relation_kind.to_string entry.Service.kind);
+    "niceid", `String (Identifier.to_string entry.Service.niceid);
+    "type", `String entry.Service.entity_type;
+    "title", `String (Title.to_string entry.Service.title);
+  ]
+
+let item_to_json = function
+  | Service.Todo_item todo ->
+      [
+        "type", `String "todo";
+        "niceid", `String (Identifier.to_string (Todo.niceid todo));
+        "typeid", `String (Typeid.to_string (Todo.id todo));
+        "status", `String (Todo.status_to_string (Todo.status todo));
+        "title", `String (Title.to_string (Todo.title todo));
+        "content", `String (Content.to_string (Todo.content todo));
+      ]
+  | Service.Note_item note ->
+      [
+        "type", `String "note";
+        "niceid", `String (Identifier.to_string (Note.niceid note));
+        "typeid", `String (Typeid.to_string (Note.id note));
+        "status", `String (Note.status_to_string (Note.status note));
+        "title", `String (Title.to_string (Note.title note));
+        "content", `String (Content.to_string (Note.content note));
+      ]
+
+let run identifier json =
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
     match Service.show (App_context.service ctx) ~identifier with
     | Ok Service.{ item; outgoing; incoming } ->
-        format_item item;
-        format_relations ~outgoing ~incoming
+        if json then
+          Common.print_json (`Assoc (
+            ("ok", `Bool true) ::
+            (item_to_json item) @
+            [
+              "outgoing", `List (List.map relation_entry_to_json outgoing);
+              "incoming", `List (List.map relation_entry_to_json incoming);
+            ]))
+        else begin
+          format_item item;
+          format_relations ~outgoing ~incoming
+        end
     | Error err -> Common.exit_with (Common.service_error_msg err))
 
 let identifier_arg =
@@ -67,5 +105,5 @@ let cmd_man = [
 let cmd_info = Cmd.info "show" ~doc:"Display full details of an item." ~man:cmd_man
 
 let cmd =
-  let term = Term.(const run $ identifier_arg) in
+  let term = Term.(const run $ identifier_arg $ Common.json_flag) in
   Cmd.v cmd_info term

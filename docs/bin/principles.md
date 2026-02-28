@@ -76,7 +76,31 @@ Approaches for reducing nesting:
   structure repeats across call sites — e.g., acquire a resource, match on the
   result, use it, clean up — give that shape a name.
 
-## 5. File length
+## 5. Every subcommand supports `--json`
+
+All subcommands that produce output must accept a `--json` flag. When
+passed, the command prints a single JSON object (or array, for `list`)
+to stdout instead of human-readable text.
+
+Use the shared `Common.json_flag` defined in `cmdline_common.ml` and
+thread it into the command's `Term`. Use `Common.print_json` to emit
+the result.
+
+### JSON shape conventions
+
+- The top-level object includes `"ok": true` on success.
+- Keys use `snake_case`.
+- Errors are **not** JSON-formatted — they go to stderr and the process
+  exits non-zero, which is already machine-detectable.
+- Each command's JSON serialization lives inline in its `cmd_*.ml`
+  file. The shapes are a presentation concern and intentionally
+  separate from the JSONL persistence format in `lib/`.
+
+When adding a new subcommand, include `--json` support from the start
+and add at least one `--json` integration test in
+`test-integration/json_expect.ml`.
+
+## 6. File length
 
 Keep files below approximately 300 lines. Larger files are harder to read and
 understand. A file approaching this limit is often a sign that the concept it

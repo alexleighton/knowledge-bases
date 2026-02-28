@@ -23,11 +23,34 @@ let format_item = function
         (Note.status_to_string (Note.status note))
         (Title.to_string (Note.title note))
 
-let run entity_type statuses =
+let item_to_json = function
+  | Service.Todo_item todo ->
+      `Assoc [
+        "niceid", `String (Identifier.to_string (Todo.niceid todo));
+        "type", `String "todo";
+        "status", `String (Todo.status_to_string (Todo.status todo));
+        "title", `String (Title.to_string (Todo.title todo));
+      ]
+  | Service.Note_item note ->
+      `Assoc [
+        "niceid", `String (Identifier.to_string (Note.niceid note));
+        "type", `String "note";
+        "status", `String (Note.status_to_string (Note.status note));
+        "title", `String (Title.to_string (Note.title note));
+      ]
+
+let run entity_type statuses json =
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
     match Service.list (App_context.service ctx) ~entity_type ~statuses with
-    | Ok items -> List.iter format_item items
+    | Ok items ->
+        if json then
+          Common.print_json (`Assoc [
+            "ok", `Bool true;
+            "items", `List (List.map item_to_json items);
+          ])
+        else
+          List.iter format_item items
     | Error err -> Common.exit_with (Common.service_error_msg err))
 
 let type_arg =
@@ -59,5 +82,5 @@ let cmd_man = [
 let cmd_info = Cmd.info "list" ~doc:"List todos and notes in the knowledge base." ~man:cmd_man
 
 let cmd =
-  let term = Term.(const run $ type_arg $ status_opt) in
+  let term = Term.(const run $ type_arg $ status_opt $ Common.json_flag) in
   Cmd.v cmd_info term

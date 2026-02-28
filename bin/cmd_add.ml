@@ -41,7 +41,7 @@ let todo_man = [
 
 let todo_info = Cmd.info "todo" ~doc:todo_doc ~man:todo_man
 
-let run_note title =
+let run_note title json =
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
     let content = Io.read_all_stdin () in
@@ -51,10 +51,18 @@ let run_note title =
     | Ok note ->
         let niceid = Identifier.to_string (Note.niceid note) in
         let typeid = Typeid.to_string (Note.id note) in
-        Printf.printf "Created note: %s (%s)\n" niceid typeid
+        if json then
+          Common.print_json (`Assoc [
+            "ok", `Bool true;
+            "type", `String "note";
+            "niceid", `String niceid;
+            "typeid", `String typeid;
+          ])
+        else
+          Printf.printf "Created note: %s (%s)\n" niceid typeid
     | Error err -> Common.exit_with (Common.service_error_msg err))
 
-let run_todo title =
+let run_todo title json =
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
     let content = Io.read_all_stdin () in
@@ -64,7 +72,15 @@ let run_todo title =
     | Ok todo ->
         let niceid = Identifier.to_string (Todo.niceid todo) in
         let typeid = Typeid.to_string (Todo.id todo) in
-        Printf.printf "Created todo: %s (%s)\n" niceid typeid
+        if json then
+          Common.print_json (`Assoc [
+            "ok", `Bool true;
+            "type", `String "todo";
+            "niceid", `String niceid;
+            "typeid", `String typeid;
+          ])
+        else
+          Printf.printf "Created todo: %s (%s)\n" niceid typeid
     | Error err -> Common.exit_with (Common.service_error_msg err))
 
 let title_arg =
@@ -72,11 +88,11 @@ let title_arg =
   Cmdliner.Arg.(required & pos 0 (some string) None & info [] ~docv:"TITLE" ~doc)
 
 let note_cmd =
-  let term = Term.(const run_note $ title_arg) in
+  let term = Term.(const run_note $ title_arg $ Common.json_flag) in
   Cmd.v note_info term
 
 let todo_cmd =
-  let term = Term.(const run_todo $ title_arg) in
+  let term = Term.(const run_todo $ title_arg $ Common.json_flag) in
   Cmd.v todo_info term
 
 let cmd = Cmd.group add_info [note_cmd; todo_cmd]

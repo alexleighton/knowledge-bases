@@ -17,10 +17,11 @@ let%expect_test "bs init with explicit directory and namespace" =
   [%expect {|
     [exit 0]
     Initialised knowledge base:
-      Directory: <DIR>
-      Namespace: kb
-      Database:  <DIR>/.kbases.db
-      AGENTS.md: created
+      Directory:   <DIR>
+      Namespace:   kb
+      Database:    <DIR>/.kbases.db
+      AGENTS.md:   created
+      Git exclude: added to .git/info/exclude
   |}]
 
 let%expect_test "bs init creates database with correct namespace" =
@@ -51,10 +52,11 @@ let%expect_test "bs init resolves git root from cwd" =
   [%expect {|
     [exit 0]
     Initialised knowledge base:
-      Directory: <DIR>
-      Namespace: kb
-      Database:  <DIR>/.kbases.db
-      AGENTS.md: created
+      Directory:   <DIR>
+      Namespace:   kb
+      Database:    <DIR>/.kbases.db
+      AGENTS.md:   created
+      Git exclude: added to .git/info/exclude
   |}]
 
 let%expect_test "bs init in non-git directory fails" =
@@ -129,10 +131,11 @@ let%expect_test "bs init appends to existing AGENTS.md" =
   [%expect {|
     [exit 0]
     Initialised knowledge base:
-      Directory: <DIR>
-      Namespace: kb
-      Database:  <DIR>/.kbases.db
-      AGENTS.md: appended to existing file
+      Directory:   <DIR>
+      Namespace:   kb
+      Database:    <DIR>/.kbases.db
+      AGENTS.md:   appended to existing file
+      Git exclude: added to .git/info/exclude
     has original content: true
     has kbases section: true
   |}]
@@ -159,9 +162,44 @@ let%expect_test "bs init is idempotent when AGENTS.md section already present" =
   [%expect {|
     [exit 0]
     Initialised knowledge base:
-      Directory: <DIR>
-      Namespace: kb
-      Database:  <DIR>/.kbases.db
-      AGENTS.md: section already present
+      Directory:   <DIR>
+      Namespace:   kb
+      Database:    <DIR>/.kbases.db
+      AGENTS.md:   section already present
+      Git exclude: added to .git/info/exclude
     heading count: 1
+  |}]
+
+let%expect_test "bs init creates .git/info/exclude with .kbases.db" =
+  Helper.with_git_root (fun dir ->
+    ignore (Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"]);
+    let exclude_path =
+      Filename.concat (Filename.concat (Filename.concat dir ".git") "info") "exclude"
+    in
+    Printf.printf "exclude exists: %b\n" (Sys.file_exists exclude_path);
+    let contents = Helper.read_file exclude_path in
+    Printf.printf "has .kbases.db: %b\n"
+      (contains_substring ~needle:".kbases.db" contents));
+  [%expect {|
+    exclude exists: true
+    has .kbases.db: true
+  |}]
+
+let%expect_test "bs init preserves existing .git/info/exclude content" =
+  Helper.with_git_root (fun dir ->
+    let info_dir = Filename.concat (Filename.concat dir ".git") "info" in
+    Unix.mkdir info_dir 0o755;
+    let exclude_path = Filename.concat info_dir "exclude" in
+    let oc = open_out exclude_path in
+    output_string oc "*.swp\n.DS_Store\n";
+    close_out oc;
+    ignore (Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"]);
+    let contents = Helper.read_file exclude_path in
+    Printf.printf "has original: %b\n"
+      (contains_substring ~needle:"*.swp" contents);
+    Printf.printf "has .kbases.db: %b\n"
+      (contains_substring ~needle:".kbases.db" contents));
+  [%expect {|
+    has original: true
+    has .kbases.db: true
   |}]

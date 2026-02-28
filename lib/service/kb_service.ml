@@ -26,11 +26,16 @@ type agents_md_action = Lifecycle.agents_md_action =
   | Appended
   | Already_present
 
+type git_exclude_action = Lifecycle.git_exclude_action =
+  | Excluded
+  | Already_excluded
+
 type init_result = Lifecycle.init_result = {
-  directory  : string;
-  namespace  : string;
-  db_file    : string;
-  agents_md  : agents_md_action;
+  directory   : string;
+  namespace   : string;
+  db_file     : string;
+  agents_md   : agents_md_action;
+  git_exclude : git_exclude_action;
 }
 
 type relation_entry = Query.relation_entry = {

@@ -19,12 +19,16 @@ type item =
 (** Action taken on AGENTS.md during initialization. *)
 type agents_md_action = Created | Appended | Already_present
 
+(** Action taken on .git/info/exclude during initialization. *)
+type git_exclude_action = Excluded | Already_excluded
+
 (** Result of knowledge-base initialization. *)
 type init_result = {
-  directory  : string;
-  namespace  : string;
-  db_file    : string;
-  agents_md  : agents_md_action;
+  directory   : string;
+  namespace   : string;
+  db_file     : string;
+  agents_md   : agents_md_action;
+  git_exclude : git_exclude_action;
 }
 
 (** A resolved relation entry for display. *)

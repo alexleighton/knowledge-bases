@@ -28,12 +28,14 @@ type error =
   | Validation_error of string
 
 type agents_md_action = Created | Appended | Already_present
+type git_exclude_action = Excluded | Already_excluded
 
 type init_result = {
-  directory  : string;
-  namespace  : string;
-  db_file    : string;
-  agents_md  : agents_md_action;
+  directory   : string;
+  namespace   : string;
+  db_file     : string;
+  agents_md   : agents_md_action;
+  git_exclude : git_exclude_action;
 }
 
 let resolve_directory = function
@@ -90,6 +92,11 @@ let install_agents_md ~directory =
     Created
   end
 
+let install_git_exclude ~directory =
+  match Git.add_exclude ~directory db_filename with
+  | Git.Added -> Excluded
+  | Git.Already_present -> Already_excluded
+
 let open_kb () =
   match Git.find_repo_root () with
   | None ->
@@ -133,4 +140,5 @@ let init_kb ~directory ~namespace =
                    Repository_error ("Config key not found: " ^ key))
         |> Result.map (fun () ->
                let agents_md = install_agents_md ~directory in
-               { directory; namespace; db_file; agents_md }))
+               let git_exclude = install_git_exclude ~directory in
+               { directory; namespace; db_file; agents_md; git_exclude }))

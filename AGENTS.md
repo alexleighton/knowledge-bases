@@ -24,3 +24,16 @@ when documentation is insufficient.
 
 All documentation related to coding principles and practices, project
 conventions, etc can be discovered via the index: `docs/index.md`.
+
+## Knowledge Base
+
+This repository uses `bs` to track todos and notes. Use it to
+externalize work you've identified, decisions, and research.
+
+```
+echo "Description" | bs add todo "Title"
+bs list todo --status open
+bs show kb-0
+```
+
+Run `bs --help` for the full command reference.

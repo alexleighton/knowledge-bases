@@ -11,7 +11,7 @@ module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
 module Io = Kbases.Control.Io
 
-let run identifier status title content_flag =
+let run identifier status title content_flag json =
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
     let title =
@@ -30,9 +30,23 @@ let run identifier status title content_flag =
     in
     match Service.update (App_context.service ctx) ~identifier ?status ?title ?content () with
     | Ok (Service.Todo_item todo) ->
-        Printf.printf "Updated todo: %s\n" (Identifier.to_string (Todo.niceid todo))
+        let niceid = Identifier.to_string (Todo.niceid todo) in
+        if json then
+          Common.print_json (`Assoc [
+            "ok", `Bool true; "action", `String "updated";
+            "type", `String "todo"; "niceid", `String niceid;
+          ])
+        else
+          Printf.printf "Updated todo: %s\n" niceid
     | Ok (Service.Note_item note) ->
-        Printf.printf "Updated note: %s\n" (Identifier.to_string (Note.niceid note))
+        let niceid = Identifier.to_string (Note.niceid note) in
+        if json then
+          Common.print_json (`Assoc [
+            "ok", `Bool true; "action", `String "updated";
+            "type", `String "note"; "niceid", `String niceid;
+          ])
+        else
+          Printf.printf "Updated note: %s\n" niceid
     | Error err -> Common.exit_with (Common.service_error_msg err))
 
 let identifier_arg =
@@ -61,5 +75,5 @@ let cmd_man = [
 let cmd_info = Cmd.info "update" ~doc:"Update an existing item." ~man:cmd_man
 
 let cmd =
-  let term = Term.(const run $ identifier_arg $ status_opt $ title_opt $ content_flag) in
+  let term = Term.(const run $ identifier_arg $ status_opt $ title_opt $ content_flag $ Common.json_flag) in
   Cmd.v cmd_info term

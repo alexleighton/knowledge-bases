@@ -70,7 +70,7 @@ let%expect_test "bs list rejects invalid status value" =
     Helper.print_result ~dir result);
   [%expect {|
     [exit 124]
-    STDERR: Usage: bs list [--help] [--status=STATUS] [OPTION]… [TYPE]
+    STDERR: Usage: bs list [--help] [--json] [--status=STATUS] [OPTION]… [TYPE]
     bs: option '--status': invalid value 'banana', expected one of 'open',
         'in-progress', 'done', 'active' or 'archived'
   |}]
@@ -103,7 +103,7 @@ let%expect_test "bs list rejects invalid type argument" =
     Helper.print_result ~dir result);
   [%expect {|
     [exit 124]
-    STDERR: Usage: bs list [--help] [--status=STATUS] [OPTION]… [TYPE]
+    STDERR: Usage: bs list [--help] [--json] [--status=STATUS] [OPTION]… [TYPE]
     bs: TYPE argument: invalid value 'banana', expected either 'todo' or 'note'
   |}]
 
