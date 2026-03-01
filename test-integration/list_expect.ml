@@ -158,3 +158,43 @@ let%expect_test "bs list fails when KB not initialised" =
     [exit 1]
     STDERR: Error: No knowledge base found. Run 'bs init' first.
   |}]
+
+let%expect_test "bs list --json" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "First"]);
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "note"; "Second"]);
+    let result = Helper.run_bs ~dir ["list"; "--json"] in
+    Printf.printf "[exit %d]\n" result.exit_code;
+    let json = Helper.parse_json result.stdout in
+    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
+    let items = Helper.get_list json "items" in
+    Printf.printf "item count: %d\n" (List.length items);
+    List.iter (fun item ->
+      Printf.printf "  niceid=%s type=%s status=%s title=%s\n"
+        (Helper.get_string item "niceid")
+        (Helper.get_string item "type")
+        (Helper.get_string item "status")
+        (Helper.get_string item "title")
+    ) items);
+  [%expect {|
+    [exit 0]
+    ok: true
+    item count: 2
+      niceid=kb-0 type=todo status=open title=First
+      niceid=kb-1 type=note status=active title=Second
+  |}]
+
+let%expect_test "bs list --json empty" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    let result = Helper.run_bs ~dir ["list"; "--json"] in
+    Printf.printf "[exit %d]\n" result.exit_code;
+    let json = Helper.parse_json result.stdout in
+    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
+    Printf.printf "item count: %d\n" (List.length (Helper.get_list json "items")));
+  [%expect {|
+    [exit 0]
+    ok: true
+    item count: 0
+  |}]

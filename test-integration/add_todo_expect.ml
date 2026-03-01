@@ -82,3 +82,21 @@ let%expect_test "bs add todo fails when KB not initialised" =
     [exit 1]
     STDERR: Error: No knowledge base found. Run 'bs init' first.
   |}]
+
+let%expect_test "bs add todo --json" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    let result = Helper.run_bs ~dir ~stdin:"Todo body" ["add"; "todo"; "My todo"; "--json"] in
+    Printf.printf "[exit %d]\n" result.exit_code;
+    let json = Helper.parse_json result.stdout in
+    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
+    Printf.printf "type: %s\n" (Helper.get_string json "type");
+    Printf.printf "niceid: %s\n" (Helper.get_string json "niceid");
+    Printf.printf "has typeid: %b\n" (Helper.get_string json "typeid" <> "<missing>"));
+  [%expect {|
+    [exit 0]
+    ok: true
+    type: todo
+    niceid: kb-0
+    has typeid: true
+  |}]

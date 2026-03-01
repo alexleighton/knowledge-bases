@@ -97,8 +97,8 @@ the result.
   separate from the JSONL persistence format in `lib/`.
 
 When adding a new subcommand, include `--json` support from the start
-and add at least one `--json` integration test in
-`test-integration/json_expect.ml`.
+and add at least one `--json` integration test in the command's
+`test-integration/<command>_expect.ml` file.
 
 ## 6. File length
 

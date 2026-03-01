@@ -207,3 +207,55 @@ let%expect_test "bs show fails when KB not initialised" =
     [exit 1]
     STDERR: Error: No knowledge base found. Run 'bs init' first.
   |}]
+
+let%expect_test "bs show --json" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Content here" ["add"; "todo"; "My item"]);
+    let result = Helper.run_bs ~dir ["show"; "kb-0"; "--json"] in
+    Printf.printf "[exit %d]\n" result.exit_code;
+    let json = Helper.parse_json result.stdout in
+    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
+    Printf.printf "type: %s\n" (Helper.get_string json "type");
+    Printf.printf "niceid: %s\n" (Helper.get_string json "niceid");
+    Printf.printf "has typeid: %b\n" (Helper.get_string json "typeid" <> "<missing>");
+    Printf.printf "status: %s\n" (Helper.get_string json "status");
+    Printf.printf "title: %s\n" (Helper.get_string json "title");
+    Printf.printf "content: %s\n" (Helper.get_string json "content");
+    Printf.printf "outgoing count: %d\n" (List.length (Helper.get_list json "outgoing"));
+    Printf.printf "incoming count: %d\n" (List.length (Helper.get_list json "incoming")));
+  [%expect {|
+    [exit 0]
+    ok: true
+    type: todo
+    niceid: kb-0
+    has typeid: true
+    status: open
+    title: My item
+    content: Content here
+    outgoing count: 0
+    incoming count: 0
+  |}]
+
+let%expect_test "bs show --json with relations" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body A" ["add"; "todo"; "Item A"]);
+    ignore (Helper.run_bs ~dir ~stdin:"Body B" ["add"; "todo"; "Item B"]);
+    ignore (Helper.run_bs ~dir ["relate"; "kb-0"; "--depends-on"; "kb-1"]);
+    let result = Helper.run_bs ~dir ["show"; "kb-0"; "--json"] in
+    Printf.printf "[exit %d]\n" result.exit_code;
+    let json = Helper.parse_json result.stdout in
+    let outgoing = Helper.get_list json "outgoing" in
+    Printf.printf "outgoing count: %d\n" (List.length outgoing);
+    List.iter (fun rel ->
+      Printf.printf "  kind=%s niceid=%s type=%s\n"
+        (Helper.get_string rel "kind")
+        (Helper.get_string rel "niceid")
+        (Helper.get_string rel "type")
+    ) outgoing);
+  [%expect {|
+    [exit 0]
+    outgoing count: 1
+      kind=depends-on niceid=kb-1 type=todo
+  |}]

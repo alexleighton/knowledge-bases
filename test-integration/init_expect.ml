@@ -203,3 +203,24 @@ let%expect_test "bs init preserves existing .git/info/exclude content" =
     has original: true
     has .kbases.db: true
   |}]
+
+let%expect_test "bs init --json" =
+  Helper.with_git_root (fun dir ->
+    let result = Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"; "--json"] in
+    Printf.printf "[exit %d]\n" result.exit_code;
+    let json = Helper.parse_json result.stdout in
+    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
+    Printf.printf "has directory: %b\n" (Helper.get_string json "directory" <> "<missing>");
+    Printf.printf "namespace: %s\n" (Helper.get_string json "namespace");
+    Printf.printf "has db_file: %b\n" (Helper.get_string json "db_file" <> "<missing>");
+    Printf.printf "agents_md: %s\n" (Helper.get_string json "agents_md");
+    Printf.printf "git_exclude: %s\n" (Helper.get_string json "git_exclude"));
+  [%expect {|
+    [exit 0]
+    ok: true
+    has directory: true
+    namespace: kb
+    has db_file: true
+    agents_md: created
+    git_exclude: added to .git/info/exclude
+  |}]

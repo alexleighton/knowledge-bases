@@ -100,3 +100,25 @@ let%expect_test "bs relate when KB not initialised" =
     [exit 1]
     STDERR: Error: No knowledge base found. Run 'bs init' first.
   |}]
+
+let%expect_test "bs relate --json" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body A" ["add"; "todo"; "Item A"]);
+    ignore (Helper.run_bs ~dir ~stdin:"Body B" ["add"; "todo"; "Item B"]);
+    let result = Helper.run_bs ~dir ["relate"; "kb-0"; "--depends-on"; "kb-1"; "--json"] in
+    Printf.printf "[exit %d]\n" result.exit_code;
+    let json = Helper.parse_json result.stdout in
+    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
+    Printf.printf "source: %s\n" (Helper.get_string json "source");
+    Printf.printf "kind: %s\n" (Helper.get_string json "kind");
+    Printf.printf "target: %s\n" (Helper.get_string json "target");
+    Printf.printf "directionality: %s\n" (Helper.get_string json "directionality"));
+  [%expect {|
+    [exit 0]
+    ok: true
+    source: kb-0
+    kind: depends-on
+    target: kb-1
+    directionality: unidirectional
+  |}]

@@ -134,3 +134,33 @@ let init_kb dir =
   let result = run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"] in
   if result.exit_code <> 0 then
     failwith ("init_kb setup failed: " ^ result.stderr)
+
+let parse_json stdout =
+  try Yojson.Safe.from_string stdout
+  with Yojson.Json_error msg ->
+    Printf.printf "JSON parse error: %s\n" msg;
+    `Null
+
+let get_string json key =
+  match json with
+  | `Assoc pairs -> (
+      match List.assoc_opt key pairs with
+      | Some (`String s) -> s
+      | _ -> "<missing>")
+  | _ -> "<not-object>"
+
+let get_bool json key =
+  match json with
+  | `Assoc pairs -> (
+      match List.assoc_opt key pairs with
+      | Some (`Bool b) -> b
+      | _ -> false)
+  | _ -> false
+
+let get_list json key =
+  match json with
+  | `Assoc pairs -> (
+      match List.assoc_opt key pairs with
+      | Some (`List l) -> l
+      | _ -> [])
+  | _ -> []
