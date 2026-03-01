@@ -1,0 +1,8 @@
+(executable
+ (name perf_main)
+ (libraries unix yojson))
+
+(rule
+ (alias runperf)
+ (deps %{bin:bs} (universe))
+ (action (run ./perf_main.exe)))

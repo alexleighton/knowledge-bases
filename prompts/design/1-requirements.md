@@ -131,3 +131,9 @@ interactions, constraints, and edge cases that this initial pass
 cannot anticipate. The requirements will be revisited and tightened
 in a later step. Treat this document as a living artifact — update
 it in place, do not create new files.
+
+## Examples
+
+See `examples/` for completed design documents that went through
+all four steps of the pipeline (requirements → background →
+refinement → approaches).
