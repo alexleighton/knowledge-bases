@@ -36,7 +36,17 @@ corresponding file.
 **Exception:** `workflow_expect.ml` contains cross-command scenario tests that
 chain many operations within a single knowledge base, simulating natural usage.
 These tests do not map to a single command and intentionally cut across the
-per-command boundary.
+per-command boundary. Each scenario should read like a realistic session — seed
+data, build relationships, progress through statuses, query results. Taken
+together, the workflow tests should exercise every CLI command at least once.
+When adding a new command, extend an existing workflow or add a new one so the
+command appears in a lifelike context, not only in its isolated command file.
+
+**Per-command feature tests belong in the command file.** When a feature applies
+to many commands (e.g., `--json` output), each command's test for that feature
+lives in the command's own `*_expect.ml` file, not in a cross-cutting feature
+file. Organising by command keeps the architecture consistent and makes it easy
+to see full coverage for any given command in one place.
 
 ## Shared test helper
 

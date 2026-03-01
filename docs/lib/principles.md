@@ -75,3 +75,12 @@ Keep files below approximately 300 lines. Larger files are harder to read and
 understand. A file approaching this limit is often a sign that the concept it
 represents is too complex and should be broken into smaller, composable
 modules.
+
+## 5. Explicit entropy initialization
+
+Code that depends on randomness for correctness — unique IDs, tokens, nonces —
+must explicitly initialize its entropy source. OCaml's `Random` module produces
+a deterministic sequence when unseeded, which is silent and easy to miss. Call
+`Random.self_init ()` at module load time, or pass the RNG state as an explicit
+dependency. Accompany either approach with a smoke test that generates a handful
+of values and asserts they are distinct.
