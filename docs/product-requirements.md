@@ -459,7 +459,7 @@ The JSONL file could take one of two forms:
 
 The journal approach is more git-friendly (append-only means fewer merge
 conflicts and cleaner diffs) but introduces complexity in journal compaction
-and replay. The choice between these approaches is an open design decision.
+and replay. The snapshot approach was chosen for its simplicity.
 
 ### Sorting for merge clarity
 
@@ -468,6 +468,25 @@ sort order so that entries from different branches land in predictable
 positions. Since TypeIds are UUID-based and globally unique, sorting by TypeId
 gives a stable ordering that naturally interleaves entries from different
 branches without conflict.
+
+### Header format
+
+The first line of the JSONL file is a header — a JSON object that identifies
+the file as a knowledge base and carries the namespace:
+
+    {"_kbases":"1","namespace":"kb"}
+
+The header must contain only fields whose values are stable across flushes
+within a repository. Fields that vary per flush (such as entity counts or
+content hashes) would produce merge conflicts on line 1 whenever two branches
+independently modify the knowledge base, defeating the auto-merge property of
+the sorted entity lines.
+
+Rebuild detection (determining whether the JSONL file has changed since the
+last rebuild) uses a whole-file hash computed at runtime and stored in the
+SQLite config table. The hash covers the entire file — header and entity
+lines — so any change to the file triggers a rebuild. The hash is never
+written into the JSONL file itself.
 
 ## CLI Interface
 

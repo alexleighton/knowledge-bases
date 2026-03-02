@@ -60,6 +60,10 @@ let _map_relation_error = function
 let _map_niceid_error = function
   | Repository.Niceid.Backend_failure msg -> Sync_failed msg
 
+let _hash_file path =
+  try Ok (Digest.file path |> Digest.to_hex)
+  with Sys_error msg -> Error (Sync_failed ("hash error: " ^ msg))
+
 let flush t =
   let open Data.Result.Syntax in
   let* dirty = _is_dirty t in
@@ -75,10 +79,11 @@ let flush t =
       Repository.Relation.list_all (Root.relation t.root)
       |> Result.map_error _map_relation_error in
     let* namespace = _get_namespace t in
-    let* content_hash =
+    let* () =
       Jsonl.write ~path:t.jsonl_path ~namespace ~todos ~notes ~relations
       |> Result.map_error _map_jsonl_error in
-    let* () = _set_config t "content_hash" content_hash in
+    let* file_hash = _hash_file t.jsonl_path in
+    let* () = _set_config t "content_hash" file_hash in
     _set_config t "dirty" "false"
 
 let _record_sort_key = function
@@ -92,7 +97,7 @@ let _record_sort_key = function
 
 let force_rebuild t =
   let open Data.Result.Syntax in
-  let* (header, records) =
+  let* (_header, records) =
     Jsonl.read ~path:t.jsonl_path
     |> Result.map_error _map_jsonl_error in
   let sorted_records =
@@ -125,20 +130,19 @@ let force_rebuild t =
         |> Result.map (fun _ -> ())
         |> Result.map_error _map_relation_error
   ) sorted_records) |> Result.map (fun _ -> ()) in
-  let* () = _set_config t "content_hash" header.Jsonl.content_hash in
+  let* file_hash = _hash_file t.jsonl_path in
+  let* () = _set_config t "content_hash" file_hash in
   _set_config t "dirty" "false"
 
 let rebuild_if_needed t =
   let open Data.Result.Syntax in
   if not (Sys.file_exists t.jsonl_path) then Ok ()
   else
-    let* header =
-      Jsonl.read_header ~path:t.jsonl_path
-      |> Result.map_error _map_jsonl_error in
+    let* file_hash = _hash_file t.jsonl_path in
     let* stored_hash = _get_config t "content_hash" in
     match stored_hash with
     | None -> force_rebuild t
-    | Some hash when not (String.equal hash header.Jsonl.content_hash) ->
+    | Some hash when not (String.equal hash file_hash) ->
         force_rebuild t
     | Some _ ->
         let* dirty = _is_dirty t in

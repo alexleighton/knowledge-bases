@@ -11,10 +11,8 @@ type entity_record =
 
 (** Metadata stored in the first line of a JSONL file. *)
 type header = {
-  version      : int;
-  namespace    : string;
-  entity_count : int;
-  content_hash : string;
+  version   : int;
+  namespace : string;
 }
 
 (** Errors from JSONL operations. *)
@@ -23,16 +21,13 @@ type error =
   | Parse_error of string
 
 (** [write ~path ~namespace ~todos ~notes ~relations] serializes all
-    entities to a JSONL file at [path] using an atomic temp-file rename.
-    Returns the content hash on success. *)
+    entities to a JSONL file at [path] using an atomic temp-file rename. *)
 val write :
   path:string -> namespace:string ->
   todos:Data.Todo.t list -> notes:Data.Note.t list ->
-  relations:Data.Relation.t list -> (string, error) result
+  relations:Data.Relation.t list -> (unit, error) result
 
 (** [read ~path] reads the entire JSONL file, returning the header
     and all parsed entity records. *)
 val read : path:string -> (header * entity_record list, error) result
 
-(** [read_header ~path] reads and parses only the header line. *)
-val read_header : path:string -> (header, error) result

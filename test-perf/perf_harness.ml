@@ -61,19 +61,14 @@ let generate_jsonl ~path ~namespace ~num_todos ~num_notes ~num_relations =
   done;
   let sorted = List.sort (fun (k1, _) (k2, _) -> String.compare k1 k2) !keyed in
   let entity_lines = List.map (fun (_, json) -> Yojson.Safe.to_string json) sorted in
-  let entity_content = String.concat "\n" entity_lines in
-  let content_hash = Digest.string entity_content |> Digest.to_hex in
-  let entity_count = List.length sorted in
   let header = `Assoc [
     ("_kbases", `String "1");
     ("namespace", `String namespace);
-    ("entity_count", `Int entity_count);
-    ("content_hash", `String content_hash);
   ] in
   let header_line = Yojson.Safe.to_string header in
   let full_content =
-    if entity_count = 0 then header_line ^ "\n"
-    else header_line ^ "\n" ^ entity_content ^ "\n"
+    if entity_lines = [] then header_line ^ "\n"
+    else header_line ^ "\n" ^ String.concat "\n" entity_lines ^ "\n"
   in
   let oc = open_out path in
   Fun.protect ~finally:(fun () -> close_out_noerr oc) (fun () ->

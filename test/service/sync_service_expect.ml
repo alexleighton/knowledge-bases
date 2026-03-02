@@ -60,11 +60,11 @@ let%expect_test "flush writes JSONL file after mark_dirty" =
       | Ok v -> v
       | Error _ -> failwith "read failed"
     in
-    Printf.printf "entity_count=%d record_count=%d namespace=%s\n"
-      header.entity_count (List.length records) header.namespace);
+    Printf.printf "record_count=%d namespace=%s\n"
+      (List.length records) header.namespace);
   [%expect {|
     jsonl exists=true
-    entity_count=2 record_count=2 namespace=kb
+    record_count=2 namespace=kb
     |}]
 
 let%expect_test "flush without mark_dirty does nothing" =
@@ -111,9 +111,9 @@ let%expect_test "force_rebuild replaces DB content from JSONL" =
     let rel = Relation.make ~source:tid ~target:nid
       ~kind:(Relation_kind.make "blocks") ~bidirectional:false in
 
-    ignore (match Jsonl.write ~path:jsonl_path ~namespace:"kb"
+    (match Jsonl.write ~path:jsonl_path ~namespace:"kb"
       ~todos:[todo] ~notes:[note] ~relations:[rel] with
-      | Ok h -> h | Error _ -> failwith "write failed");
+      | Ok () -> () | Error _ -> failwith "write failed");
 
     _unwrap_sync (Sync.force_rebuild sync);
 
@@ -144,9 +144,9 @@ let%expect_test "rebuild_if_needed detects hash mismatch" =
     let tid = Typeid.of_string "todo_0123456789abcdefghjkmnpqrs" in
     let niceid = Identifier.make "kb" 0 in
     let new_todo = Todo.make tid niceid (Title.make "External") (Content.make "Body") Todo.Open in
-    ignore (match Jsonl.write ~path:jsonl_path ~namespace:"kb"
+    (match Jsonl.write ~path:jsonl_path ~namespace:"kb"
       ~todos:[new_todo] ~notes:[] ~relations:[] with
-      | Ok h -> h | Error _ -> failwith "write failed");
+      | Ok () -> () | Error _ -> failwith "write failed");
 
     _unwrap_sync (Sync.rebuild_if_needed sync);
 

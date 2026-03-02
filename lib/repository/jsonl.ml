@@ -6,10 +6,8 @@ type entity_record =
   | Relation of Data.Relation.t
 
 type header = {
-  version      : int;
-  namespace    : string;
-  entity_count : int;
-  content_hash : string;
+  version   : int;
+  namespace : string;
 }
 
 type error =
@@ -57,12 +55,10 @@ let _sort_key_relation rel =
   Data.Uuid.Typeid.to_string (Data.Relation.target rel) ^ ":" ^
   Data.Relation_kind.to_string (Data.Relation.kind rel)
 
-let _header_to_json ~namespace ~entity_count ~content_hash =
+let _header_to_json ~namespace =
   `Assoc [
     ("_kbases", `String "1");
     ("namespace", `String namespace);
-    ("entity_count", `Int entity_count);
-    ("content_hash", `String content_hash);
   ]
 
 let write ~path ~namespace ~todos ~notes ~relations =
@@ -75,21 +71,18 @@ let write ~path ~namespace ~todos ~notes ~relations =
     let sorted = List.sort (fun (k1, _) (k2, _) -> String.compare k1 k2) keyed in
     let entity_lines =
       List.map (fun (_, json) -> Yojson.Safe.to_string json) sorted in
-    let entity_content = String.concat "\n" entity_lines in
-    let content_hash = Digest.string entity_content |> Digest.to_hex in
-    let entity_count = List.length sorted in
-    let header_json = _header_to_json ~namespace ~entity_count ~content_hash in
+    let header_json = _header_to_json ~namespace in
     let header_line = Yojson.Safe.to_string header_json in
     let full_content =
-      if entity_count = 0 then header_line ^ "\n"
-      else header_line ^ "\n" ^ entity_content ^ "\n"
+      if entity_lines = [] then header_line ^ "\n"
+      else header_line ^ "\n" ^ String.concat "\n" entity_lines ^ "\n"
     in
     let tmp_path = path ^ ".tmp" in
     let oc = open_out tmp_path in
     Fun.protect ~finally:(fun () -> close_out_noerr oc) (fun () ->
       output_string oc full_content);
     Unix.rename tmp_path path;
-    Ok content_hash
+    Ok ()
   with
   | Sys_error msg -> Error (Io_error msg)
   | exn -> Error (Io_error (Printexc.to_string exn))
@@ -102,15 +95,6 @@ let _get_string json key =
       (match List.assoc_opt key pairs with
        | Some (`String s) -> Ok s
        | Some _ -> Error (Parse_error (Printf.sprintf "field %S is not a string" key))
-       | None -> Error (Parse_error (Printf.sprintf "missing field %S" key)))
-  | _ -> Error (Parse_error "expected JSON object")
-
-let _get_int json key =
-  match json with
-  | `Assoc pairs ->
-      (match List.assoc_opt key pairs with
-       | Some (`Int n) -> Ok n
-       | Some _ -> Error (Parse_error (Printf.sprintf "field %S is not an int" key))
        | None -> Error (Parse_error (Printf.sprintf "missing field %S" key)))
   | _ -> Error (Parse_error "expected JSON object")
 
@@ -131,9 +115,7 @@ let _parse_header_json json =
     else Error (Parse_error (Printf.sprintf "unsupported JSONL version: %S" version_s))
   in
   let* namespace = _get_string json "namespace" in
-  let* entity_count = _get_int json "entity_count" in
-  let* content_hash = _get_string json "content_hash" in
-  Ok { version = 1; namespace; entity_count; content_hash }
+  Ok { version = 1; namespace }
 
 let _parse_typeid s =
   match Data.Uuid.Typeid.parse s with
@@ -224,13 +206,3 @@ let read ~path =
       let* records = Data.Result.sequence (List.map _parse_entity_line non_empty) in
       Ok (header, records)
 
-let read_header ~path =
-  try
-    let ic = open_in path in
-    Fun.protect ~finally:(fun () -> close_in_noerr ic) (fun () ->
-      try
-        let line = input_line ic in
-        _parse_header_line line
-      with End_of_file ->
-        Error (Parse_error "empty file, no header line"))
-  with Sys_error msg -> Error (Io_error msg)

@@ -111,9 +111,25 @@ Examples:
 |----------|---------------------------------------------------------|
 | `Sqlite` | Thin helpers over `Sqlite3` (exec, bind, step)          |
 | `Config` | Key-value configuration store                           |
+| `Jsonl`  | JSONL file format — serialization, parsing, file I/O    |
 | `Niceid` | Sequential nice-id allocator (per namespace)            |
 | `Note`   | Note CRUD (create, get, update, delete)                 |
 | `Root`   | Opens the DB, initialises all repos, provides accessors |
+
+**JSONL and git automerge.** The `.kbases.jsonl` file is designed to
+merge cleanly under git's standard text merge machinery.  Two branches
+that independently add entities should never produce a merge conflict.
+This property depends on two invariants:
+
+1. **Entity lines are sorted by TypeId**, so independent additions land
+   at non-conflicting positions in the file.
+2. **The header line is identical across all branches** within a
+   repository.  It must contain only fields whose values are stable
+   across flushes (`_kbases`, `namespace`).  Never add a field to the
+   header that varies per flush — it will cause a conflict on line 1
+   every time two branches both modify the knowledge base.
+
+Any change to `Jsonl` should be evaluated against these invariants.
 
 Note: `Repository.Note` and `Data.Note` share a name deliberately.
 `Data.Note` is the domain type; `Repository.Note` knows how to persist
