@@ -162,9 +162,10 @@ Conventions:
    repositories for storage and to Data modules for validation.
    The service's job is sequencing, error mapping, and any
    cross-cutting concern (transactions, authorization, logging).
-3. **One service per bounded context** — `Kb_service` currently
-   covers everything.  If the domain grows, split along natural
-   boundaries rather than creating a god service.
+3. **One facade, focused helpers** — `Kb_service` is the public
+   facade that the CLI calls.  It delegates to focused internal
+   service modules that each own a slice of the domain.  Split
+   along natural boundaries rather than creating a god service.
 
 **Put new code here when** you need to combine several repository
 operations into a single logical action, or when you need to translate

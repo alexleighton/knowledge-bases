@@ -415,8 +415,8 @@ All `bs` commands read from and write to the SQLite database. SQLite provides:
   single machine.
 - **Schema enforcement**: column types, constraints, and foreign keys.
 
-The SQLite file is **not tracked by git**. It is listed in `.gitignore` and
-treated as a derived artifact that can always be rebuilt from the JSONL file.
+The SQLite file is **not tracked by git**. It is added to `.git/info/exclude`
+and treated as a derived artifact that can always be rebuilt from the JSONL file.
 
 ### JSONL: the git-tracked format
 
@@ -505,8 +505,9 @@ knowledge base found by walking up from the current directory to the git root.
 | `bs archive NICEID`            | Implemented | Archive a note                       |
 | `bs relate SRC --KIND TARGET`  | Implemented | Create a built-in relation           |
 | `bs relate SRC --uni\|--bi KIND,TARGET` | Implemented | Create a user-defined relation |
-| `bs flush`                     | Planned     | Serialize SQLite to JSONL            |
-| `bs rebuild`                   | Planned     | Reconstruct SQLite from JSONL        |
+| `bs close NICEID`              | Implemented | Mark a todo as done (alias for resolve) |
+| `bs flush`                     | Implemented | Serialize SQLite to JSONL            |
+| `bs rebuild`                   | Implemented | Reconstruct SQLite from JSONL        |
 
 Content is always read from stdin, making `bs` composable with pipes and
 suitable for non-interactive (agent) use.
