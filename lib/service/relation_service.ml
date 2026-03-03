@@ -19,6 +19,12 @@ type relate_result = {
   target_title  : Data.Title.t;
 }
 
+let map_relation_repo_error = function
+  | RelationRepo.Duplicate ->
+      Item_service.Validation_error "relation already exists"
+  | RelationRepo.Backend_failure msg ->
+      Item_service.Repository_error msg
+
 let init root = {
   items         = Item_service.init root;
   relation_repo = Repository.Root.relation root;
@@ -39,12 +45,6 @@ let entity_type_of_item = function
 let title_of_item = function
   | Item_service.Todo_item t -> Data.Todo.title t
   | Item_service.Note_item n -> Data.Note.title n
-
-let map_relation_repo_error = function
-  | RelationRepo.Duplicate ->
-      Item_service.Validation_error "relation already exists"
-  | RelationRepo.Backend_failure msg ->
-      Item_service.Repository_error msg
 
 let build_specs ~depends_on ~related_to ~uni ~bi =
   List.map (fun tgt ->

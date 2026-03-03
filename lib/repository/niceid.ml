@@ -8,18 +8,6 @@ type t = {
 type error =
   | Backend_failure of string
 
-let init ~db ~namespace =
-  let create_sql =
-    "CREATE TABLE IF NOT EXISTS niceid (\
-     typeid TEXT PRIMARY KEY,\
-     namespace TEXT NOT NULL,\
-     niceid INTEGER NOT NULL\
-    );"
-  in
-  match Sqlite.exec db create_sql with
-  | Ok () -> Ok { db; namespace }
-  | Error msg -> Error (Backend_failure msg)
-
 let map_sqlite_error result =
   Result.map_error
     (function
@@ -36,6 +24,18 @@ let map_no_row_to_zero = function
   | Error (Sqlite.Bind_failed _ as err)
   | Error (Sqlite.Row_parse_failed _ as err) -> map_sqlite_error (Error err)
   | Ok _ as ok -> ok
+
+let init ~db ~namespace =
+  let create_sql =
+    "CREATE TABLE IF NOT EXISTS niceid (\
+     typeid TEXT PRIMARY KEY,\
+     namespace TEXT NOT NULL,\
+     niceid INTEGER NOT NULL\
+    );"
+  in
+  match Sqlite.exec db create_sql with
+  | Ok () -> Ok { db; namespace }
+  | Error msg -> Error (Backend_failure msg)
 
 let allocate { db; namespace } typeid =
   let open Result.Syntax in

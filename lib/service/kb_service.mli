@@ -70,6 +70,8 @@ type add_with_relations_result = {
   relations   : relation_entry list;
 }
 
+(* --- Lifecycle --- *)
+
 (** [init root] initializes the service from a shared {!Repository.Root.t}
     handle. The service does not own the root — callers manage its lifecycle. *)
 val init : Repository.Root.t -> t
@@ -95,6 +97,8 @@ val init_kb :
   directory:string option ->
   namespace:string option ->
   (init_result, error) result
+
+(* --- Create --- *)
 
 (** [add_note t ~title ~content] creates and persists a new note.
     @return the created note on success. *)
@@ -133,6 +137,8 @@ val add_todo_with_relations :
   unit ->
   (add_with_relations_result, error) result
 
+(* --- Query --- *)
+
 (** [list t ~entity_type ~statuses] returns todos and/or notes filtered by type and status.
 
     When [entity_type] is [None], both entity types are considered. When it is
@@ -152,6 +158,8 @@ val list :
     as a TypeId (e.g. ["todo_01jmq..."]). Returns a [Validation_error] if the
     item is not found or the identifier format is unrecognised. *)
 val show : t -> identifier:string -> (show_result, error) result
+
+(* --- Modify --- *)
 
 (** [update t ~identifier ?status ?title ?content ()] applies changes to the
     item identified by [identifier].  At least one of [status], [title], or
@@ -182,6 +190,8 @@ val relate :
   source:string ->
   specs:relate_spec list ->
   (relate_result list, error) result
+
+(* --- Sync --- *)
 
 (** [flush t] forces a flush of all SQLite data to the JSONL file.
     Returns an error if sync is not enabled. *)

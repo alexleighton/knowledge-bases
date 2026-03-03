@@ -6,15 +6,6 @@ let _typeid_prefix = "todo"
 
 type status = Open | In_Progress | Done [@@deriving show]
 
-let status_to_string = function Open -> "open" | In_Progress -> "in-progress" | Done -> "done"
-
-let status_from_string = function "open" -> Open | "in-progress" -> In_Progress | "done" -> Done
-  | s -> CE.invalid_argf "Invalid status \"%s\"" s
-
-let status_of_string s =
-  try Ok (status_from_string s)
-  with Invalid_argument msg -> Error msg
-
 type id = Typeid.t
 
 let show_id = Typeid.to_string
@@ -38,12 +29,6 @@ let _validate_id typeid =
 
 let make_id () = Typeid.make _typeid_prefix
 
-let id      { id;      _ } = id
-let niceid  { niceid;  _ } = niceid
-let title   { title;   _ } = title
-let content { content; _ } = content
-let status  { status;  _ } = status
-
 let make id niceid title content status = {
   id      = _validate_id id;
   niceid  = niceid;
@@ -51,6 +36,21 @@ let make id niceid title content status = {
   content = content;
   status  = status;
 }
+
+let status_to_string = function Open -> "open" | In_Progress -> "in-progress" | Done -> "done"
+
+let status_from_string = function "open" -> Open | "in-progress" -> In_Progress | "done" -> Done
+  | s -> CE.invalid_argf "Invalid status \"%s\"" s
+
+let status_of_string s =
+  try Ok (status_from_string s)
+  with Invalid_argument msg -> Error msg
+
+let id      { id;      _ } = id
+let niceid  { niceid;  _ } = niceid
+let title   { title;   _ } = title
+let content { content; _ } = content
+let status  { status;  _ } = status
 
 let with_status  t status  = { t with status }
 let with_title   t title   = { t with title }

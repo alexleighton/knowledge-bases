@@ -9,8 +9,6 @@ type t = {
 
 type error = Sync_failed of string
 
-let init root ~jsonl_path = { root; jsonl_path }
-
 let _map_config_error = function
   | Config.Backend_failure msg -> Sync_failed msg
   | Config.Not_found key -> Sync_failed ("config key not found: " ^ key)
@@ -18,30 +16,6 @@ let _map_config_error = function
 let _map_jsonl_error = function
   | Jsonl.Io_error msg -> Sync_failed ("JSONL I/O error: " ^ msg)
   | Jsonl.Parse_error msg -> Sync_failed ("JSONL parse error: " ^ msg)
-
-let _config t = Root.config t.root
-
-let _get_config t key =
-  match Config.get (_config t) key with
-  | Ok v -> Ok (Some v)
-  | Error (Config.Not_found _) -> Ok None
-  | Error (Config.Backend_failure msg) -> Error (Sync_failed msg)
-
-let _set_config t key value =
-  Config.set (_config t) key value
-  |> Result.map_error _map_config_error
-
-let mark_dirty t = _set_config t "dirty" "true"
-
-let _is_dirty t =
-  match _get_config t "dirty" with
-  | Ok (Some "true") -> Ok true
-  | Ok _ -> Ok false
-  | Error _ as e -> e
-
-let _get_namespace t =
-  Config.get (_config t) "namespace"
-  |> Result.map_error _map_config_error
 
 let _map_todo_error = function
   | Repository.Todo.Backend_failure msg -> Sync_failed msg
@@ -59,6 +33,32 @@ let _map_relation_error = function
 
 let _map_niceid_error = function
   | Repository.Niceid.Backend_failure msg -> Sync_failed msg
+
+let init root ~jsonl_path = { root; jsonl_path }
+
+let _config t = Root.config t.root
+
+let _get_config t key =
+  match Config.get (_config t) key with
+  | Ok v -> Ok (Some v)
+  | Error (Config.Not_found _) -> Ok None
+  | Error (Config.Backend_failure msg) -> Error (Sync_failed msg)
+
+let _set_config t key value =
+  Config.set (_config t) key value
+  |> Result.map_error _map_config_error
+
+let _is_dirty t =
+  match _get_config t "dirty" with
+  | Ok (Some "true") -> Ok true
+  | Ok _ -> Ok false
+  | Error _ as e -> e
+
+let _get_namespace t =
+  Config.get (_config t) "namespace"
+  |> Result.map_error _map_config_error
+
+let mark_dirty t = _set_config t "dirty" "true"
 
 let _hash_file path =
   try Ok (Digest.file path |> Digest.to_hex)

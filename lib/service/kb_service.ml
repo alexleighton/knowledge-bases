@@ -73,18 +73,6 @@ type add_with_relations_result = {
   relations   : relation_entry list;
 }
 
-let build_specs = Relation.build_specs
-
-let init root = {
-  notes    = Note.init root;
-  todos    = Todo.init root;
-  query    = Query.init root;
-  mutation = Mutation.init root;
-  relation_svc = Relation.init root;
-  sync     = None;
-  db       = Repository.Root.db root;
-}
-
 let map_lifecycle_error = function
   | Lifecycle.Repository_error msg -> Repository_error msg
   | Lifecycle.Validation_error msg -> Validation_error msg
@@ -110,6 +98,25 @@ let _with_flush t f =
     | Some sync -> Sync_service.flush sync |> Result.map_error map_sync_error
   in
   Ok result
+
+let relation_entry_of_relate_result (r : Relation.relate_result) : relation_entry = {
+  kind        = Data.Relation.kind r.relation;
+  niceid      = r.target_niceid;
+  entity_type = r.target_type;
+  title       = r.target_title;
+}
+
+let build_specs = Relation.build_specs
+
+let init root = {
+  notes    = Note.init root;
+  todos    = Todo.init root;
+  query    = Query.init root;
+  mutation = Mutation.init root;
+  relation_svc = Relation.init root;
+  sync     = None;
+  db       = Repository.Root.db root;
+}
 
 let open_kb () =
   let open Result.Syntax in
@@ -139,13 +146,6 @@ let add_todo t ~title ~content ?status () =
   _with_flush t (fun () ->
     Todo.add t.todos ~title ~content ?status ()
     |> Result.map_error map_todo_error)
-
-let relation_entry_of_relate_result (r : Relation.relate_result) : relation_entry = {
-  kind        = Data.Relation.kind r.relation;
-  niceid      = r.target_niceid;
-  entity_type = r.target_type;
-  title       = r.target_title;
-}
 
 let add_note_with_relations t ~title ~content ~specs =
   _with_flush t (fun () ->
