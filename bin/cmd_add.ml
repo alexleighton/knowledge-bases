@@ -12,36 +12,6 @@ module Identifier = Kbases.Data.Identifier
 module Typeid = Kbases.Data.Uuid.Typeid
 module Io = Kbases.Control.Io
 
-let add_doc = "Commands that create resources in the knowledge base."
-
-let add_man = [
-  `S "EXAMPLES";
-  `P "Create a note from stdin:";
-  `P "  echo \"Meeting notes\" | bs add note \"Standup\"";
-  `P "Create a todo from stdin:";
-  `P "  echo \"Investigate flaky test\" | bs add todo \"Fix CI\"";
-]
-
-let add_info = Cmd.info "add" ~doc:add_doc ~man:add_man
-
-let note_doc = "Create a new note in the knowledge base."
-
-let note_man = [
-  `S "EXAMPLES";
-  `P "echo \"Body text\" | bs add note \"Title\"";
-]
-
-let note_info = Cmd.info "note" ~doc:note_doc ~man:note_man
-
-let todo_doc = "Create a new todo in the knowledge base."
-
-let todo_man = [
-  `S "EXAMPLES";
-  `P "echo \"Content\" | bs add todo \"Title\"";
-]
-
-let todo_info = Cmd.info "todo" ~doc:todo_doc ~man:todo_man
-
 let run_note title depends_on related_to uni bi json =
   let specs = Service.build_specs ~depends_on ~related_to ~uni ~bi in
   let ctx = App_context.init () in
@@ -126,13 +96,45 @@ let run_todo title depends_on related_to uni bi json =
             end
         | Error err -> Common.exit_with (Common.service_error_msg err)))
 
+(* --- CLI definitions --- *)
+
 let title_arg =
   let doc = "Title of the resource to create." in
   Arg.(required & pos 0 (some string) None & info [] ~docv:"TITLE" ~doc)
 
+let add_doc = "Commands that create resources in the knowledge base."
+
+let add_man = [
+  `S "EXAMPLES";
+  `P "Create a note from stdin:";
+  `P "  echo \"Meeting notes\" | bs add note \"Standup\"";
+  `P "Create a todo from stdin:";
+  `P "  echo \"Investigate flaky test\" | bs add todo \"Fix CI\"";
+]
+
+let add_info = Cmd.info "add" ~doc:add_doc ~man:add_man
+
+let note_doc = "Create a new note in the knowledge base."
+
+let note_man = [
+  `S "EXAMPLES";
+  `P "echo \"Body text\" | bs add note \"Title\"";
+]
+
+let note_info = Cmd.info "note" ~doc:note_doc ~man:note_man
+
 let note_cmd =
   let term = Term.(const run_note $ title_arg $ Common.depends_on_opt $ Common.related_to_opt $ Common.uni_opt $ Common.bi_opt $ Common.json_flag) in
   Cmd.v note_info term
+
+let todo_doc = "Create a new todo in the knowledge base."
+
+let todo_man = [
+  `S "EXAMPLES";
+  `P "echo \"Content\" | bs add todo \"Title\"";
+]
+
+let todo_info = Cmd.info "todo" ~doc:todo_doc ~man:todo_man
 
 let todo_cmd =
   let term = Term.(const run_todo $ title_arg $ Common.depends_on_opt $ Common.related_to_opt $ Common.uni_opt $ Common.bi_opt $ Common.json_flag) in
