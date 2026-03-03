@@ -1,5 +1,6 @@
 module Cmd = Cmdliner.Cmd
 module Term = Cmdliner.Term
+module Arg = Cmdliner.Arg
 
 module Common = Cmdline_common
 module Service = Kbases.Service.Kb_service
@@ -41,58 +42,100 @@ let todo_man = [
 
 let todo_info = Cmd.info "todo" ~doc:todo_doc ~man:todo_man
 
-let run_note title json =
+let run_note title depends_on related_to uni bi json =
+  let specs = Service.build_specs ~depends_on ~related_to ~uni ~bi in
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
     let content = Io.read_all_stdin () in
     let title   = try Title.make   title   with Invalid_argument msg -> Common.exit_with msg in
     let content = try Content.make content with Invalid_argument msg -> Common.exit_with msg in
-    match Service.add_note (App_context.service ctx) ~title ~content with
-    | Ok note ->
-        let niceid = Identifier.to_string (Note.niceid note) in
-        let typeid = Typeid.to_string (Note.id note) in
-        if json then
-          Common.print_json (`Assoc [
-            "ok", `Bool true;
-            "type", `String "note";
-            "niceid", `String niceid;
-            "typeid", `String typeid;
-          ])
-        else
-          Printf.printf "Created note: %s (%s)\n" niceid typeid
-    | Error err -> Common.exit_with (Common.service_error_msg err))
+    match specs with
+    | [] ->
+        (match Service.add_note (App_context.service ctx) ~title ~content with
+        | Ok note ->
+            let niceid = Identifier.to_string (Note.niceid note) in
+            let typeid = Typeid.to_string (Note.id note) in
+            if json then
+              Common.print_json (`Assoc [
+                "ok", `Bool true;
+                "type", `String "note";
+                "niceid", `String niceid;
+                "typeid", `String typeid;
+              ])
+            else
+              Printf.printf "Created note: %s (%s)\n" niceid typeid
+        | Error err -> Common.exit_with (Common.service_error_msg err))
+    | specs ->
+        (match Service.add_note_with_relations (App_context.service ctx) ~title ~content ~specs with
+        | Ok r ->
+            let niceid = Identifier.to_string r.Service.niceid in
+            let typeid = Typeid.to_string r.Service.typeid in
+            if json then
+              Common.print_json (`Assoc [
+                "ok", `Bool true;
+                "type", `String "note";
+                "niceid", `String niceid;
+                "typeid", `String typeid;
+                "relations", `List (List.map Cmd_show.relation_entry_to_json r.Service.relations);
+              ])
+            else begin
+              Printf.printf "Created note: %s (%s)\n" niceid typeid;
+              List.iter Cmd_show.format_relation_entry r.Service.relations
+            end
+        | Error err -> Common.exit_with (Common.service_error_msg err)))
 
-let run_todo title json =
+let run_todo title depends_on related_to uni bi json =
+  let specs = Service.build_specs ~depends_on ~related_to ~uni ~bi in
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
     let content = Io.read_all_stdin () in
     let title = try Title.make title with Invalid_argument msg -> Common.exit_with msg in
     let content = try Content.make content with Invalid_argument msg -> Common.exit_with msg in
-    match Service.add_todo (App_context.service ctx) ~title ~content () with
-    | Ok todo ->
-        let niceid = Identifier.to_string (Todo.niceid todo) in
-        let typeid = Typeid.to_string (Todo.id todo) in
-        if json then
-          Common.print_json (`Assoc [
-            "ok", `Bool true;
-            "type", `String "todo";
-            "niceid", `String niceid;
-            "typeid", `String typeid;
-          ])
-        else
-          Printf.printf "Created todo: %s (%s)\n" niceid typeid
-    | Error err -> Common.exit_with (Common.service_error_msg err))
+    match specs with
+    | [] ->
+        (match Service.add_todo (App_context.service ctx) ~title ~content () with
+        | Ok todo ->
+            let niceid = Identifier.to_string (Todo.niceid todo) in
+            let typeid = Typeid.to_string (Todo.id todo) in
+            if json then
+              Common.print_json (`Assoc [
+                "ok", `Bool true;
+                "type", `String "todo";
+                "niceid", `String niceid;
+                "typeid", `String typeid;
+              ])
+            else
+              Printf.printf "Created todo: %s (%s)\n" niceid typeid
+        | Error err -> Common.exit_with (Common.service_error_msg err))
+    | specs ->
+        (match Service.add_todo_with_relations (App_context.service ctx) ~title ~content ~specs () with
+        | Ok r ->
+            let niceid = Identifier.to_string r.Service.niceid in
+            let typeid = Typeid.to_string r.Service.typeid in
+            if json then
+              Common.print_json (`Assoc [
+                "ok", `Bool true;
+                "type", `String "todo";
+                "niceid", `String niceid;
+                "typeid", `String typeid;
+                "relations", `List (List.map Cmd_show.relation_entry_to_json r.Service.relations);
+              ])
+            else begin
+              Printf.printf "Created todo: %s (%s)\n" niceid typeid;
+              List.iter Cmd_show.format_relation_entry r.Service.relations
+            end
+        | Error err -> Common.exit_with (Common.service_error_msg err)))
 
 let title_arg =
   let doc = "Title of the resource to create." in
-  Cmdliner.Arg.(required & pos 0 (some string) None & info [] ~docv:"TITLE" ~doc)
+  Arg.(required & pos 0 (some string) None & info [] ~docv:"TITLE" ~doc)
 
 let note_cmd =
-  let term = Term.(const run_note $ title_arg $ Common.json_flag) in
+  let term = Term.(const run_note $ title_arg $ Common.depends_on_opt $ Common.related_to_opt $ Common.uni_opt $ Common.bi_opt $ Common.json_flag) in
   Cmd.v note_info term
 
 let todo_cmd =
-  let term = Term.(const run_todo $ title_arg $ Common.json_flag) in
+  let term = Term.(const run_todo $ title_arg $ Common.depends_on_opt $ Common.related_to_opt $ Common.uni_opt $ Common.bi_opt $ Common.json_flag) in
   Cmd.v todo_info term
 
 let cmd = Cmd.group add_info [note_cmd; todo_cmd]

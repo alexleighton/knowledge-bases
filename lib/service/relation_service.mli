@@ -6,16 +6,39 @@
 (** Abstract service handle. *)
 type t
 
+(** Specification for a single relation to create in a bulk operation. *)
+type relate_spec = {
+  target        : string;
+  kind          : string;
+  bidirectional : bool;
+}
+
 (** Result of a successful relate operation. *)
 type relate_result = {
   relation      : Data.Relation.t;
   source_niceid : Data.Identifier.t;
   target_niceid : Data.Identifier.t;
+  target_type   : string;
+  target_title  : Data.Title.t;
 }
 
 (** [init root] initializes the relation service from a shared
     {!Repository.Root.t} handle. *)
 val init : Repository.Root.t -> t
+
+(** [build_specs ~depends_on ~related_to ~uni ~bi] constructs a
+    {!relate_spec} list from the four relation categories.
+
+    - [depends_on]: target identifiers for unidirectional ["depends-on"] relations.
+    - [related_to]: target identifiers for bidirectional ["related-to"] relations.
+    - [uni]: [(kind, target)] pairs for user-defined unidirectional relations.
+    - [bi]: [(kind, target)] pairs for user-defined bidirectional relations. *)
+val build_specs :
+  depends_on:string list ->
+  related_to:string list ->
+  uni:(string * string) list ->
+  bi:(string * string) list ->
+  relate_spec list
 
 (** [relate t ~source ~target ~kind ~bidirectional] creates a relation
     between the items identified by [source] and [target].
@@ -35,3 +58,17 @@ val relate :
   kind:string ->
   bidirectional:bool ->
   (relate_result, Item_service.error) result
+
+(** [relate_many t ~source ~specs] validates all specs (resolves targets,
+    parses kinds) before inserting any relation. Fails fast on the first
+    validation error with no side effects. Caller is responsible for
+    transaction scope.
+
+    @return [Ok results] on success (one entry per spec, in order).
+    @return [Validation_error] if any target is not found or any kind is invalid.
+    @return [Repository_error] on storage failure. *)
+val relate_many :
+  t ->
+  source:string ->
+  specs:relate_spec list ->
+  (relate_result list, Item_service.error) result

@@ -100,3 +100,69 @@ let%expect_test "bs add todo --json" =
     niceid: kb-0
     has typeid: true
   |}]
+
+let%expect_test "bs add todo with --related-to" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "First"]);
+    let result = Helper.run_bs ~dir ~stdin:"Body"
+      ["add"; "todo"; "Task"; "--related-to"; "kb-0"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 0]
+    Created todo: kb-1 (<TYPEID>)
+      related-to  kb-0  todo  First
+  |}]
+
+let%expect_test "bs add todo with --depends-on invalid target" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "First"]);
+    let result = Helper.run_bs ~dir ~stdin:"Body"
+      ["add"; "todo"; "Task"; "--depends-on"; "kb-99"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 1]
+    STDERR: Error: item not found: kb-99
+  |}]
+
+let%expect_test "bs add todo with multiple relation flags" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "First"]);
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "Second"]);
+    let result = Helper.run_bs ~dir ~stdin:"Body"
+      ["add"; "todo"; "Task"; "--related-to"; "kb-0"; "--depends-on"; "kb-1"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 0]
+    Created todo: kb-2 (<TYPEID>)
+      depends-on  kb-1  todo  Second
+      related-to  kb-0  todo  First
+  |}]
+
+let%expect_test "bs add todo with --related-to --json" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "First"]);
+    let result = Helper.run_bs ~dir ~stdin:"Body"
+      ["add"; "todo"; "Task"; "--related-to"; "kb-0"; "--json"] in
+    Printf.printf "[exit %d]\n" result.exit_code;
+    let json = Helper.parse_json result.stdout in
+    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
+    Printf.printf "type: %s\n" (Helper.get_string json "type");
+    Printf.printf "niceid: %s\n" (Helper.get_string json "niceid");
+    let relations = Helper.get_list json "relations" in
+    Printf.printf "relations count: %d\n" (List.length relations);
+    let r = List.nth relations 0 in
+    Printf.printf "rel kind: %s\n" (Helper.get_string r "kind");
+    Printf.printf "rel niceid: %s\n" (Helper.get_string r "niceid"));
+  [%expect {|
+    [exit 0]
+    ok: true
+    type: todo
+    niceid: kb-1
+    relations count: 1
+    rel kind: related-to
+    rel niceid: kb-0
+  |}]

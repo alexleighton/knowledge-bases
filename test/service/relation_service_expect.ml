@@ -185,3 +185,103 @@ let%expect_test "bidirectional reverse duplicate" =
     | Ok _ -> print_endline "unexpected success"
     | Error err -> pp_error err);
   [%expect {| validation error: relation already exists |}]
+
+(* -- relate_many tests -- *)
+
+let%expect_test "relate_many with two depends-on specs creates both relations" =
+  with_relation_service (fun root service ->
+    let t1 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "First") ~content:(Content.make "Body") ()) in
+    let t2 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Second") ~content:(Content.make "Body") ()) in
+    let t3 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Third") ~content:(Content.make "Body") ()) in
+    let src = Identifier.to_string (Todo.niceid t1) in
+    let specs = [
+      RelationService.{ target = Identifier.to_string (Todo.niceid t2);
+                        kind = "depends-on"; bidirectional = false };
+      RelationService.{ target = Identifier.to_string (Todo.niceid t3);
+                        kind = "depends-on"; bidirectional = false };
+    ] in
+    (match RelationService.relate_many service ~source:src ~specs with
+     | Ok rs ->
+         List.iter (fun (r : RelationService.relate_result) ->
+           Printf.printf "related: %s %s %s (type=%s title=%s)\n"
+             (Identifier.to_string r.source_niceid)
+             (Relation_kind.to_string (Relation.kind r.relation))
+             (Identifier.to_string r.target_niceid)
+             r.target_type
+             (Title.to_string r.target_title))
+           rs
+     | Error err -> pp_error err);
+    query_relations root);
+  [%expect {|
+    related: kb-0 depends-on kb-1 (type=todo title=Second)
+    related: kb-0 depends-on kb-2 (type=todo title=Third)
+    kb-0|depends-on|kb-1|0
+    kb-0|depends-on|kb-2|0
+  |}]
+
+let%expect_test "relate_many with mixed kinds succeeds" =
+  with_relation_service (fun root service ->
+    let t1 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Source") ~content:(Content.make "Body") ()) in
+    let t2 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Dep") ~content:(Content.make "Body") ()) in
+    let t3 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Related") ~content:(Content.make "Body") ()) in
+    let src = Identifier.to_string (Todo.niceid t1) in
+    let specs = [
+      RelationService.{ target = Identifier.to_string (Todo.niceid t2);
+                        kind = "depends-on"; bidirectional = false };
+      RelationService.{ target = Identifier.to_string (Todo.niceid t3);
+                        kind = "related-to"; bidirectional = true };
+    ] in
+    (match RelationService.relate_many service ~source:src ~specs with
+     | Ok rs -> Printf.printf "created %d relations\n" (List.length rs)
+     | Error err -> pp_error err);
+    query_relations root);
+  [%expect {|
+    created 2 relations
+    kb-0|depends-on|kb-1|0
+    kb-0|related-to|kb-2|1
+  |}]
+
+let%expect_test "relate_many invalid target on second spec fails before any relation created" =
+  with_relation_service (fun root service ->
+    let t1 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Source") ~content:(Content.make "Body") ()) in
+    let t2 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Target") ~content:(Content.make "Body") ()) in
+    let src = Identifier.to_string (Todo.niceid t1) in
+    let specs = [
+      RelationService.{ target = Identifier.to_string (Todo.niceid t2);
+                        kind = "depends-on"; bidirectional = false };
+      RelationService.{ target = "kb-999"; kind = "depends-on"; bidirectional = false };
+    ] in
+    (match RelationService.relate_many service ~source:src ~specs with
+     | Ok _ -> print_endline "unexpected success"
+     | Error err -> pp_error err);
+    query_relations root);
+  [%expect {| validation error: item not found: kb-999 |}]
+
+let%expect_test "relate_many invalid kind fails with no relations created" =
+  with_relation_service (fun root service ->
+    let t1 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Source") ~content:(Content.make "Body") ()) in
+    let t2 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "First") ~content:(Content.make "Body") ()) in
+    let t3 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Second") ~content:(Content.make "Body") ()) in
+    let src = Identifier.to_string (Todo.niceid t1) in
+    let specs = [
+      RelationService.{ target = Identifier.to_string (Todo.niceid t2);
+                        kind = "depends-on"; bidirectional = false };
+      RelationService.{ target = Identifier.to_string (Todo.niceid t3);
+                        kind = "BAD KIND"; bidirectional = false };
+    ] in
+    (match RelationService.relate_many service ~source:src ~specs with
+     | Ok _ -> print_endline "unexpected success"
+     | Error err -> pp_error err);
+    query_relations root);
+  [%expect {| validation error: relation kind must match [a-z0-9][a-z0-9-]* and not end with '-' |}]

@@ -46,16 +46,43 @@ type show_result = {
   incoming : relation_entry list;
 }
 
+(** Specification for a single relation in a bulk operation. *)
+type relate_spec = Relation_service.relate_spec = {
+  target        : string;
+  kind          : string;
+  bidirectional : bool;
+}
+
 (** Result of a successful relate operation. *)
-type relate_result = {
+type relate_result = Relation_service.relate_result = {
   relation      : Data.Relation.t;
   source_niceid : Data.Identifier.t;
   target_niceid : Data.Identifier.t;
+  target_type   : string;
+  target_title  : Data.Title.t;
+}
+
+(** Result of an [add_*_with_relations] operation. *)
+type add_with_relations_result = {
+  niceid      : Data.Identifier.t;
+  typeid      : Data.Uuid.Typeid.t;
+  entity_type : string;
+  relations   : relation_entry list;
 }
 
 (** [init root] initializes the service from a shared {!Repository.Root.t}
     handle. The service does not own the root — callers manage its lifecycle. *)
 val init : Repository.Root.t -> t
+
+(** [build_specs ~depends_on ~related_to ~uni ~bi] constructs a
+    {!relate_spec} list from the four relation categories. See
+    {!Relation_service.build_specs}. *)
+val build_specs :
+  depends_on:string list ->
+  related_to:string list ->
+  uni:(string * string) list ->
+  bi:(string * string) list ->
+  relate_spec list
 
 (** [open_kb ()] finds the git root from the current directory, opens the
     knowledge base at [.kbases.db], and returns the root and service handle.
@@ -83,6 +110,28 @@ val add_todo :
   ?status:Data.Todo.status ->
   unit ->
   (Data.Todo.t, error) result
+
+(** [add_note_with_relations t ~title ~content ~specs] creates a note and all
+    specified relations atomically. Fails with no side effects if any spec is
+    invalid. *)
+val add_note_with_relations :
+  t ->
+  title:Data.Title.t ->
+  content:Data.Content.t ->
+  specs:relate_spec list ->
+  (add_with_relations_result, error) result
+
+(** [add_todo_with_relations t ~title ~content ~specs ?status ()] creates a
+    todo and all specified relations atomically. Fails with no side effects if
+    any spec is invalid. *)
+val add_todo_with_relations :
+  t ->
+  title:Data.Title.t ->
+  content:Data.Content.t ->
+  specs:relate_spec list ->
+  ?status:Data.Todo.status ->
+  unit ->
+  (add_with_relations_result, error) result
 
 (** [list t ~entity_type ~statuses] returns todos and/or notes filtered by type and status.
 
@@ -122,19 +171,17 @@ val resolve : t -> identifier:string -> (Data.Todo.t, error) result
 (** [archive t ~identifier] sets a note's status to [Archived]. *)
 val archive : t -> identifier:string -> (Data.Note.t, error) result
 
-(** [relate t ~source ~target ~kind ~bidirectional] creates a relation
-    between the items identified by [source] and [target].
+(** [relate t ~source ~specs] creates one or more relations from [source]
+    atomically. All specs are validated before any relation is inserted.
 
-    @return [Ok relate_result] on success.
-    @return [Validation_error] if either item is not found, the kind is
-            invalid, or the relation already exists. *)
+    @return [Ok relate_result list] on success.
+    @return [Validation_error] if any item is not found, any kind is
+            invalid, or any relation already exists. *)
 val relate :
   t ->
   source:string ->
-  target:string ->
-  kind:string ->
-  bidirectional:bool ->
-  (relate_result, error) result
+  specs:relate_spec list ->
+  (relate_result list, error) result
 
 (** [flush t] forces a flush of all SQLite data to the JSONL file.
     Returns an error if sync is not enabled. *)

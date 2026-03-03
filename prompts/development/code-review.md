@@ -92,16 +92,41 @@ Avoid these failure modes:
 
 The user will respond to each suggestion. When they do:
 
-* **Accepted** — implement the change. Run the tests. Confirm green.
+* **Accepted** — will be implemented after recording.
 * **Accepted with redirection** — the user agrees with the goal but
   corrects the approach. Follow their direction, not your original
   proposal.
 * **Rejected** — drop it. Do not re-argue.
 
-Make all accepted changes in one pass where possible. Run the full
-test suite after all changes, not after each individual edit.
+Once all suggestions have been discussed, record the outcomes (step 6),
+then implement all accepted changes in one pass. Run the full test
+suite after all changes, not after each individual edit.
 
-### 6. Adapt existing code, don't just add
+### 6. Record accepted work
+
+Before implementing, capture the review outcomes in the knowledge
+base so the work is tracked.
+
+1. **Create a note** summarising the review — what was reviewed, key
+   context, and which suggestions were accepted, redirected, or
+   rejected.
+
+   ```
+   echo "<summary of review context and decisions>" | bs add note "Code review: <short description>"
+   ```
+
+2. **Create a todo for each accepted suggestion**, attached to the
+   note. Use `--depends-on` to link each todo back to the note.
+
+   ```
+   echo "<what to change and why>" | bs add todo "<suggestion title>" --depends-on <note-id>
+   ```
+
+   Do this for every accepted or redirected suggestion. Rejected
+   suggestions are already captured in the note — they do not get
+   todos.
+
+### 7. Adapt existing code, don't just add
 
 When a suggestion involves using an existing helper or convention,
 adapt the helper if it doesn't quite fit rather than working around

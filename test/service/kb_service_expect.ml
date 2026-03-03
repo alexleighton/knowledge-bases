@@ -6,6 +6,7 @@ module Todo = Kbases.Data.Todo
 module Title = Kbases.Data.Title
 module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
+module Relation_kind = Kbases.Data.Relation_kind
 
 let create_git_root = Test_helpers.create_git_root
 let with_chdir = Test_helpers.with_chdir
@@ -79,4 +80,97 @@ let%expect_test "resolve via Kb_service" =
   [%expect {|
     Resolved: kb-0 status=done
     kb-0|done
+  |}]
+
+(* -- add_*_with_relations tests -- *)
+
+let pp_add_result { Service.niceid; entity_type; relations; typeid = _ } =
+  Printf.printf "niceid=%s entity_type=%s relations=%d\n"
+    (Identifier.to_string niceid)
+    entity_type
+    (List.length relations);
+  List.iter (fun (re : Service.relation_entry) ->
+    Printf.printf "  rel: %s %s (%s)\n"
+      (Relation_kind.to_string re.kind)
+      (Identifier.to_string re.niceid)
+      re.entity_type)
+    relations
+
+let%expect_test "add_note_with_relations creates note and relation" =
+  with_service (fun root service ->
+    let todo = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Target") ~content:(Content.make "Body") ()) in
+    let specs = [Service.{
+      target = Identifier.to_string (Todo.niceid todo);
+      kind = "depends-on"; bidirectional = false }] in
+    (match Service.add_note_with_relations service
+             ~title:(Title.make "My Note") ~content:(Content.make "Body")
+             ~specs with
+     | Ok r -> pp_add_result r
+     | Error err -> pp_error err);
+    query_count root "note";
+    query_count root "relation");
+  [%expect {|
+    niceid=kb-1 entity_type=note relations=1
+      rel: depends-on kb-0 (todo)
+    note=1
+    relation=1
+  |}]
+
+let%expect_test "add_todo_with_relations creates todo and relation" =
+  with_service (fun root service ->
+    let todo = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Target") ~content:(Content.make "Body") ()) in
+    let specs = [Service.{
+      target = Identifier.to_string (Todo.niceid todo);
+      kind = "related-to"; bidirectional = true }] in
+    (match Service.add_todo_with_relations service
+             ~title:(Title.make "My Todo") ~content:(Content.make "Body")
+             ~specs () with
+     | Ok r -> pp_add_result r
+     | Error err -> pp_error err);
+    query_count root "todo";
+    query_count root "relation");
+  [%expect {|
+    niceid=kb-1 entity_type=todo relations=1
+      rel: related-to kb-0 (todo)
+    todo=2
+    relation=1
+  |}]
+
+let%expect_test "add_note_with_relations with invalid target rolls back note" =
+  with_service (fun root service ->
+    let specs = [Service.{
+      target = "kb-999"; kind = "depends-on"; bidirectional = false }] in
+    (match Service.add_note_with_relations service
+             ~title:(Title.make "My Note") ~content:(Content.make "Body")
+             ~specs with
+     | Ok _ -> print_endline "unexpected success"
+     | Error err -> pp_error err);
+    query_count root "note");
+  [%expect {|
+    validation error: item not found: kb-999
+    note=0
+  |}]
+
+let%expect_test "add_note_with_relations with invalid second spec rolls back both" =
+  with_service (fun root service ->
+    let todo = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Valid Target") ~content:(Content.make "Body") ()) in
+    let specs = [
+      Service.{ target = Identifier.to_string (Todo.niceid todo);
+                kind = "depends-on"; bidirectional = false };
+      Service.{ target = "kb-999"; kind = "depends-on"; bidirectional = false };
+    ] in
+    (match Service.add_note_with_relations service
+             ~title:(Title.make "My Note") ~content:(Content.make "Body")
+             ~specs with
+     | Ok _ -> print_endline "unexpected success"
+     | Error err -> pp_error err);
+    query_count root "note";
+    query_count root "relation");
+  [%expect {|
+    validation error: item not found: kb-999
+    note=0
+    relation=0
   |}]

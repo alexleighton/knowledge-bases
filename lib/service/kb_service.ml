@@ -11,6 +11,7 @@ type t = {
   mutation     : Mutation.t;
   relation_svc : Relation.t;
   sync         : Sync_service.t option;
+  db           : Sqlite3.db;
 }
 
 type error = Item_service.error =
@@ -51,11 +52,28 @@ type show_result = Query.show_result = {
   incoming : relation_entry list;
 }
 
+type relate_spec = Relation.relate_spec = {
+  target        : string;
+  kind          : string;
+  bidirectional : bool;
+}
+
 type relate_result = Relation.relate_result = {
   relation      : Data.Relation.t;
   source_niceid : Data.Identifier.t;
   target_niceid : Data.Identifier.t;
+  target_type   : string;
+  target_title  : Data.Title.t;
 }
+
+type add_with_relations_result = {
+  niceid      : Data.Identifier.t;
+  typeid      : Data.Uuid.Typeid.t;
+  entity_type : string;
+  relations   : relation_entry list;
+}
+
+let build_specs = Relation.build_specs
 
 let init root = {
   notes    = Note.init root;
@@ -64,6 +82,7 @@ let init root = {
   mutation = Mutation.init root;
   relation_svc = Relation.init root;
   sync     = None;
+  db       = Repository.Root.db root;
 }
 
 let map_lifecycle_error = function
@@ -121,6 +140,45 @@ let add_todo t ~title ~content ?status () =
     Todo.add t.todos ~title ~content ?status ()
     |> Result.map_error map_todo_error)
 
+let relation_entry_of_relate_result (r : Relation.relate_result) : relation_entry = {
+  kind        = Data.Relation.kind r.relation;
+  niceid      = r.target_niceid;
+  entity_type = r.target_type;
+  title       = r.target_title;
+}
+
+let add_note_with_relations t ~title ~content ~specs =
+  _with_flush t (fun () ->
+    Repository.Sqlite.with_transaction t.db
+      ~on_begin_error:(fun msg -> Repository_error msg)
+      (fun () ->
+        let open Result.Syntax in
+        let* note = Note.add t.notes ~title ~content
+                    |> Result.map_error map_note_error in
+        let source = Data.Identifier.to_string (Data.Note.niceid note) in
+        let* results = Relation.relate_many t.relation_svc ~source ~specs in
+        let relations = List.map relation_entry_of_relate_result results in
+        Ok { niceid = Data.Note.niceid note;
+             typeid = Data.Note.id note;
+             entity_type = "note";
+             relations }))
+
+let add_todo_with_relations t ~title ~content ~specs ?status () =
+  _with_flush t (fun () ->
+    Repository.Sqlite.with_transaction t.db
+      ~on_begin_error:(fun msg -> Repository_error msg)
+      (fun () ->
+        let open Result.Syntax in
+        let* todo = Todo.add t.todos ~title ~content ?status ()
+                    |> Result.map_error map_todo_error in
+        let source = Data.Identifier.to_string (Data.Todo.niceid todo) in
+        let* results = Relation.relate_many t.relation_svc ~source ~specs in
+        let relations = List.map relation_entry_of_relate_result results in
+        Ok { niceid = Data.Todo.niceid todo;
+             typeid = Data.Todo.id todo;
+             entity_type = "todo";
+             relations }))
+
 let list t ~entity_type ~statuses =
   Query.list t.query ~entity_type ~statuses
 
@@ -139,9 +197,12 @@ let archive t ~identifier =
   _with_flush t (fun () ->
     Mutation.archive t.mutation ~identifier)
 
-let relate t ~source ~target ~kind ~bidirectional =
+let relate t ~source ~specs =
   _with_flush t (fun () ->
-    Relation.relate t.relation_svc ~source ~target ~kind ~bidirectional)
+    Repository.Sqlite.with_transaction t.db
+      ~on_begin_error:(fun msg -> Repository_error msg)
+      (fun () ->
+        Relation.relate_many t.relation_svc ~source ~specs))
 
 let flush t =
   let open Result.Syntax in

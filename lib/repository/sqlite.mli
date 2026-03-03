@@ -30,6 +30,17 @@ val with_transaction :
   (unit -> ('a, 'e) result) ->
   ('a, 'e) result
 
+(** [with_savepoint db ~name ~on_begin_error f] creates a named savepoint,
+    runs [f], releases on [Ok], rolls back to the savepoint on [Error], and
+    returns the result of [f]. Unlike [with_transaction], this can be called
+    safely inside an existing transaction. *)
+val with_savepoint :
+  Sqlite3.db ->
+  name:string ->
+  on_begin_error:(string -> 'e) ->
+  (unit -> ('a, 'e) result) ->
+  ('a, 'e) result
+
 (** [with_stmt db sql params row_fn] prepares [sql] on [db], binds [params],
     steps through all rows, applies [row_fn] to build a list, and always
     finalizes the statement. Returns [Error] on bind, step, or row parse failures. *)

@@ -40,7 +40,7 @@ let map_no_row_to_zero = function
 let allocate { db; namespace } typeid =
   let open Result.Syntax in
   let typeid_str = Data.Uuid.Typeid.to_string typeid in
-  Sqlite.with_transaction db ~on_begin_error:(fun msg -> Backend_failure msg)
+  Sqlite.with_savepoint db ~name:"alloc_niceid" ~on_begin_error:(fun msg -> Backend_failure msg)
     (fun () ->
        let* next_id =
          Sqlite.with_stmt_single db

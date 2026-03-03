@@ -44,6 +44,23 @@ let with_transaction db ~on_begin_error f =
          ignore (rollback db);
          raise exn)
 
+let with_savepoint db ~name ~on_begin_error f =
+  match exec db ("SAVEPOINT " ^ name) with
+  | Error msg -> Error (on_begin_error msg)
+  | Ok () ->
+      (try
+         let result = f () in
+         (match result with
+          | Ok _ -> ignore (exec db ("RELEASE " ^ name))
+          | Error _ ->
+              ignore (exec db ("ROLLBACK TO SAVEPOINT " ^ name));
+              ignore (exec db ("RELEASE " ^ name)));
+         result
+       with exn ->
+         ignore (exec db ("ROLLBACK TO SAVEPOINT " ^ name));
+         ignore (exec db ("RELEASE " ^ name));
+         raise exn)
+
 let _finalize stmt =
   match Sql.finalize stmt with
   | Sql.Rc.OK -> ()
