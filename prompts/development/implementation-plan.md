@@ -1,7 +1,6 @@
 # Implementation Plan
 
-Produce a written plan for a code change. The plan is a markdown file
-at the top level of the project (e.g., `do-the-thing.md`). It is a
+Produce a plan for a code change, stored in `bs`. The plan is a
 thinking tool — a place to lay out the shape of a change before
 writing code.
 
@@ -9,10 +8,9 @@ writing code.
 
 The user will give you:
 
-1. **A filename** for the plan.
-2. **The change** they want to make, described in domain terms. They
+1. **The change** they want to make, described in domain terms. They
    will typically point at the files where the change starts.
-3. **The motivation** — why the change matters.
+2. **The motivation** — why the change matters.
 
 ## Process
 
@@ -29,9 +27,10 @@ The goal is to produce an accurate **impact analysis** — the set of
 files that will need to change — so the tasks you write later are
 grounded in reality, not guesswork.
 
-### 2. Write the plan
+### 2. Create the plan note
 
-The plan document should contain these sections, in order:
+Create a `bs` note whose title is the name of the change (e.g.,
+`"Plan: add X"`). The body should contain these sections, in order:
 
 * **Goal** — one paragraph restating the change and why it matters.
 * **Current state** — a concise sketch of the relevant types,
@@ -47,29 +46,52 @@ The plan document should contain these sections, in order:
   the decision, explain the options considered, and state which one the
   plan takes and why. Do not bury design decisions inside task
   descriptions.
-* **Tasks** — the ordered work items (see below).
-* **Execution order** — a short summary showing the dependency graph
-  across tasks and which tasks form atomic units.
+* **Atomic groups** — any tasks that cannot be split into
+  independently-compilable steps (e.g., changing an interface, its
+  tests, and its implementation). Name each group and explain why those
+  tasks must land together. Tasks not in a group can be delivered
+  independently.
 
-### 3. Structure tasks
+```
+echo "<body>" | bs add note "Plan: add X"
+```
 
-Each task should be **self-contained**: a reader should be able to
-understand what it asks for without reading the other tasks. For every
-task, include:
+### 3. Create task todos
+
+Create one `bs` todo per task. Each todo title should be short and
+imperative (e.g., `"Update Foo.t and callers"`). The body should
+contain:
 
 * **Files** — which files are created or changed.
-* **Depends on** — which tasks must be completed first.
 * **Description** — what to do, concretely. Enumerate the key changes.
 * **TDD note** — how test-driven development applies to this task.
 
 Tasks should be ordered so that each one moves the codebase from one
-valid state to the next where possible. When a group of tasks cannot
-be split into independently-compilable steps (e.g., changing an
-interface, its tests, and its implementation), note that they form a
-single atomic change and explain why they are still separated in the
-plan (for clarity of thought, not for independent delivery).
+valid state to the next where possible.
 
-### 4. Emphasise test-driven development
+```
+echo "<body>" | bs add todo "Task title"
+```
+
+### 4. Relate tasks to the plan and to each other
+
+Link every task todo back to the plan note:
+
+```
+bs relate todo-X --related-to kb-N
+```
+
+Encode the dependency graph using `--depends-on`:
+
+```
+bs relate todo-X --depends-on todo-Y
+```
+
+This relation replaces the "Depends on" field you might otherwise
+write inside a task body. The dependency graph *is* the execution
+order — there is no separate section for it.
+
+### 5. Emphasise test-driven development
 
 Every task must be framed around a red-green cycle:
 
@@ -87,18 +109,24 @@ undifferentiated step. Even when they must be committed together, the
 plan should make the reader think about the test expectations *before*
 thinking about the implementation.
 
-### 5. Expect refinement
+### 6. Expect refinement
 
 The first draft of a plan is a starting point. The user will review it
 and push back on design decisions, task scope, or approach. When they
 do:
 
-* Update the plan document in place — do not start a new file.
+* Update the plan note and task todos in place using `bs update`:
+
+  ```
+  echo "<new body>" | bs update kb-N --content
+  echo "<new body>" | bs update todo-X --content
+  ```
+
 * If a refinement reveals that a task was thinking too small (e.g.,
   extracting helper functions when the real answer is introducing a
   type), expand the task to match the better framing.
 * If a refinement changes a design decision, update the Design
-  Decisions section *and* every task description that referenced the
-  old decision.
+  Decisions section of the plan note *and* every task body that
+  referenced the old decision.
 * If a refinement implies changes to project principles or
   documentation, make those changes too.
