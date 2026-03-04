@@ -1,2 +1,5 @@
 # Dune build directory
 _build/
+
+# opam switch link (created by scripts/setup-switch.sh)
+_opam

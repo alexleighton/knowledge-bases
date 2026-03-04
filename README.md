@@ -16,6 +16,23 @@ MVP Featureset to be built:
 
 # Development
 
+**Prerequisites** (install separately):
+
+* [opam](https://opam.ocaml.org/doc/Install.html) — OCaml package manager
+* [shellcheck](https://www.shellcheck.net/) — shell script linter
+* [uv](https://docs.astral.sh/uv/) — Python script runner (used by `scripts/find-unused.py`)
+
+**Environment Setup:**
+
+```
+$ bash scripts/setup-dev-env.sh
+$ eval $(opam env --switch=knowledge-bases)
+```
+
+This creates a named opam switch with the correct OCaml compiler
+and all dependencies. Run it once after cloning. If dependencies
+change, re-run the setup script to update.
+
 **Build:**
 
 ```
