@@ -168,3 +168,23 @@ let%expect_test "bs update errors on --content and stdin" =
     [exit 1]
     STDERR: Error: Cannot specify both --content and stdin input.
   |}]
+
+let%expect_test "bs update --status does not hang on pipe stdin with no data" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "Title"]);
+    let result = Helper.run_bs_with_pipe_stdin ~dir ~timeout_s:2.0
+      ["update"; "kb-0"; "--status"; "in-progress"] in
+    Helper.print_result ~dir result;
+    let show = Helper.run_bs ~dir ["show"; "kb-0"] in
+    Helper.print_result ~dir show);
+  [%expect {|
+    [exit 0]
+    Updated todo: kb-0
+    [exit 0]
+    todo kb-0 (<TYPEID>)
+    Status: in-progress
+    Title:  Title
+
+    Body
+  |}]

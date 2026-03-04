@@ -109,6 +109,70 @@ let run_bs ~dir ?stdin args =
     stderr = read_and_cleanup stderr_file;
   }
 
+let run_bs_with_pipe_stdin ~dir ?(timeout_s = 2.0) args =
+  let exe = Lazy.force bs_exe in
+  let stdout_file = Filename.temp_file "bs-out-" ".txt" in
+  let stderr_file = Filename.temp_file "bs-err-" ".txt" in
+  let pipe_r, pipe_w = Unix.pipe () in
+  let stdout_fd = Unix.openfile stdout_file
+    [O_WRONLY; O_CREAT; O_TRUNC] 0o644 in
+  let stderr_fd = Unix.openfile stderr_file
+    [O_WRONLY; O_CREAT; O_TRUNC] 0o644 in
+  let env =
+    Unix.environment ()
+    |> Array.to_list
+    |> List.filter (fun s ->
+         not (String.length s >= 5
+              && String.sub s 0 5 = "TERM="))
+    |> (fun l -> l @ ["TERM=dumb"])
+    |> Array.of_list
+  in
+  let pid = Unix.fork () in
+  if pid = 0 then begin
+    Unix.chdir dir;
+    Unix.dup2 pipe_r Unix.stdin;
+    Unix.close pipe_r;
+    Unix.close pipe_w;
+    Unix.dup2 stdout_fd Unix.stdout;
+    Unix.close stdout_fd;
+    Unix.dup2 stderr_fd Unix.stderr;
+    Unix.close stderr_fd;
+    Unix.execve exe (Array.of_list (exe :: args)) env
+  end else begin
+    Unix.close pipe_r;
+    Unix.close stdout_fd;
+    Unix.close stderr_fd;
+    let deadline = Unix.gettimeofday () +. timeout_s in
+    let rec wait () =
+      match Unix.waitpid [WNOHANG] pid with
+      | 0, _ ->
+          if Unix.gettimeofday () >= deadline then begin
+            Unix.kill pid Sys.sigkill;
+            ignore (Unix.waitpid [] pid);
+            Unix.close pipe_w;
+            Sys.remove stdout_file;
+            Sys.remove stderr_file;
+            { exit_code = -1; stdout = ""; stderr = "TIMEOUT" }
+          end else begin
+            Unix.sleepf 0.01;
+            wait ()
+          end
+      | _, Unix.WEXITED code ->
+          Unix.close pipe_w;
+          let read_and_cleanup f =
+            let content = read_file f in Sys.remove f; content in
+          { exit_code = code;
+            stdout = read_and_cleanup stdout_file;
+            stderr = read_and_cleanup stderr_file }
+      | _, (Unix.WSIGNALED _ | Unix.WSTOPPED _) ->
+          Unix.close pipe_w;
+          Sys.remove stdout_file;
+          Sys.remove stderr_file;
+          { exit_code = -1; stdout = ""; stderr = "SIGNALED" }
+    in
+    wait ()
+  end
+
 let normalize_dir ~dir text =
   let real_dir =
     try Unix.realpath dir with

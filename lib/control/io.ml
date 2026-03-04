@@ -24,4 +24,7 @@ let read_all_stdin () =
     assert false
   with End_of_file -> Buffer.contents buf |> String.trim
 
-let stdin_is_piped () = not (Unix.isatty Unix.stdin)
+let stdin_is_piped () =
+  (not (Unix.isatty Unix.stdin))
+  && (match Unix.select [Unix.stdin] [] [] 0.0 with
+      | readable, _, _ -> readable <> [])

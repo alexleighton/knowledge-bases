@@ -196,3 +196,14 @@ let%expect_test "bs add todo errors on --content and stdin" =
     [exit 1]
     STDERR: Error: Cannot specify both --content and stdin input.
   |}]
+
+let%expect_test "bs add todo --content does not hang on pipe stdin with no data" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    let result = Helper.run_bs_with_pipe_stdin ~dir ~timeout_s:2.0
+      ["add"; "todo"; "Title"; "--content"; "From flag"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 0]
+    Created todo: kb-0 (<TYPEID>)
+  |}]

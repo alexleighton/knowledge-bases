@@ -11,6 +11,7 @@ val write_file : path:string -> contents:string -> unit
     contents. *)
 val read_all_stdin : unit -> string
 
-(** [stdin_is_piped ()] returns [true] when stdin is a pipe or redirected from
-    a file, [false] on an interactive terminal. *)
+(** [stdin_is_piped ()] returns [true] when stdin is not a terminal and has
+    data available for reading, [false] on an interactive terminal or when
+    stdin is a pipe with no data ready. *)
 val stdin_is_piped : unit -> bool
