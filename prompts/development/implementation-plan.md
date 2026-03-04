@@ -32,6 +32,9 @@ grounded in reality, not guesswork.
 Create a `bs` note whose title is the name of the change (e.g.,
 `"Plan: add X"`). The body should contain these sections, in order:
 
+* **Required reading** — list every `docs/` file relevant to the
+  change (use `docs/index.md` to find them). The implementer must
+  read these before starting work.
 * **Goal** — one paragraph restating the change and why it matters.
 * **Current state** — a concise sketch of the relevant types,
   signatures, or architecture as they stand today. Code snippets are

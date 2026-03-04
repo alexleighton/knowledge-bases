@@ -28,7 +28,8 @@ let identifier_arg =
 
 let cmd_man = [
   `S "EXAMPLES";
-  `P "bs archive kb-1";
+  `P "Mark a note as archived:";
+  `P "  bs archive kb-1";
 ]
 
 let cmd_info = Cmd.info "archive" ~doc:"Mark a note as archived." ~man:cmd_man

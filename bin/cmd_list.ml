@@ -74,9 +74,12 @@ let status_opt =
 
 let cmd_man = [
   `S "EXAMPLES";
-  `P "bs list";
-  `P "bs list todo --status open";
-  `P "bs list --status open --status active";
+  `P "List all open todos and active notes:";
+  `P "  bs list";
+  `P "Filter by type and status:";
+  `P "  bs list todo --status open";
+  `P "Combine multiple status filters:";
+  `P "  bs list --status open --status active";
 ]
 
 let cmd_info = Cmd.info "list" ~doc:"List todos and notes in the knowledge base." ~man:cmd_man

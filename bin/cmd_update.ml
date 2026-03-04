@@ -9,9 +9,11 @@ module Note = Kbases.Data.Note
 module Title = Kbases.Data.Title
 module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
-module Io = Kbases.Control.Io
 
-let run identifier status title content_flag json =
+let resolve_update_content content_opt =
+  Common.resolve_content_source content_opt
+
+let run identifier status title content_opt json =
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
     let title =
@@ -22,11 +24,11 @@ let run identifier status title content_flag json =
            with Invalid_argument msg -> Common.exit_with msg)
     in
     let content =
-      if content_flag then
-        let raw = Io.read_all_stdin () in
-        (try Some (Content.make raw)
-         with Invalid_argument msg -> Common.exit_with msg)
-      else None
+      match resolve_update_content content_opt with
+      | None -> None
+      | Some raw ->
+          (try Some (Content.make raw)
+           with Invalid_argument msg -> Common.exit_with msg)
     in
     match Service.update (App_context.service ctx) ~identifier ?status ?title ?content () with
     | Ok (Service.Todo_item todo) ->
@@ -54,26 +56,31 @@ let identifier_arg =
   Arg.(required & pos 0 (some string) None & info [] ~docv:"IDENTIFIER" ~doc)
 
 let status_opt =
-  let doc = "New status (open, in-progress, done, active, archived)." in
+  let doc = "New status. Todos: open, in-progress, done. Notes: active, archived." in
   Arg.(value & opt (some string) None & info [ "status" ] ~docv:"STATUS" ~doc)
 
 let title_opt =
   let doc = "New title." in
   Arg.(value & opt (some string) None & info [ "title" ] ~docv:"TITLE" ~doc)
 
-let content_flag =
-  let doc = "Read new content from stdin." in
-  Arg.(value & flag & info [ "content" ] ~doc)
+let content_opt =
+  let doc = "New content body. When absent and stdin is piped, content is read from stdin." in
+  Arg.(value & opt (some string) None & info [ "content" ] ~docv:"CONTENT" ~doc)
 
 let cmd_man = [
   `S "EXAMPLES";
-  `P "bs update kb-0 --status in-progress";
-  `P "bs update kb-0 --title \"New title\"";
-  `P "echo \"New body\" | bs update kb-0 --content";
+  `P "Change status:";
+  `P "  bs update kb-0 --status in-progress";
+  `P "Update title:";
+  `P "  bs update kb-0 --title \"New title\"";
+  `P "Set content inline:";
+  `P "  bs update kb-0 --content \"New body\"";
+  `P "Update content from stdin:";
+  `P "  echo \"New body\" | bs update kb-0";
 ]
 
 let cmd_info = Cmd.info "update" ~doc:"Update an existing item." ~man:cmd_man
 
 let cmd =
-  let term = Term.(const run $ identifier_arg $ status_opt $ title_opt $ content_flag $ Common.json_flag) in
+  let term = Term.(const run $ identifier_arg $ status_opt $ title_opt $ content_opt $ Common.json_flag) in
   Cmd.v cmd_info term

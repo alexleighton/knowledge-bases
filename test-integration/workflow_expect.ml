@@ -179,12 +179,12 @@ let%expect_test "iterative refinement — update items multiple times" =
     Helper.print_result ~dir list1;
 
     (* Phase 2 — Content revisions *)
-    ignore (Helper.run_bs ~dir ~stdin:"Use OAuth2 for all endpoints."
-      ["update"; "kb-0"; "--content"]);
+    ignore (Helper.run_bs ~dir
+      ["update"; "kb-0"; "--content"; "Use OAuth2 for all endpoints."]);
     ignore (Helper.run_bs ~dir
       ["update"; "kb-0"; "--status"; "in-progress"]);
-    ignore (Helper.run_bs ~dir ~stdin:"Use slog library with JSON output."
-      ["update"; "kb-1"; "--content"]);
+    ignore (Helper.run_bs ~dir
+      ["update"; "kb-1"; "--content"; "Use slog library with JSON output."]);
 
     let show_kb0 = Helper.run_bs ~dir ["show"; "kb-0"] in
     Helper.print_result ~dir show_kb0;

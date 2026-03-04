@@ -28,7 +28,8 @@ let identifier_arg =
 
 let cmd_man = [
   `S "EXAMPLES";
-  `P "bs resolve kb-0";
+  `P "Mark a todo as done:";
+  `P "  bs resolve kb-0";
 ]
 
 let cmd_info = Cmd.info "resolve" ~doc:"Mark a todo as done." ~man:cmd_man

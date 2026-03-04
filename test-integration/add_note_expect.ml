@@ -56,7 +56,7 @@ let%expect_test "bs add note rejects empty content" =
     Helper.print_result ~dir result);
   [%expect {|
     [exit 1]
-    STDERR: Error: content must be between 1 and 10000 characters, got 0
+    STDERR: Error: No content provided. Use --content or pipe content to stdin.
   |}]
 
 let%expect_test "bs add note fails when not in git repo" =
@@ -138,4 +138,34 @@ let%expect_test "bs add note with --related-to --json" =
     relations count: 1
     rel kind: related-to
     rel niceid: kb-0
+  |}]
+
+let%expect_test "bs add note with --content flag" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    let result = Helper.run_bs ~dir
+      ["add"; "note"; "Flag note"; "--content"; "Body from flag"] in
+    Helper.print_result ~dir result;
+    let show = Helper.run_bs ~dir ["show"; "kb-0"] in
+    Helper.print_result ~dir show);
+  [%expect {|
+    [exit 0]
+    Created note: kb-0 (<TYPEID>)
+    [exit 0]
+    note kb-0 (<TYPEID>)
+    Status: active
+    Title:  Flag note
+
+    Body from flag
+  |}]
+
+let%expect_test "bs add note errors on --content and stdin" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    let result = Helper.run_bs ~dir ~stdin:"From pipe"
+      ["add"; "note"; "Title"; "--content"; "From flag"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 1]
+    STDERR: Error: Cannot specify both --content and stdin input.
   |}]

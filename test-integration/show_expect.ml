@@ -216,17 +216,21 @@ let%expect_test "bs show --json" =
     Printf.printf "[exit %d]\n" result.exit_code;
     let json = Helper.parse_json result.stdout in
     Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
-    Printf.printf "type: %s\n" (Helper.get_string json "type");
-    Printf.printf "niceid: %s\n" (Helper.get_string json "niceid");
-    Printf.printf "has typeid: %b\n" (Helper.get_string json "typeid" <> "<missing>");
-    Printf.printf "status: %s\n" (Helper.get_string json "status");
-    Printf.printf "title: %s\n" (Helper.get_string json "title");
-    Printf.printf "content: %s\n" (Helper.get_string json "content");
-    Printf.printf "outgoing count: %d\n" (List.length (Helper.get_list json "outgoing"));
-    Printf.printf "incoming count: %d\n" (List.length (Helper.get_list json "incoming")));
+    let items = Helper.get_list json "items" in
+    Printf.printf "items count: %d\n" (List.length items);
+    let item = List.hd items in
+    Printf.printf "type: %s\n" (Helper.get_string item "type");
+    Printf.printf "niceid: %s\n" (Helper.get_string item "niceid");
+    Printf.printf "has typeid: %b\n" (Helper.get_string item "typeid" <> "<missing>");
+    Printf.printf "status: %s\n" (Helper.get_string item "status");
+    Printf.printf "title: %s\n" (Helper.get_string item "title");
+    Printf.printf "content: %s\n" (Helper.get_string item "content");
+    Printf.printf "outgoing count: %d\n" (List.length (Helper.get_list item "outgoing"));
+    Printf.printf "incoming count: %d\n" (List.length (Helper.get_list item "incoming")));
   [%expect {|
     [exit 0]
     ok: true
+    items count: 1
     type: todo
     niceid: kb-0
     has typeid: true
@@ -246,7 +250,8 @@ let%expect_test "bs show --json with relations" =
     let result = Helper.run_bs ~dir ["show"; "kb-0"; "--json"] in
     Printf.printf "[exit %d]\n" result.exit_code;
     let json = Helper.parse_json result.stdout in
-    let outgoing = Helper.get_list json "outgoing" in
+    let item = List.hd (Helper.get_list json "items") in
+    let outgoing = Helper.get_list item "outgoing" in
     Printf.printf "outgoing count: %d\n" (List.length outgoing);
     List.iter (fun rel ->
       Printf.printf "  kind=%s niceid=%s type=%s\n"
@@ -258,4 +263,61 @@ let%expect_test "bs show --json with relations" =
     [exit 0]
     outgoing count: 1
       kind=depends-on niceid=kb-1 type=todo
+  |}]
+
+let%expect_test "bs show multiple identifiers" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body A" ["add"; "todo"; "First"]);
+    ignore (Helper.run_bs ~dir ~stdin:"Body B" ["add"; "note"; "Second"]);
+    let result = Helper.run_bs ~dir ["show"; "kb-0"; "kb-1"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 0]
+    todo kb-0 (<TYPEID>)
+    Status: open
+    Title:  First
+
+    Body A
+    ---
+    note kb-1 (<TYPEID>)
+    Status: active
+    Title:  Second
+
+    Body B
+  |}]
+
+let%expect_test "bs show multiple identifiers --json" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body A" ["add"; "todo"; "First"]);
+    ignore (Helper.run_bs ~dir ~stdin:"Body B" ["add"; "note"; "Second"]);
+    let result = Helper.run_bs ~dir ["show"; "kb-0"; "kb-1"; "--json"] in
+    Printf.printf "[exit %d]\n" result.exit_code;
+    let json = Helper.parse_json result.stdout in
+    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
+    let items = Helper.get_list json "items" in
+    Printf.printf "items count: %d\n" (List.length items);
+    List.iter (fun item ->
+      Printf.printf "  %s %s\n"
+        (Helper.get_string item "type")
+        (Helper.get_string item "niceid")
+    ) items);
+  [%expect {|
+    [exit 0]
+    ok: true
+    items count: 2
+      todo kb-0
+      note kb-1
+  |}]
+
+let%expect_test "bs show multiple identifiers fails on missing" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "Exists"]);
+    let result = Helper.run_bs ~dir ["show"; "kb-0"; "kb-999"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 1]
+    STDERR: Error: item not found: kb-999
   |}]

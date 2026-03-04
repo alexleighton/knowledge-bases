@@ -52,3 +52,8 @@ val list :
     as a TypeId (e.g. ["todo_01jmq..."]). Returns a [Validation_error] if the
     item is not found or the identifier format is unrecognised. *)
 val show : t -> identifier:string -> (show_result, error) result
+
+(** [show_many t ~identifiers] looks up multiple items by niceid or TypeId,
+    including their relations. Resolves all identifiers in order, failing on
+    the first error. Returns results in input order. *)
+val show_many : t -> identifiers:string list -> (show_result list, error) result

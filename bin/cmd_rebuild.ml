@@ -19,11 +19,15 @@ let run json =
     | Error err -> Common.exit_with (Common.service_error_msg err))
 
 let cmd_man = [
+  `S "DESCRIPTION";
+  `P "Reconstruct the SQLite database from .kbases.jsonl. \
+      Useful after cloning a repository or resolving merge conflicts in the JSONL file.";
   `S "EXAMPLES";
-  `P "bs rebuild";
+  `P "After cloning or pulling changes:";
+  `P "  bs rebuild";
 ]
 
-let cmd_info = Cmd.info "rebuild" ~doc:"Rebuild SQLite from .kbases.jsonl." ~man:cmd_man
+let cmd_info = Cmd.info "rebuild" ~doc:"Reconstruct SQLite from .kbases.jsonl." ~man:cmd_man
 
 let cmd =
   let term = Term.(const run $ Common.json_flag) in

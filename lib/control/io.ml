@@ -23,3 +23,5 @@ let read_all_stdin () =
     done;
     assert false
   with End_of_file -> Buffer.contents buf |> String.trim
+
+let stdin_is_piped () = not (Unix.isatty Unix.stdin)

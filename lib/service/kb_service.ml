@@ -185,6 +185,9 @@ let list t ~entity_type ~statuses =
 let show t ~identifier =
   Query.show t.query ~identifier
 
+let show_many t ~identifiers =
+  Query.show_many t.query ~identifiers
+
 let update t ~identifier ?status ?title ?content () =
   _with_flush t (fun () ->
     Mutation.update t.mutation ~identifier ?status ?title ?content ())

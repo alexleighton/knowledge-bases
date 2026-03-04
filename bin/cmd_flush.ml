@@ -19,11 +19,14 @@ let run json =
     | Error err -> Common.exit_with (Common.service_error_msg err))
 
 let cmd_man = [
+  `S "DESCRIPTION";
+  `P "Serialize all SQLite data to .kbases.jsonl so it can be committed to git.";
   `S "EXAMPLES";
-  `P "bs flush";
+  `P "After adding or updating items, persist for git:";
+  `P "  bs flush";
 ]
 
-let cmd_info = Cmd.info "flush" ~doc:"Flush SQLite data to .kbases.jsonl." ~man:cmd_man
+let cmd_info = Cmd.info "flush" ~doc:"Serialize SQLite data to .kbases.jsonl for git." ~man:cmd_man
 
 let cmd =
   let term = Term.(const run $ Common.json_flag) in

@@ -159,6 +159,11 @@ val list :
     item is not found or the identifier format is unrecognised. *)
 val show : t -> identifier:string -> (show_result, error) result
 
+(** [show_many t ~identifiers] looks up multiple items by niceid or TypeId,
+    including their relations. Fails on the first unresolvable identifier.
+    Returns results in input order. *)
+val show_many : t -> identifiers:string list -> (show_result list, error) result
+
 (* --- Modify --- *)
 
 (** [update t ~identifier ?status ?title ?content ()] applies changes to the

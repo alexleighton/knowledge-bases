@@ -151,3 +151,13 @@ let show t ~identifier =
     ) from_target
   in
   Ok { item; outgoing; incoming }
+
+let show_many t ~identifiers =
+  let open Result.Syntax in
+  let rec go acc = function
+    | [] -> Ok (List.rev acc)
+    | id :: rest ->
+        let* result = show t ~identifier:id in
+        go (result :: acc) rest
+  in
+  go [] identifiers

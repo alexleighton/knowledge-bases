@@ -106,3 +106,19 @@ Keep files below approximately 300 lines. Larger files are harder to read and
 understand. A file approaching this limit is often a sign that the concept it
 represents is too complex and should be broken into smaller, composable
 pieces.
+
+## 7. Help text and examples
+
+Every subcommand must have:
+
+- An **EXAMPLES** section demonstrating every flag and common flag
+  combinations. Each example should be preceded by a short annotation
+  explaining what it does (e.g., `"Filter by type and status:"`).
+- A **semantic `~doc` string** for any flag whose effect is not obvious from
+  its name. The description should explain what the flag *does*, not just
+  restate its syntax. For relation flags, mention directionality and how
+  the relation appears in `show` output.
+
+When adding a new command or flag, include corresponding help text updates in
+the same change. The root `bs --help` should include a lifecycle example that
+walks through init, create, query, update, and sync.

@@ -38,11 +38,11 @@ let%expect_test "bs update note title" =
     Note body
   |}]
 
-let%expect_test "bs update content from stdin" =
+let%expect_test "bs update content auto-stdin" =
   Helper.with_git_root (fun dir ->
     Helper.init_kb dir;
     ignore (Helper.run_bs ~dir ~stdin:"Old body" ["add"; "todo"; "Title"]);
-    let result = Helper.run_bs ~dir ~stdin:"New body" ["update"; "kb-0"; "--content"] in
+    let result = Helper.run_bs ~dir ~stdin:"New body" ["update"; "kb-0"] in
     Helper.print_result ~dir result;
     let show = Helper.run_bs ~dir ["show"; "kb-0"] in
     Helper.print_result ~dir show);
@@ -57,12 +57,32 @@ let%expect_test "bs update content from stdin" =
     New body
   |}]
 
+let%expect_test "bs update content with --content flag" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Old body" ["add"; "todo"; "Title"]);
+    let result = Helper.run_bs ~dir
+      ["update"; "kb-0"; "--content"; "New body from flag"] in
+    Helper.print_result ~dir result;
+    let show = Helper.run_bs ~dir ["show"; "kb-0"] in
+    Helper.print_result ~dir show);
+  [%expect {|
+    [exit 0]
+    Updated todo: kb-0
+    [exit 0]
+    todo kb-0 (<TYPEID>)
+    Status: open
+    Title:  Title
+
+    New body from flag
+  |}]
+
 let%expect_test "bs update multiple fields at once" =
   Helper.with_git_root (fun dir ->
     Helper.init_kb dir;
     ignore (Helper.run_bs ~dir ~stdin:"Old body" ["add"; "todo"; "Old title"]);
     let result = Helper.run_bs ~dir ~stdin:"New body"
-      ["update"; "kb-0"; "--status"; "in-progress"; "--title"; "New title"; "--content"] in
+      ["update"; "kb-0"; "--status"; "in-progress"; "--title"; "New title"] in
     Helper.print_result ~dir result;
     let show = Helper.run_bs ~dir ["show"; "kb-0"] in
     Helper.print_result ~dir show);
@@ -135,4 +155,16 @@ let%expect_test "bs update --json" =
     action: updated
     type: todo
     niceid: kb-0
+  |}]
+
+let%expect_test "bs update errors on --content and stdin" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "Title"]);
+    let result = Helper.run_bs ~dir ~stdin:"Piped content"
+      ["update"; "kb-0"; "--content"; "Flag content"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 1]
+    STDERR: Error: Cannot specify both --content and stdin input.
   |}]

@@ -50,11 +50,16 @@ let source_arg =
 
 let cmd_man = [
   `S "EXAMPLES";
-  `P "bs relate kb-0 --depends-on kb-1";
-  `P "bs relate kb-0 --related-to kb-1";
-  `P "bs relate kb-0 --uni designed-by,kb-1";
-  `P "bs relate kb-0 --bi reviews,kb-1";
-  `P "bs relate kb-0 --depends-on kb-1 --depends-on kb-2";
+  `P "Unidirectional dependency (kb-0 depends on kb-1):";
+  `P "  bs relate kb-0 --depends-on kb-1";
+  `P "Bidirectional link (visible from both items):";
+  `P "  bs relate kb-0 --related-to kb-1";
+  `P "Custom unidirectional kind:";
+  `P "  bs relate kb-0 --uni designed-by,kb-1";
+  `P "Custom bidirectional kind:";
+  `P "  bs relate kb-0 --bi reviews,kb-1";
+  `P "Multiple relations in one command:";
+  `P "  bs relate kb-0 --depends-on kb-1 --depends-on kb-2";
 ]
 
 let cmd_info = Cmd.info "relate" ~doc:"Create relations from a source item to one or more targets." ~man:cmd_man
