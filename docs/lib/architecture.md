@@ -75,7 +75,6 @@ Examples:
 |-------------|--------------------------------------------------|
 | `Assert`    | Precondition / validation combinators            |
 | `Exception` | Formatted `Invalid_argument` constructors        |
-| `Git`       | Subprocess interaction with git                  |
 | `Io`        | Reading from stdin                               |
 
 **Put new code here when** you are adding control-flow abstractions,
@@ -167,6 +166,14 @@ Conventions:
    service modules that each own a slice of the domain.  Split
    along natural boundaries rather than creating a god service.
 
+Examples:
+
+| Module      | Purpose                                          |
+|-------------|--------------------------------------------------|
+| `Git`       | Git repository detection and `.git/info/exclude` |
+| `Lifecycle` | Knowledge-base init, open, and discovery         |
+| `Kb_service`| Public facade for all CLI operations             |
+
 **Put new code here when** you need to combine several repository
 operations into a single logical action, or when you need to translate
 between repository errors and the vocabulary the CLI expects.
@@ -177,7 +184,6 @@ The dune file uses `(include_subdirs qualified)`.  This means each
 directory becomes a module namespace inside the `kbases` library:
 
 ```
-Kbases.Control.Git
 Kbases.Data.Identifier
 Kbases.Data.Uuid.Typeid
 Kbases.Repository.Note
