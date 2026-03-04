@@ -1,4 +1,4 @@
-module Git = Kbases.Control.Git
+module Git = Kbases.Service.Git
 
 let create_repo () =
   let root = Filename.temp_dir "kb-git-test-" "" in

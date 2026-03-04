@@ -1,6 +1,5 @@
 module Root = Repository.Root
 module Config = Repository.Config
-module Git = Control.Git
 module Io = Control.Io
 module Namespace = Data.Namespace
 

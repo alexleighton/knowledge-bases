@@ -2,19 +2,9 @@
    Git repository utilities.
 *)
 
-type exclude_result = Added | Already_present
+module Io = Control.Io
 
-let _contains_substring ~needle haystack =
-  let nlen = String.length needle and hlen = String.length haystack in
-  if nlen = 0 then true
-  else if nlen > hlen then false
-  else
-    let rec loop i =
-      if i > hlen - nlen then false
-      else if String.sub haystack i nlen = needle then true
-      else loop (i + 1)
-    in
-    loop 0
+type exclude_result = Added | Already_present
 
 let is_git_root dir =
   let git_path = Filename.concat dir ".git" in
@@ -54,7 +44,7 @@ let add_exclude ~directory entry =
     if Sys.file_exists exclude_path then Io.read_file exclude_path
     else ""
   in
-  if _contains_substring ~needle:entry existing then
+  if Data.String.contains_substring ~needle:entry existing then
     Already_present
   else begin
     let needs_newline =
