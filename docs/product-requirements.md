@@ -444,6 +444,11 @@ The two formats are synchronized through explicit operations:
 - **Rebuild** (JSONL → SQLite): parse the JSONL file and reconstruct the
   SQLite database, including reallocating niceids. This happens after a git
   merge or clone, or whenever the SQLite file is absent.
+- **Auto-rebuild**: when `.kbases.db` is absent but `.kbases.jsonl` exists
+  (e.g. after `git clone`, or if the database is deleted), every `bs` command
+  transparently creates the database and rebuilds from JSONL. The namespace is
+  read from the JSONL header. No user intervention (`bs init` or explicit
+  `bs rebuild`) is required.
 
 ### JSONL design considerations
 

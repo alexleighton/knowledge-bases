@@ -27,6 +27,10 @@ val write :
   todos:Data.Todo.t list -> notes:Data.Note.t list ->
   relations:Data.Relation.t list -> (unit, error) result
 
+(** [read_header ~path] reads only the first line of the JSONL file,
+    returning the parsed header. *)
+val read_header : path:string -> (header, error) result
+
 (** [read ~path] reads the entire JSONL file, returning the header
     and all parsed entity records. *)
 val read : path:string -> (header * entity_record list, error) result

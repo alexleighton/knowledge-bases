@@ -1,5 +1,6 @@
 module Root = Repository.Root
 module Config = Repository.Config
+module Jsonl = Repository.Jsonl
 module Io = Control.Io
 module Namespace = Data.Namespace
 
@@ -104,14 +105,39 @@ let open_kb () =
            "Not inside a git repository. Run 'bs add' from within a git repository.")
   | Some dir ->
       let db_file = Filename.concat dir db_filename in
-      if not (Sys.file_exists db_file) then
-        Error
-          (Validation_error "No knowledge base found. Run 'bs init' first.")
-      else
+      if Sys.file_exists db_file then
         Root.init ~db_file ~namespace:None
         |> Result.map (fun root -> (root, dir))
         |> Result.map_error (fun (Root.Backend_failure msg) ->
                Repository_error msg)
+      else
+        let jsonl_path = Filename.concat dir jsonl_filename in
+        if Sys.file_exists jsonl_path then
+          let open Result.Syntax in
+          let* header =
+            Jsonl.read_header ~path:jsonl_path
+            |> Result.map_error (fun err ->
+                   match err with
+                   | Jsonl.Io_error msg -> Repository_error msg
+                   | Jsonl.Parse_error msg -> Repository_error msg)
+          in
+          let* root =
+            Root.init ~db_file ~namespace:(Some header.Jsonl.namespace)
+            |> Result.map_error (fun (Root.Backend_failure msg) ->
+                   Repository_error msg)
+          in
+          let* () =
+            Config.set (Root.config root) "namespace" header.Jsonl.namespace
+            |> Result.map_error (fun err ->
+                   match err with
+                   | Config.Backend_failure msg -> Repository_error msg
+                   | Config.Not_found key ->
+                       Repository_error ("Config key not found: " ^ key))
+          in
+          Ok (root, dir)
+        else
+          Error
+            (Validation_error "No knowledge base found. Run 'bs init' first.")
 
 let init_kb ~directory ~namespace =
   let open Result.Syntax in

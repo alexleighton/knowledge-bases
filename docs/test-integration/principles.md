@@ -33,3 +33,14 @@ Approaches for reducing nesting:
   initialising a repository) is expected to always succeed, use an unwrap
   helper that fails on error rather than nesting the entire test body inside
   a `match` arm.
+
+## 2. Clean up temporary files and directories
+
+Tests that create temporary directories must remove them when the test
+finishes — including when the test fails or raises an exception. Use
+`with_git_root` from `test_helper.ml` rather than creating directories
+manually. It brackets the test body with `Fun.protect` and cleans up
+automatically.
+
+**Why:** Leaked temp directories accumulate across test runs and CI builds,
+wasting disk space and making it harder to diagnose failures.

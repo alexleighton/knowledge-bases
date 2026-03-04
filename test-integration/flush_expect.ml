@@ -59,3 +59,15 @@ let%expect_test "bs flush --json" =
     action: flushed
     file: .kbases.jsonl
   |}]
+
+let%expect_test "bs flush auto-rebuilds when db is missing" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "My todo"]);
+    Helper.delete_db dir;
+    let result = Helper.run_bs ~dir ["flush"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 0]
+    Flushed to .kbases.jsonl
+  |}]

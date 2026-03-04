@@ -169,3 +169,21 @@ let%expect_test "bs add note errors on --content and stdin" =
     [exit 1]
     STDERR: Error: Cannot specify both --content and stdin input.
   |}]
+
+let%expect_test "bs add note auto-rebuilds when db is missing" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"First body" ["add"; "note"; "First"]);
+    Helper.delete_db dir;
+    let add_result = Helper.run_bs ~dir ~stdin:"Second body"
+      ["add"; "note"; "Second"] in
+    Helper.print_result ~dir add_result;
+    let list_result = Helper.run_bs ~dir ["list"] in
+    Helper.print_result ~dir list_result);
+  [%expect {|
+    [exit 0]
+    Created note: kb-1 (<TYPEID>)
+    [exit 0]
+    kb-0    note  active        First
+    kb-1    note  active        Second
+  |}]

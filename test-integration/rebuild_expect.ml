@@ -55,3 +55,19 @@ let%expect_test "bs rebuild --json" =
     action: rebuilt
     file: .kbases.jsonl
   |}]
+
+let%expect_test "bs rebuild auto-rebuilds when db is missing" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "My todo"]);
+    Helper.delete_db dir;
+    let rebuild_result = Helper.run_bs ~dir ["rebuild"] in
+    Helper.print_result ~dir rebuild_result;
+    let list_result = Helper.run_bs ~dir ["list"] in
+    Helper.print_result ~dir list_result);
+  [%expect {|
+    [exit 0]
+    Rebuilt SQLite from .kbases.jsonl
+    [exit 0]
+    kb-0    todo  open          My todo
+  |}]

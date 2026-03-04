@@ -207,3 +207,21 @@ let%expect_test "bs add todo --content does not hang on pipe stdin with no data"
     [exit 0]
     Created todo: kb-0 (<TYPEID>)
   |}]
+
+let%expect_test "bs add todo auto-rebuilds when db is missing" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"First body" ["add"; "todo"; "First"]);
+    Helper.delete_db dir;
+    let add_result = Helper.run_bs ~dir ~stdin:"Second body"
+      ["add"; "todo"; "Second"] in
+    Helper.print_result ~dir add_result;
+    let list_result = Helper.run_bs ~dir ["list"] in
+    Helper.print_result ~dir list_result);
+  [%expect {|
+    [exit 0]
+    Created todo: kb-1 (<TYPEID>)
+    [exit 0]
+    kb-0    todo  open          First
+    kb-1    todo  open          Second
+  |}]

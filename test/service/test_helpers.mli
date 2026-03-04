@@ -2,6 +2,8 @@ module NoteRepo = Kbases.Repository.Note
 module TodoRepo = Kbases.Repository.Todo
 
 val create_git_root : string -> string
+val with_git_root : string -> (string -> 'a) -> 'a
+val with_temp_dir : string -> (string -> 'a) -> 'a
 val starts_with : string -> string -> bool
 val normalize : string -> string
 val with_chdir : string -> (unit -> 'a) -> 'a

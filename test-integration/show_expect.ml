@@ -321,3 +321,19 @@ let%expect_test "bs show multiple identifiers fails on missing" =
     [exit 1]
     STDERR: Error: item not found: kb-999
   |}]
+
+let%expect_test "bs show auto-rebuilds when db is missing" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Todo body" ["add"; "todo"; "My todo"]);
+    Helper.delete_db dir;
+    let result = Helper.run_bs ~dir ["show"; "kb-0"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 0]
+    todo kb-0 (<TYPEID>)
+    Status: open
+    Title:  My todo
+
+    Todo body
+  |}]

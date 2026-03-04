@@ -59,6 +59,7 @@ to see full coverage for any given command in one place.
 | `run_bs`        | Invokes the `bs` binary with arguments and optional stdin    |
 | `print_result`  | Prints exit code, stdout, and stderr with deterministic output |
 | `init_kb`       | Initialises a knowledge base in a directory (setup for command tests) |
+| `delete_db`     | Removes `.kbases.db` from a directory (setup for auto-rebuild tests) |
 
 `print_result` normalises output so that expect tests are deterministic:
 absolute temp-directory paths become `<DIR>` and TypeIds become `<TYPEID>`.
@@ -70,6 +71,9 @@ At a minimum:
 1. **Happy path** — the command succeeds with typical arguments.
 2. **Error cases** — every error the user can hit (missing required args,
    invalid values, missing database, etc.).
+3. **Auto-rebuild** — delete `.kbases.db` (leaving only `.kbases.jsonl`), run
+   the command, and assert that it succeeds. This verifies that the transparent
+   rebuild path in `open_kb` works for each command.
 
 ## Build configuration
 

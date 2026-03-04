@@ -194,6 +194,10 @@ let print_result ~dir result =
   if result.stdout <> "" then Printf.printf "%s" (norm result.stdout);
   if result.stderr <> "" then Printf.printf "STDERR: %s" (norm result.stderr)
 
+let delete_db dir =
+  let db = Filename.concat dir ".kbases.db" in
+  if Sys.file_exists db then Sys.remove db
+
 let init_kb dir =
   let result = run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"] in
   if result.exit_code <> 0 then

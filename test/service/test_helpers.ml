@@ -4,10 +4,28 @@ module TodoRepo = Kbases.Repository.Todo
 module Sqlite = Kbases.Repository.Sqlite
 module Identifier = Kbases.Data.Identifier
 
+let rec _rm_rf path =
+  if Sys.file_exists path then
+    if Sys.is_directory path then begin
+      Array.iter
+        (fun entry -> _rm_rf (Filename.concat path entry))
+        (Sys.readdir path);
+      Unix.rmdir path
+    end else
+      Sys.remove path
+
 let create_git_root prefix =
   let root = Filename.temp_dir prefix "" in
   Unix.mkdir (Filename.concat root ".git") 0o755;
   root
+
+let with_git_root prefix f =
+  let root = create_git_root prefix in
+  Fun.protect ~finally:(fun () -> _rm_rf root) (fun () -> f root)
+
+let with_temp_dir prefix f =
+  let dir = Filename.temp_dir prefix "" in
+  Fun.protect ~finally:(fun () -> _rm_rf dir) (fun () -> f dir)
 
 let starts_with s prefix =
   let s_len = String.length s in

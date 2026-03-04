@@ -67,3 +67,15 @@ let%expect_test "bs close --json" =
     type: todo
     niceid: kb-0
   |}]
+
+let%expect_test "bs close auto-rebuilds when db is missing" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "My todo"]);
+    Helper.delete_db dir;
+    let result = Helper.run_bs ~dir ["close"; "kb-0"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 0]
+    Resolved todo: kb-0
+  |}]

@@ -15,9 +15,12 @@ let _unwrap = function
   | Error (Jsonl.Io_error msg) -> failwith ("io error: " ^ msg)
   | Error (Jsonl.Parse_error msg) -> failwith ("parse error: " ^ msg)
 
-let%expect_test "write and read round-trip with todos, notes, relations" =
+let _with_tmp_jsonl f =
   let tmp = Filename.temp_file "jsonl_test" ".jsonl" in
-  Fun.protect ~finally:(fun () -> Sys.remove tmp) (fun () ->
+  Fun.protect ~finally:(fun () -> Sys.remove tmp) (fun () -> f tmp)
+
+let%expect_test "write and read round-trip with todos, notes, relations" =
+  _with_tmp_jsonl (fun tmp ->
     let tid1 = _todo_id "0123456789abcdefghjkmnpqrs" in
     let tid2 = _todo_id "0123456789abcdefghjkmnpqrt" in
     let nid1 = _note_id "0123456789abcdefghjkmnpqrs" in
@@ -63,9 +66,8 @@ let%expect_test "write and read round-trip with todos, notes, relations" =
     |}]
 
 let%expect_test "file hash is deterministic" =
-  let tmp1 = Filename.temp_file "jsonl_test" ".jsonl" in
-  let tmp2 = Filename.temp_file "jsonl_test" ".jsonl" in
-  Fun.protect ~finally:(fun () -> Sys.remove tmp1; Sys.remove tmp2) (fun () ->
+  _with_tmp_jsonl (fun tmp1 ->
+  _with_tmp_jsonl (fun tmp2 ->
     let tid = _todo_id "0123456789abcdefghjkmnpqrs" in
     let niceid = Kbases.Data.Identifier.make "kb" 0 in
     let todo = Todo.make tid niceid (Title.make "Hello") (Content.make "World") Todo.Open in
@@ -76,14 +78,13 @@ let%expect_test "file hash is deterministic" =
       ~todos:[todo] ~notes:[] ~relations:[]) in
     let h1 = Digest.file tmp1 |> Digest.to_hex in
     let h2 = Digest.file tmp2 |> Digest.to_hex in
-    Printf.printf "hashes equal=%b\n" (String.equal h1 h2));
+    Printf.printf "hashes equal=%b\n" (String.equal h1 h2)));
   [%expect {|
     hashes equal=true
     |}]
 
 let%expect_test "empty entities produce valid file" =
-  let tmp = Filename.temp_file "jsonl_test" ".jsonl" in
-  Fun.protect ~finally:(fun () -> Sys.remove tmp) (fun () ->
+  _with_tmp_jsonl (fun tmp ->
     let () = _unwrap (Jsonl.write ~path:tmp ~namespace:"kb"
       ~todos:[] ~notes:[] ~relations:[]) in
     let (_header, records) = _unwrap (Jsonl.read ~path:tmp) in
@@ -93,8 +94,7 @@ let%expect_test "empty entities produce valid file" =
     |}]
 
 let%expect_test "parser ignores extra header fields (old format)" =
-  let tmp = Filename.temp_file "jsonl_test" ".jsonl" in
-  Fun.protect ~finally:(fun () -> Sys.remove tmp) (fun () ->
+  _with_tmp_jsonl (fun tmp ->
     let oc = open_out tmp in
     output_string oc {|{"_kbases":"1","namespace":"kb","entity_count":1,"content_hash":"abc"}|};
     output_char oc '\n';
@@ -107,8 +107,7 @@ let%expect_test "parser ignores extra header fields (old format)" =
     |}]
 
 let%expect_test "parse error on invalid type field" =
-  let tmp = Filename.temp_file "jsonl_test" ".jsonl" in
-  Fun.protect ~finally:(fun () -> Sys.remove tmp) (fun () ->
+  _with_tmp_jsonl (fun tmp ->
     let oc = open_out tmp in
     output_string oc {|{"_kbases":"1","namespace":"kb"}|};
     output_char oc '\n';
@@ -123,9 +122,53 @@ let%expect_test "parse error on invalid type field" =
     parse error: unknown entity type: "unknown"
     |}]
 
+let%expect_test "read_header returns namespace from valid file" =
+  _with_tmp_jsonl (fun tmp ->
+    let () = _unwrap (Jsonl.write ~path:tmp ~namespace:"myns"
+      ~todos:[] ~notes:[] ~relations:[]) in
+    let header = _unwrap (Jsonl.read_header ~path:tmp) in
+    Printf.printf "version=%d namespace=%s\n"
+      header.version header.namespace);
+  [%expect {|
+    version=1 namespace=myns
+  |}]
+
+let%expect_test "read_header fails on empty file" =
+  _with_tmp_jsonl (fun tmp ->
+    let oc = open_out tmp in
+    close_out oc;
+    match Jsonl.read_header ~path:tmp with
+    | Ok _ -> print_endline "unexpected success"
+    | Error (Jsonl.Parse_error msg) -> Printf.printf "parse error: %s\n" msg
+    | Error (Jsonl.Io_error msg) -> Printf.printf "io error: %s\n" msg);
+  [%expect {|
+    parse error: empty file, no header line
+  |}]
+
+let%expect_test "read_header fails on corrupt JSON" =
+  _with_tmp_jsonl (fun tmp ->
+    let oc = open_out tmp in
+    output_string oc "not json at all\n";
+    close_out oc;
+    match Jsonl.read_header ~path:tmp with
+    | Ok _ -> print_endline "unexpected success"
+    | Error (Jsonl.Parse_error _) -> print_endline "parse error"
+    | Error (Jsonl.Io_error _) -> print_endline "io error");
+  [%expect {|
+    parse error
+  |}]
+
+let%expect_test "read_header fails on missing file" =
+  (match Jsonl.read_header ~path:"/tmp/nonexistent_jsonl_file.jsonl" with
+   | Ok _ -> print_endline "unexpected success"
+   | Error (Jsonl.Io_error _) -> print_endline "io error"
+   | Error (Jsonl.Parse_error _) -> print_endline "parse error");
+  [%expect {|
+    io error
+  |}]
+
 let%expect_test "parse error on missing header" =
-  let tmp = Filename.temp_file "jsonl_test" ".jsonl" in
-  Fun.protect ~finally:(fun () -> Sys.remove tmp) (fun () ->
+  _with_tmp_jsonl (fun tmp ->
     let oc = open_out tmp in
     close_out oc;
     match Jsonl.read ~path:tmp with

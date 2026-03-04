@@ -93,3 +93,23 @@ instance, a service that returns a correct object but fails to persist it, or
 persists extra or incorrect data. This gives each test layer a distinct role:
 unit tests verify side effects, integration tests verify end-to-end CLI
 behaviour.
+
+## 4. Clean up temporary files and directories
+
+Tests that create temporary files or directories must remove them when the test
+finishes — including when the test fails or raises an exception. Use
+`Fun.protect ~finally` or a cleanup wrapper to guarantee removal.
+
+* **Prefer `with_git_root` / `with_temp_dir` over `create_git_root` /
+  `Filename.temp_dir`.** The `with_*` wrappers in `test_helpers` bracket the
+  test body and clean up automatically. Use bare creation functions only when
+  the wrapper's callback shape doesn't fit, and pair them with an explicit
+  `Fun.protect ~finally` block.
+
+* **Clean up temp files too.** When a test creates individual temp files via
+  `Filename.temp_file`, wrap the test body in `Fun.protect ~finally:(fun () ->
+  Sys.remove path)`.
+
+**Why:** Leaked temp directories accumulate across test runs and CI builds,
+wasting disk space and making it harder to diagnose failures. Deterministic
+cleanup keeps the test environment predictable.

@@ -27,22 +27,18 @@ let _unwrap_note = function
   | Error _ -> failwith "note error"
 
 let _with_sync f =
-  let tmp_dir = Filename.temp_dir "sync_test" "" in
-  let db_file = Filename.concat tmp_dir "test.db" in
-  let jsonl_path = Filename.concat tmp_dir "test.jsonl" in
-  match Root.init ~db_file ~namespace:(Some "kb") with
-  | Error (Root.Backend_failure msg) -> failwith ("root init: " ^ msg)
-  | Ok root ->
-      Fun.protect
-        ~finally:(fun () ->
-          Root.close root;
-          (try Sys.remove db_file with Sys_error _ -> ());
-          (try Sys.remove jsonl_path with Sys_error _ -> ());
-          (try Unix.rmdir tmp_dir with Unix.Unix_error _ -> ()))
-        (fun () ->
-          ignore (Config.set (Root.config root) "namespace" "kb");
-          let sync = Sync.init root ~jsonl_path in
-          f root sync jsonl_path)
+  Test_helpers.with_temp_dir "sync_test" (fun tmp_dir ->
+    let db_file = Filename.concat tmp_dir "test.db" in
+    let jsonl_path = Filename.concat tmp_dir "test.jsonl" in
+    match Root.init ~db_file ~namespace:(Some "kb") with
+    | Error (Root.Backend_failure msg) -> failwith ("root init: " ^ msg)
+    | Ok root ->
+        Fun.protect
+          ~finally:(fun () -> Root.close root)
+          (fun () ->
+            ignore (Config.set (Root.config root) "namespace" "kb");
+            let sync = Sync.init root ~jsonl_path in
+            f root sync jsonl_path))
 
 let%expect_test "flush writes JSONL file after mark_dirty" =
   _with_sync (fun root sync jsonl_path ->

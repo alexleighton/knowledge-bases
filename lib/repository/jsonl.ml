@@ -195,6 +195,16 @@ let _read_lines path =
       collect [])
   with Sys_error msg -> Error (Io_error msg)
 
+let read_header ~path =
+  try
+    let ic = open_in path in
+    Fun.protect ~finally:(fun () -> close_in_noerr ic) (fun () ->
+      match input_line ic with
+      | line -> _parse_header_line line
+      | exception End_of_file ->
+          Error (Parse_error "empty file, no header line"))
+  with Sys_error msg -> Error (Io_error msg)
+
 let read ~path =
   let open Data.Result.Syntax in
   let* lines = _read_lines path in

@@ -188,3 +188,16 @@ let%expect_test "bs update --status does not hang on pipe stdin with no data" =
 
     Body
   |}]
+
+let%expect_test "bs update auto-rebuilds when db is missing" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "My todo"]);
+    Helper.delete_db dir;
+    let result = Helper.run_bs ~dir
+      ["update"; "kb-0"; "--status"; "in-progress"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 0]
+    Updated todo: kb-0
+  |}]
