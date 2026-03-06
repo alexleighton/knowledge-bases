@@ -2,26 +2,12 @@ module Root = Kbases.Repository.Root
 module RelationRepo = Kbases.Repository.Relation
 module Relation = Kbases.Data.Relation
 module Relation_kind = Kbases.Data.Relation_kind
-module Typeid = Kbases.Data.Uuid.Typeid
-module Sqlite = Kbases.Repository.Sqlite
 module TodoRepo = Kbases.Repository.Todo
 module Title = Kbases.Data.Title
 module Content = Kbases.Data.Content
 
-let query_rows root sql params =
-  let db = Root.db root in
-  match Sqlite.with_stmt db sql params (fun stmt ->
-    let n = Sqlite3.data_count stmt in
-    Ok (List.init n (fun i -> Sqlite3.column_text stmt i) |> String.concat "|"))
-  with
-  | Ok rows -> List.iter print_endline rows
-  | Error err -> Printf.printf "query error: %s\n" (Sqlite.error_message err)
-
-let with_root f =
-  match Root.init ~db_file:":memory:" ~namespace:(Some "kb") with
-  | Ok root ->
-      Fun.protect ~finally:(fun () -> Root.close root) (fun () -> f root)
-  | Error (Root.Backend_failure msg) -> failwith ("init error: " ^ msg)
+let with_root = Test_helpers.with_root
+let query_rows = Test_helpers.query_rows
 
 let make_todo root title =
   match TodoRepo.create (Root.todo root)

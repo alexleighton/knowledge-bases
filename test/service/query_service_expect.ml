@@ -16,20 +16,9 @@ let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
 let query_count = Test_helpers.query_count
 
 let with_query_service f =
-  let root =
-    match Root.init ~db_file:":memory:" ~namespace:(Some "kb") with
-    | Ok root -> root
-    | Error (Root.Backend_failure msg) -> failwith ("init error: " ^ msg)
-  in
-  let service = QueryService.init root in
-  Fun.protect
-    ~finally:(fun () -> Root.close root)
-    (fun () -> f root service)
+  Test_helpers.with_service QueryService.init f
 
-let pp_error err =
-  match err with
-  | QueryService.Repository_error msg -> Printf.printf "repository error: %s\n" msg
-  | QueryService.Validation_error msg -> Printf.printf "validation error: %s\n" msg
+let pp_error = Test_helpers.pp_item_error
 
 let print_items items =
   List.iter (function

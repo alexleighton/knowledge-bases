@@ -12,15 +12,7 @@ let unwrap = function
   | Error (TodoService.Repository_error msg) -> failwith ("repository error: " ^ msg)
 
 let with_todo_service f =
-  let root =
-    match Root.init ~db_file:":memory:" ~namespace:(Some "kb") with
-    | Ok root -> root
-    | Error (Root.Backend_failure msg) -> failwith ("init error: " ^ msg)
-  in
-  let service = TodoService.init root in
-  Fun.protect
-    ~finally:(fun () -> Root.close root)
-    (fun () -> f root service)
+  Test_helpers.with_service TodoService.init f
 
 let%expect_test "add persists a todo row" =
   with_todo_service (fun root svc ->

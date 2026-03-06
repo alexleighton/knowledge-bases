@@ -4,12 +4,16 @@ module TodoRepo = Kbases.Repository.Todo
 val create_git_root : string -> string
 val with_git_root : string -> (string -> 'a) -> 'a
 val with_temp_dir : string -> (string -> 'a) -> 'a
-val starts_with : string -> string -> bool
 val normalize : string -> string
 val with_chdir : string -> (unit -> 'a) -> 'a
 val with_root : string -> (Kbases.Repository.Root.t -> unit) -> unit
 val unwrap_note_repo : ('a, NoteRepo.error) result -> 'a
 val unwrap_todo_repo : ('a, TodoRepo.error) result -> 'a
+val pp_item_error : Kbases.Service.Item_service.error -> unit
+val with_service :
+  (Kbases.Repository.Root.t -> 'svc) ->
+  (Kbases.Repository.Root.t -> 'svc -> unit) ->
+  unit
 val query_db :
   Kbases.Repository.Root.t ->
   string ->

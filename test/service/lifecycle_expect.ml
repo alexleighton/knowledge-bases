@@ -5,7 +5,6 @@ module Lifecycle = Kbases.Service.Lifecycle
 
 let with_git_root = Test_helpers.with_git_root
 let with_temp_dir = Test_helpers.with_temp_dir
-let starts_with = Test_helpers.starts_with
 let normalize = Test_helpers.normalize
 let with_chdir = Test_helpers.with_chdir
 let with_root = Test_helpers.with_root
@@ -48,7 +47,7 @@ let%expect_test "init_kb rejects non-git root directory" =
         Printf.printf "repo error: %s\n" msg
     | Error (Lifecycle.Validation_error msg) ->
         Printf.printf "is-dir-error: %b\n"
-          (starts_with msg "Directory is not a git repository root: "));
+          (String.starts_with ~prefix:"Directory is not a git repository root: " msg));
   [%expect {|
     is-dir-error: true
   |}]
@@ -74,7 +73,7 @@ let%expect_test "init_kb guards against re-initialization" =
         Printf.printf "repo error: %s\n" msg
     | Error (Lifecycle.Validation_error msg) ->
         Printf.printf "already-init-error: %b\n"
-          (starts_with msg "Knowledge base already initialised at "));
+          (String.starts_with ~prefix:"Knowledge base already initialised at " msg));
   [%expect {|
     already-init-error: true
   |}]
@@ -118,7 +117,7 @@ let%expect_test "init_kb reports invalid derived namespace" =
       | Ok _ -> print_endline "unexpected success"
       | Error (Lifecycle.Repository_error msg) -> Printf.printf "repo error: %s\n" msg
       | Error (Lifecycle.Validation_error msg) ->
-          Printf.printf "derived-error: %b\n" (starts_with msg "Derived namespace")));
+          Printf.printf "derived-error: %b\n" (String.starts_with ~prefix:"Derived namespace" msg)));
   [%expect {|
     derived-error: true
   |}]

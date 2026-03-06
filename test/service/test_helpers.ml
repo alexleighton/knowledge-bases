@@ -3,12 +3,13 @@ module NoteRepo = Kbases.Repository.Note
 module TodoRepo = Kbases.Repository.Todo
 module Sqlite = Kbases.Repository.Sqlite
 module Identifier = Kbases.Data.Identifier
+module ItemService = Kbases.Service.Item_service
 
-let rec _rm_rf path =
+let rec rm_rf path =
   if Sys.file_exists path then
     if Sys.is_directory path then begin
       Array.iter
-        (fun entry -> _rm_rf (Filename.concat path entry))
+        (fun entry -> rm_rf (Filename.concat path entry))
         (Sys.readdir path);
       Unix.rmdir path
     end else
@@ -21,16 +22,11 @@ let create_git_root prefix =
 
 let with_git_root prefix f =
   let root = create_git_root prefix in
-  Fun.protect ~finally:(fun () -> _rm_rf root) (fun () -> f root)
+  Fun.protect ~finally:(fun () -> rm_rf root) (fun () -> f root)
 
 let with_temp_dir prefix f =
   let dir = Filename.temp_dir prefix "" in
-  Fun.protect ~finally:(fun () -> _rm_rf dir) (fun () -> f dir)
-
-let starts_with s prefix =
-  let s_len = String.length s in
-  let p_len = String.length prefix in
-  s_len >= p_len && String.sub s 0 p_len = prefix
+  Fun.protect ~finally:(fun () -> rm_rf dir) (fun () -> f dir)
 
 let normalize path =
   try Unix.realpath path with
@@ -59,6 +55,21 @@ let unwrap_todo_repo = function
   | Error (TodoRepo.Duplicate_niceid niceid) ->
       failwith ("duplicate niceid: " ^ Identifier.to_string niceid)
   | Error (TodoRepo.Not_found _) -> failwith "todo not found"
+
+let pp_item_error = function
+  | ItemService.Repository_error msg -> Printf.printf "repository error: %s\n" msg
+  | ItemService.Validation_error msg -> Printf.printf "validation error: %s\n" msg
+
+let with_service init_svc f =
+  let root =
+    match Root.init ~db_file:":memory:" ~namespace:(Some "kb") with
+    | Ok root -> root
+    | Error (Root.Backend_failure msg) -> failwith ("init error: " ^ msg)
+  in
+  let service = init_svc root in
+  Fun.protect
+    ~finally:(fun () -> Root.close root)
+    (fun () -> f root service)
 
 let query_db root sql params row_printer =
   let db = Root.db root in

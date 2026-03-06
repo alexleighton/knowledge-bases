@@ -30,19 +30,9 @@ let query_relations root =
     []
 
 let with_relation_service f =
-  let root =
-    match Root.init ~db_file:":memory:" ~namespace:(Some "kb") with
-    | Ok root -> root
-    | Error (Root.Backend_failure msg) -> failwith ("init error: " ^ msg)
-  in
-  let service = RelationService.init root in
-  Fun.protect
-    ~finally:(fun () -> Root.close root)
-    (fun () -> f root service)
+  Test_helpers.with_service RelationService.init f
 
-let pp_error = function
-  | ItemService.Repository_error msg -> Printf.printf "repository error: %s\n" msg
-  | ItemService.Validation_error msg -> Printf.printf "validation error: %s\n" msg
+let pp_error = Test_helpers.pp_item_error
 
 (* -- Happy path tests -- *)
 

@@ -7,7 +7,7 @@
 type t
 
 (** Errors that can arise from service operations. *)
-type error =
+type error = Item_service.error =
   | Repository_error of string
   | Validation_error of string
 

@@ -14,19 +14,19 @@ module Relation_kind = Kbases.Data.Relation_kind
 module Identifier = Kbases.Data.Identifier
 module Typeid = Kbases.Data.Uuid.Typeid
 
-let _unwrap_sync = function
+let unwrap_sync = function
   | Ok v -> v
   | Error (Sync.Sync_failed msg) -> failwith ("sync failed: " ^ msg)
 
-let _unwrap_todo = function
+let unwrap_todo = function
   | Ok v -> v
   | Error _ -> failwith "todo error"
 
-let _unwrap_note = function
+let unwrap_note = function
   | Ok v -> v
   | Error _ -> failwith "note error"
 
-let _with_sync f =
+let with_sync f =
   Test_helpers.with_temp_dir "sync_test" (fun tmp_dir ->
     let db_file = Filename.concat tmp_dir "test.db" in
     let jsonl_path = Filename.concat tmp_dir "test.jsonl" in
@@ -41,14 +41,14 @@ let _with_sync f =
             f root sync jsonl_path))
 
 let%expect_test "flush writes JSONL file after mark_dirty" =
-  _with_sync (fun root sync jsonl_path ->
-    ignore (_unwrap_todo (TodoRepo.create (Root.todo root)
+  with_sync (fun root sync jsonl_path ->
+    ignore (unwrap_todo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "Test todo") ~content:(Content.make "Body") ()));
-    ignore (_unwrap_note (NoteRepo.create (Root.note root)
+    ignore (unwrap_note (NoteRepo.create (Root.note root)
       ~title:(Title.make "Test note") ~content:(Content.make "Note body") ()));
 
-    _unwrap_sync (Sync.mark_dirty sync);
-    _unwrap_sync (Sync.flush sync);
+    unwrap_sync (Sync.mark_dirty sync);
+    unwrap_sync (Sync.flush sync);
 
     Printf.printf "jsonl exists=%b\n" (Sys.file_exists jsonl_path);
     let (header, records) =
@@ -64,30 +64,30 @@ let%expect_test "flush writes JSONL file after mark_dirty" =
     |}]
 
 let%expect_test "flush without mark_dirty does nothing" =
-  _with_sync (fun root sync jsonl_path ->
-    ignore (_unwrap_todo (TodoRepo.create (Root.todo root)
+  with_sync (fun root sync jsonl_path ->
+    ignore (unwrap_todo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "Test") ~content:(Content.make "Body") ()));
 
-    _unwrap_sync (Sync.flush sync);
+    unwrap_sync (Sync.flush sync);
     Printf.printf "jsonl exists=%b\n" (Sys.file_exists jsonl_path));
   [%expect {|
     jsonl exists=false
     |}]
 
 let%expect_test "flush updates content hash in config" =
-  _with_sync (fun root sync _jsonl_path ->
-    ignore (_unwrap_todo (TodoRepo.create (Root.todo root)
+  with_sync (fun root sync _jsonl_path ->
+    ignore (unwrap_todo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "First") ~content:(Content.make "Body") ()));
-    _unwrap_sync (Sync.mark_dirty sync);
-    _unwrap_sync (Sync.flush sync);
+    unwrap_sync (Sync.mark_dirty sync);
+    unwrap_sync (Sync.flush sync);
 
     let hash1 = match Config.get (Root.config root) "content_hash" with
       | Ok h -> h | Error _ -> failwith "no hash" in
 
-    ignore (_unwrap_todo (TodoRepo.create (Root.todo root)
+    ignore (unwrap_todo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "Second") ~content:(Content.make "Body") ()));
-    _unwrap_sync (Sync.mark_dirty sync);
-    _unwrap_sync (Sync.flush sync);
+    unwrap_sync (Sync.mark_dirty sync);
+    unwrap_sync (Sync.flush sync);
 
     let hash2 = match Config.get (Root.config root) "content_hash" with
       | Ok h -> h | Error _ -> failwith "no hash" in
@@ -98,7 +98,7 @@ let%expect_test "flush updates content hash in config" =
     |}]
 
 let%expect_test "force_rebuild replaces DB content from JSONL" =
-  _with_sync (fun root sync jsonl_path ->
+  with_sync (fun root sync jsonl_path ->
     let tid = Typeid.of_string "todo_0123456789abcdefghjkmnpqrs" in
     let nid = Typeid.of_string "note_0123456789abcdefghjkmnpqrs" in
     let niceid = Identifier.make "kb" 0 in
@@ -111,10 +111,10 @@ let%expect_test "force_rebuild replaces DB content from JSONL" =
       ~todos:[todo] ~notes:[note] ~relations:[rel] with
       | Ok () -> () | Error _ -> failwith "write failed");
 
-    _unwrap_sync (Sync.force_rebuild sync);
+    unwrap_sync (Sync.force_rebuild sync);
 
-    let todos = _unwrap_todo (TodoRepo.list_all (Root.todo root)) in
-    let notes = _unwrap_note (NoteRepo.list_all (Root.note root)) in
+    let todos = unwrap_todo (TodoRepo.list_all (Root.todo root)) in
+    let notes = unwrap_note (NoteRepo.list_all (Root.note root)) in
     let rels = match RelationRepo.list_all (Root.relation root) with
       | Ok r -> r | Error _ -> failwith "list_all failed" in
     Printf.printf "todos=%d notes=%d relations=%d\n"
@@ -131,11 +131,11 @@ let%expect_test "force_rebuild replaces DB content from JSONL" =
     |}]
 
 let%expect_test "rebuild_if_needed detects hash mismatch" =
-  _with_sync (fun root sync jsonl_path ->
-    ignore (_unwrap_todo (TodoRepo.create (Root.todo root)
+  with_sync (fun root sync jsonl_path ->
+    ignore (unwrap_todo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "Original") ~content:(Content.make "Body") ()));
-    _unwrap_sync (Sync.mark_dirty sync);
-    _unwrap_sync (Sync.flush sync);
+    unwrap_sync (Sync.mark_dirty sync);
+    unwrap_sync (Sync.flush sync);
 
     let tid = Typeid.of_string "todo_0123456789abcdefghjkmnpqrs" in
     let niceid = Identifier.make "kb" 0 in
@@ -144,9 +144,9 @@ let%expect_test "rebuild_if_needed detects hash mismatch" =
       ~todos:[new_todo] ~notes:[] ~relations:[] with
       | Ok () -> () | Error _ -> failwith "write failed");
 
-    _unwrap_sync (Sync.rebuild_if_needed sync);
+    unwrap_sync (Sync.rebuild_if_needed sync);
 
-    let todos = _unwrap_todo (TodoRepo.list_all (Root.todo root)) in
+    let todos = unwrap_todo (TodoRepo.list_all (Root.todo root)) in
     Printf.printf "todo count=%d\n" (List.length todos);
     let t = List.hd todos in
     Printf.printf "title=%s\n" (Title.to_string (Todo.title t)));
@@ -156,15 +156,15 @@ let%expect_test "rebuild_if_needed detects hash mismatch" =
     |}]
 
 let%expect_test "rebuild_if_needed no-ops when hashes match" =
-  _with_sync (fun root sync _jsonl_path ->
-    ignore (_unwrap_todo (TodoRepo.create (Root.todo root)
+  with_sync (fun root sync _jsonl_path ->
+    ignore (unwrap_todo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "Original") ~content:(Content.make "Body") ()));
-    _unwrap_sync (Sync.mark_dirty sync);
-    _unwrap_sync (Sync.flush sync);
+    unwrap_sync (Sync.mark_dirty sync);
+    unwrap_sync (Sync.flush sync);
 
-    _unwrap_sync (Sync.rebuild_if_needed sync);
+    unwrap_sync (Sync.rebuild_if_needed sync);
 
-    let todos = _unwrap_todo (TodoRepo.list_all (Root.todo root)) in
+    let todos = unwrap_todo (TodoRepo.list_all (Root.todo root)) in
     Printf.printf "todo count=%d title=%s\n"
       (List.length todos)
       (Title.to_string (Todo.title (List.hd todos))));
@@ -173,8 +173,8 @@ let%expect_test "rebuild_if_needed no-ops when hashes match" =
     |}]
 
 let%expect_test "rebuild_if_needed no-ops when no JSONL file" =
-  _with_sync (fun _root sync _jsonl_path ->
-    _unwrap_sync (Sync.rebuild_if_needed sync);
+  with_sync (fun _root sync _jsonl_path ->
+    unwrap_sync (Sync.rebuild_if_needed sync);
     print_endline "ok");
   [%expect {|
     ok
