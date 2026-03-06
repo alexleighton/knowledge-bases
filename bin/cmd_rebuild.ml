@@ -16,7 +16,7 @@ let run json =
           ])
         else
           print_endline "Rebuilt SQLite from .kbases.jsonl"
-    | Error err -> Common.exit_with (Common.service_error_msg err))
+    | Error err -> Common.exit_with_error ~json (Common.service_error_msg err))
 
 let cmd_man = [
   `S "DESCRIPTION";

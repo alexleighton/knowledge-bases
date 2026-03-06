@@ -55,7 +55,7 @@ let%expect_test "relate two todos with depends-on" =
     let src = Identifier.to_string (Todo.niceid t1) in
     let tgt = Identifier.to_string (Todo.niceid t2) in
     (match RelationService.relate service ~source:src ~target:tgt
-             ~kind:"depends-on" ~bidirectional:false with
+             ~kind:"depends-on" ~bidirectional:false ~blocking:false with
      | Ok r ->
          Printf.printf "related: %s %s %s (%s)\n"
            (Identifier.to_string r.source_niceid)
@@ -79,7 +79,7 @@ let%expect_test "relate todo to note with related-to" =
     let src = Identifier.to_string (Todo.niceid todo) in
     let tgt = Identifier.to_string (Note.niceid note) in
     (match RelationService.relate service ~source:src ~target:tgt
-             ~kind:"related-to" ~bidirectional:true with
+             ~kind:"related-to" ~bidirectional:true ~blocking:false with
      | Ok r ->
          Printf.printf "related: %s %s %s (%s)\n"
            (Identifier.to_string r.source_niceid)
@@ -103,7 +103,7 @@ let%expect_test "relate with user-defined unidirectional kind" =
     let src = Identifier.to_string (Todo.niceid t1) in
     let tgt = Identifier.to_string (Todo.niceid t2) in
     (match RelationService.relate service ~source:src ~target:tgt
-            ~kind:"designed-by" ~bidirectional:false with
+            ~kind:"designed-by" ~bidirectional:false ~blocking:false with
     | Ok r ->
         Printf.printf "related: %s %s %s\n"
           (Identifier.to_string r.source_niceid)
@@ -124,7 +124,7 @@ let%expect_test "source not found" =
       ~title:(Title.make "Target") ~content:(Content.make "Body") ()) in
     let tgt = Identifier.to_string (Todo.niceid t1) in
     match RelationService.relate service ~source:"kb-999" ~target:tgt
-            ~kind:"depends-on" ~bidirectional:false with
+            ~kind:"depends-on" ~bidirectional:false ~blocking:false with
     | Ok _ -> print_endline "unexpected success"
     | Error err -> pp_error err);
   [%expect {| validation error: item not found: kb-999 |}]
@@ -135,7 +135,7 @@ let%expect_test "target not found" =
       ~title:(Title.make "Source") ~content:(Content.make "Body") ()) in
     let src = Identifier.to_string (Todo.niceid t1) in
     match RelationService.relate service ~source:src ~target:"kb-999"
-            ~kind:"depends-on" ~bidirectional:false with
+            ~kind:"depends-on" ~bidirectional:false ~blocking:false with
     | Ok _ -> print_endline "unexpected success"
     | Error err -> pp_error err);
   [%expect {| validation error: item not found: kb-999 |}]
@@ -149,7 +149,7 @@ let%expect_test "invalid kind string" =
     let src = Identifier.to_string (Todo.niceid t1) in
     let tgt = Identifier.to_string (Todo.niceid t2) in
     match RelationService.relate service ~source:src ~target:tgt
-            ~kind:"BAD KIND" ~bidirectional:false with
+            ~kind:"BAD KIND" ~bidirectional:false ~blocking:false with
     | Ok _ -> print_endline "unexpected success"
     | Error err -> pp_error err);
   [%expect {| validation error: relation kind must match [a-z0-9][a-z0-9-]* and not end with '-' |}]
@@ -163,9 +163,9 @@ let%expect_test "duplicate relation" =
     let src = Identifier.to_string (Todo.niceid t1) in
     let tgt = Identifier.to_string (Todo.niceid t2) in
     ignore (RelationService.relate service ~source:src ~target:tgt
-              ~kind:"depends-on" ~bidirectional:false);
+              ~kind:"depends-on" ~bidirectional:false ~blocking:false);
     match RelationService.relate service ~source:src ~target:tgt
-            ~kind:"depends-on" ~bidirectional:false with
+            ~kind:"depends-on" ~bidirectional:false ~blocking:false with
     | Ok _ -> print_endline "unexpected success"
     | Error err -> pp_error err);
   [%expect {| validation error: relation already exists |}]
@@ -179,9 +179,9 @@ let%expect_test "bidirectional reverse duplicate" =
     let src = Identifier.to_string (Todo.niceid t1) in
     let tgt = Identifier.to_string (Todo.niceid t2) in
     ignore (RelationService.relate service ~source:src ~target:tgt
-              ~kind:"related-to" ~bidirectional:true);
+              ~kind:"related-to" ~bidirectional:true ~blocking:false);
     match RelationService.relate service ~source:tgt ~target:src
-            ~kind:"related-to" ~bidirectional:true with
+            ~kind:"related-to" ~bidirectional:true ~blocking:false with
     | Ok _ -> print_endline "unexpected success"
     | Error err -> pp_error err);
   [%expect {| validation error: relation already exists |}]
@@ -199,9 +199,11 @@ let%expect_test "relate_many with two depends-on specs creates both relations" =
     let src = Identifier.to_string (Todo.niceid t1) in
     let specs = [
       RelationService.{ target = Identifier.to_string (Todo.niceid t2);
-                        kind = "depends-on"; bidirectional = false };
+                        kind = "depends-on"; bidirectional = false;
+                        blocking = false };
       RelationService.{ target = Identifier.to_string (Todo.niceid t3);
-                        kind = "depends-on"; bidirectional = false };
+                        kind = "depends-on"; bidirectional = false;
+                        blocking = false };
     ] in
     (match RelationService.relate_many service ~source:src ~specs with
      | Ok rs ->
@@ -233,9 +235,11 @@ let%expect_test "relate_many with mixed kinds succeeds" =
     let src = Identifier.to_string (Todo.niceid t1) in
     let specs = [
       RelationService.{ target = Identifier.to_string (Todo.niceid t2);
-                        kind = "depends-on"; bidirectional = false };
+                        kind = "depends-on"; bidirectional = false;
+                        blocking = false };
       RelationService.{ target = Identifier.to_string (Todo.niceid t3);
-                        kind = "related-to"; bidirectional = true };
+                        kind = "related-to"; bidirectional = true;
+                        blocking = false };
     ] in
     (match RelationService.relate_many service ~source:src ~specs with
      | Ok rs -> Printf.printf "created %d relations\n" (List.length rs)
@@ -256,8 +260,10 @@ let%expect_test "relate_many invalid target on second spec fails before any rela
     let src = Identifier.to_string (Todo.niceid t1) in
     let specs = [
       RelationService.{ target = Identifier.to_string (Todo.niceid t2);
-                        kind = "depends-on"; bidirectional = false };
-      RelationService.{ target = "kb-999"; kind = "depends-on"; bidirectional = false };
+                        kind = "depends-on"; bidirectional = false;
+                        blocking = false };
+      RelationService.{ target = "kb-999"; kind = "depends-on"; bidirectional = false;
+                        blocking = false };
     ] in
     (match RelationService.relate_many service ~source:src ~specs with
      | Ok _ -> print_endline "unexpected success"
@@ -276,9 +282,11 @@ let%expect_test "relate_many invalid kind fails with no relations created" =
     let src = Identifier.to_string (Todo.niceid t1) in
     let specs = [
       RelationService.{ target = Identifier.to_string (Todo.niceid t2);
-                        kind = "depends-on"; bidirectional = false };
+                        kind = "depends-on"; bidirectional = false;
+                        blocking = false };
       RelationService.{ target = Identifier.to_string (Todo.niceid t3);
-                        kind = "BAD KIND"; bidirectional = false };
+                        kind = "BAD KIND"; bidirectional = false;
+                        blocking = false };
     ] in
     (match RelationService.relate_many service ~source:src ~specs with
      | Ok _ -> print_endline "unexpected success"

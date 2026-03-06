@@ -69,14 +69,32 @@ Approaches for reducing nesting:
   library that raises, catch exceptions internally and return result values.
   This removes `try`/`with` nesting from every call site.
 
-## 4. File length
+## 4. Parameterize shared helpers
+
+When a shared helper hardcodes a behavioral choice — an exit code, an output
+destination, an error-mapping strategy — callers that need a different value are
+forced to bypass the helper entirely, duplicating its other responsibilities.
+
+Make the varying choice a parameter with a sensible default so existing callers
+don't change and new callers can override just the part that differs.
+
+**Example:** A `_with_flush` function that hardcodes its error-mapping type
+forces callers with a different error type to inline the entire
+mark-dirty/call/flush sequence. Adding a `~map_err` parameter with the common
+mapping as the default eliminates the duplication.
+
+**Why:** A helper that does three things but hardcodes one of them becomes
+unusable when that one thing varies. The result is either duplicated code or
+callers that skip the helper and lose its guarantees.
+
+## 5. File length
 
 Keep files below approximately 300 lines. Larger files are harder to read and
 understand. A file approaching this limit is often a sign that the concept it
 represents is too complex and should be broken into smaller, composable
 modules.
 
-## 5. Explicit entropy initialization
+## 6. Explicit entropy initialization
 
 Code that depends on randomness for correctness — unique IDs, tokens, nonces —
 must explicitly initialize its entropy source. OCaml's `Random` module produces

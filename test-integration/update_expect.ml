@@ -157,6 +157,43 @@ let%expect_test "bs update --json" =
     niceid: kb-0
   |}]
 
+let%expect_test "bs update --json error not found" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    let result = Helper.run_bs ~dir ["update"; "kb-999"; "--status"; "done"; "--json"] in
+    Printf.printf "[exit %d]\n" result.exit_code;
+    Printf.printf "stderr empty: %b\n" (result.stderr = "");
+    let json = Helper.parse_json result.stdout in
+    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
+    Printf.printf "reason: %s\n" (Helper.get_string json "reason");
+    Printf.printf "message: %s\n" (Helper.get_string json "message"));
+  [%expect {|
+    [exit 1]
+    stderr empty: true
+    ok: false
+    reason: error
+    message: item not found: kb-999
+  |}]
+
+let%expect_test "bs update --json error nothing to update" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "Title"]);
+    let result = Helper.run_bs ~dir ["update"; "kb-0"; "--json"] in
+    Printf.printf "[exit %d]\n" result.exit_code;
+    Printf.printf "stderr empty: %b\n" (result.stderr = "");
+    let json = Helper.parse_json result.stdout in
+    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
+    Printf.printf "reason: %s\n" (Helper.get_string json "reason");
+    Printf.printf "message: %s\n" (Helper.get_string json "message"));
+  [%expect {|
+    [exit 1]
+    stderr empty: true
+    ok: false
+    reason: error
+    message: nothing to update
+  |}]
+
 let%expect_test "bs update errors on --content and stdin" =
   Helper.with_git_root (fun dir ->
     Helper.init_kb dir;

@@ -8,10 +8,10 @@ module Relation = Kbases.Data.Relation
 module Relation_kind = Kbases.Data.Relation_kind
 module Identifier = Kbases.Data.Identifier
 
-let run source depends_on related_to uni bi json =
-  let specs = Service.build_specs ~depends_on ~related_to ~uni ~bi in
+let run source depends_on related_to uni bi blocking json =
+  let specs = Service.build_specs ~depends_on ~related_to ~uni ~bi ~blocking in
   if specs = [] then
-    Common.exit_with
+    Common.exit_with_error ~json
       "at least one of --depends-on, --related-to, --uni, or --bi is required";
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
@@ -42,7 +42,7 @@ let run source depends_on related_to uni bi json =
               (Identifier.to_string target_niceid)
               dir)
             results
-    | Error err -> Common.exit_with (Common.service_error_msg err))
+    | Error err -> Common.exit_with_error ~json (Common.service_error_msg err))
 
 let source_arg =
   let doc = "Niceid (e.g. kb-0) or TypeId of the source item." in
@@ -66,6 +66,6 @@ let cmd_info = Cmd.info "relate" ~doc:"Create relations from a source item to on
 
 let cmd =
   let term =
-    Term.(const run $ source_arg $ Common.depends_on_opt $ Common.related_to_opt $ Common.uni_opt $ Common.bi_opt $ Common.json_flag)
+    Term.(const run $ source_arg $ Common.depends_on_opt $ Common.related_to_opt $ Common.uni_opt $ Common.bi_opt $ Common.blocking_flag $ Common.json_flag)
   in
   Cmd.v cmd_info term

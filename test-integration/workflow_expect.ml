@@ -61,8 +61,8 @@ let%expect_test "project planning — create, relate, progress, and list" =
     Cover all endpoints with integration tests.
 
     Outgoing:
-      depends-on  kb-1  todo  Implement data layer
-      depends-on  kb-2  todo  Implement API endpoints
+      depends-on  kb-1  todo  Implement data layer  [blocking]
+      depends-on  kb-2  todo  Implement API endpoints  [blocking]
     [exit 0]
     kb-0    note  active        Architecture design
     kb-2    todo  in-progress   Implement API endpoints
@@ -127,7 +127,7 @@ let%expect_test "flush-rebuild round trip preserves state" =
     Implement the first task.
 
     Outgoing:
-      depends-on  kb-2  todo  Second task
+      depends-on  kb-2  todo  Second task  [blocking]
     [exit 0]
     todo kb-2 (<TYPEID>)
     Status: open
@@ -139,7 +139,7 @@ let%expect_test "flush-rebuild round trip preserves state" =
       related-to  kb-1  note  Design doc
 
     Incoming:
-      depends-on  kb-0  todo  First task
+      depends-on  kb-0  todo  First task  [blocking]
     [exit 0]
     Rebuilt SQLite from .kbases.jsonl
     [exit 0]
@@ -154,7 +154,7 @@ let%expect_test "flush-rebuild round trip preserves state" =
     Implement the first task.
 
     Outgoing:
-      depends-on  kb-2  todo  Second task
+      depends-on  kb-2  todo  Second task  [blocking]
     [exit 0]
     kb-0    note  active        Design doc
     kb-2    todo  open          Second task
@@ -280,3 +280,78 @@ let%expect_test "auto-rebuild — create items with relations, delete db, verify
     Outgoing:
       related-to  kb-0  note  Design doc
   |}]
+
+let%expect_test "next/claim workflow — dependencies, availability, and progression" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+
+    (* Phase 1 — Create todos with dependencies *)
+    ignore (Helper.run_bs ~dir ~stdin:"Set up database schema."
+      ["add"; "todo"; "Setup database"]);
+    ignore (Helper.run_bs ~dir ~stdin:"Build API endpoints."
+      ["add"; "todo"; "Build API"]);
+    ignore (Helper.run_bs ~dir ~stdin:"Write end-to-end tests."
+      ["add"; "todo"; "Write tests"]);
+    (* kb-1 (Build API) depends on kb-0 (Setup database) *)
+    ignore (Helper.run_bs ~dir ["relate"; "kb-1"; "--depends-on"; "kb-0"; "--blocking"]);
+    (* kb-2 (Write tests) depends on kb-1 (Build API) *)
+    ignore (Helper.run_bs ~dir ["relate"; "kb-2"; "--depends-on"; "kb-1"; "--blocking"]);
+
+    (* Phase 2 — List available: only kb-0 is unblocked *)
+    let avail1 = Helper.run_bs ~dir ["list"; "--available"] in
+    Helper.print_result ~dir avail1;
+
+    (* Phase 3 — next claims kb-0 *)
+    let next1 = Helper.run_bs ~dir ["next"] in
+    Helper.print_result ~dir next1;
+
+    (* Phase 4 — Show kb-0 is in-progress *)
+    let show0 = Helper.run_bs ~dir ["show"; "kb-0"] in
+    Helper.print_result ~dir show0;
+
+    (* Phase 5 — Resolve kb-0, next picks kb-1 *)
+    ignore (Helper.run_bs ~dir ["resolve"; "kb-0"]);
+    let avail2 = Helper.run_bs ~dir ["list"; "--available"] in
+    Helper.print_result ~dir avail2;
+
+    let next2 = Helper.run_bs ~dir ["next"] in
+    Helper.print_result ~dir next2;
+
+    (* Phase 6 — Claim kb-2 directly fails (blocked) *)
+    let claim_blocked = Helper.run_bs ~dir ["claim"; "kb-2"] in
+    Helper.print_result ~dir claim_blocked;
+
+    (* Phase 7 — Resolve kb-1, claim kb-2 *)
+    ignore (Helper.run_bs ~dir ["resolve"; "kb-1"]);
+    let claim2 = Helper.run_bs ~dir ["claim"; "kb-2"] in
+    Helper.print_result ~dir claim2;
+
+    (* Phase 8 — Resolve kb-2, next returns nothing *)
+    ignore (Helper.run_bs ~dir ["resolve"; "kb-2"]);
+    let next_empty = Helper.run_bs ~dir ["next"] in
+    Helper.print_result ~dir next_empty);
+  [%expect {|
+    [exit 0]
+    kb-0    todo  open          Setup database
+    [exit 0]
+    Claimed todo: kb-0  Setup database
+    [exit 0]
+    todo kb-0 (<TYPEID>)
+    Status: in-progress
+    Title:  Setup database
+
+    Set up database schema.
+
+    Incoming:
+      depends-on  kb-1  todo  Build API  [blocking]
+    [exit 0]
+    kb-1    todo  open          Build API
+    [exit 0]
+    Claimed todo: kb-1  Build API
+    [exit 1]
+    STDERR: Error: kb-2 is blocked by kb-1
+    [exit 0]
+    Claimed todo: kb-2  Write tests
+    [exit 0]
+    No open unblocked todos
+    |}]

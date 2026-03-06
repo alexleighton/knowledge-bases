@@ -7,12 +7,15 @@
 (** Abstract type of relations. *)
 type t
 
-(** [make ~source ~target ~kind ~bidirectional] constructs a relation. *)
+(** [make ~source ~target ~kind ~bidirectional ~blocking] constructs a
+    relation.  When [blocking] is [true] the target is considered to
+    block the source. *)
 val make :
   source:Uuid.Typeid.t ->
   target:Uuid.Typeid.t ->
   kind:Relation_kind.t ->
   bidirectional:bool ->
+  blocking:bool ->
   t
 
 (** [source t] returns the source entity TypeId. *)
@@ -27,6 +30,9 @@ val kind : t -> Relation_kind.t
 (** [is_bidirectional t] returns [true] when the relation is
     traversable in both directions. *)
 val is_bidirectional : t -> bool
+
+(** [is_blocking t] returns [true] when the target blocks the source. *)
+val is_blocking : t -> bool
 
 (** [pp fmt t] pretty-prints the relation. *)
 val pp : Format.formatter -> t -> unit

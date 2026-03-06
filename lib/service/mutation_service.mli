@@ -6,6 +6,14 @@
 (** Abstract service handle. *)
 type t
 
+(** Errors specific to claim and next operations. *)
+type claim_error =
+  | Not_a_todo of string
+  | Not_open of { niceid : string; status : string }
+  | Blocked of { niceid : string; blocked_by : string list }
+  | Nothing_available of { stuck_count : int }
+  | Service_error of Item_service.error
+
 (** [init root] initializes the mutation service from a shared
     {!Repository.Root.t} handle. *)
 val init : Repository.Root.t -> t
@@ -25,6 +33,21 @@ val update :
   ?content:Data.Content.t ->
   unit ->
   (Item_service.item, Item_service.error) result
+
+(** [next t] selects the first open, unblocked todo (by niceid order) and
+    transitions it to [In_Progress].
+
+    @return [Ok None] when no open todos exist.
+    @return [Error (Nothing_available _)] when all open todos are blocked. *)
+val next : t -> (Data.Todo.t option, claim_error) result
+
+(** [claim t ~identifier] transitions an open, unblocked todo to [In_Progress].
+
+    @return [Not_a_todo] if the item is a note.
+    @return [Not_open] if the todo is not in [Open] status.
+    @return [Blocked] if the todo has unresolved blocking dependencies. *)
+val claim :
+  t -> identifier:string -> (Data.Todo.t, claim_error) result
 
 (** [resolve t ~identifier] sets a todo's status to [Done].
 

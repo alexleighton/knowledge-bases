@@ -105,7 +105,7 @@ let%expect_test "force_rebuild replaces DB content from JSONL" =
     let todo = Todo.make tid niceid (Title.make "From file") (Content.make "Body") Todo.Open in
     let note = Note.make nid niceid (Title.make "A note") (Content.make "Note body") Note.Active in
     let rel = Relation.make ~source:tid ~target:nid
-      ~kind:(Relation_kind.make "blocks") ~bidirectional:false in
+      ~kind:(Relation_kind.make "blocks") ~bidirectional:false ~blocking:false in
 
     (match Jsonl.write ~path:jsonl_path ~namespace:"kb"
       ~todos:[todo] ~notes:[note] ~relations:[rel] with

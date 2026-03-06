@@ -4,6 +4,7 @@ type relate_spec = {
   target        : string;
   kind          : string;
   bidirectional : bool;
+  blocking      : bool;
 }
 
 type t = {
@@ -46,18 +47,22 @@ let title_of_item = function
   | Item_service.Todo_item t -> Data.Todo.title t
   | Item_service.Note_item n -> Data.Note.title n
 
-let build_specs ~depends_on ~related_to ~uni ~bi =
+let build_specs ~depends_on ~related_to ~uni ~bi ~blocking =
   List.map (fun tgt ->
-    { target = tgt; kind = "depends-on"; bidirectional = false })
+    { target = tgt; kind = "depends-on"; bidirectional = false;
+      blocking = true })
     depends_on
   @ List.map (fun tgt ->
-      { target = tgt; kind = "related-to"; bidirectional = true })
+      { target = tgt; kind = "related-to"; bidirectional = true;
+        blocking })
     related_to
   @ List.map (fun (k, tgt) ->
-      { target = tgt; kind = k; bidirectional = false })
+      { target = tgt; kind = k; bidirectional = false;
+        blocking })
     uni
   @ List.map (fun (k, tgt) ->
-      { target = tgt; kind = k; bidirectional = true })
+      { target = tgt; kind = k; bidirectional = true;
+        blocking })
     bi
 
 let relate_many t ~source ~specs =
@@ -70,15 +75,15 @@ let relate_many t ~source ~specs =
     List.map (fun spec ->
       let* target_item = Item_service.find t.items ~identifier:spec.target in
       let+ kind = Parse.relation_kind spec.kind in
-      (target_item, kind, spec.bidirectional)
+      (target_item, kind, spec.bidirectional, spec.blocking)
     ) specs
     |> Data.Result.sequence
   in
   (* Create phase: insert all relations *)
-  List.map (fun (target_item, kind, bidirectional) ->
+  List.map (fun (target_item, kind, bidirectional, blocking) ->
     let target_typeid = typeid_of_item target_item in
     let rel = Data.Relation.make ~source:source_typeid ~target:target_typeid
-                ~kind ~bidirectional in
+                ~kind ~bidirectional ~blocking in
     let+ relation =
       RelationRepo.create t.relation_repo rel
       |> Result.map_error map_relation_repo_error
@@ -93,8 +98,8 @@ let relate_many t ~source ~specs =
   ) resolved
   |> Data.Result.sequence
 
-let relate t ~source ~target ~kind ~bidirectional =
+let relate t ~source ~target ~kind ~bidirectional ~blocking =
   let open Result.Syntax in
-  let specs = [{ target; kind; bidirectional }] in
+  let specs = [{ target; kind; bidirectional; blocking }] in
   let+ results = relate_many t ~source ~specs in
   List.hd results

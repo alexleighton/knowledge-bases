@@ -1,12 +1,15 @@
 module Root = Kbases.Repository.Root
 module NoteRepo = Kbases.Repository.Note
 module TodoRepo = Kbases.Repository.Todo
+module RelationRepo = Kbases.Repository.Relation
 module QueryService = Kbases.Service.Query_service
 module Note = Kbases.Data.Note
 module Todo = Kbases.Data.Todo
 module Title = Kbases.Data.Title
 module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
+module Relation = Kbases.Data.Relation
+module Relation_kind = Kbases.Data.Relation_kind
 
 let unwrap_note_repo = Test_helpers.unwrap_note_repo
 let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
@@ -63,7 +66,7 @@ let%expect_test "list defaults exclude done and archived" =
     query_count root "todo";
     query_count root "note";
     (* Service filtering returns only open/active items *)
-    unwrap_query (QueryService.list service ~entity_type:None ~statuses:[])
+    unwrap_query (QueryService.list service ~entity_type:None ~statuses:[] ())
     |> print_items);
   [%expect {|
     todo=2
@@ -81,7 +84,7 @@ let%expect_test "list filters by type and status" =
       ~status:Todo.Done ()));
     ignore (unwrap_note_repo (NoteRepo.create (Root.note root)
       ~title:(Title.make "Active note") ~content:(Content.make "Body") ()));
-    unwrap_query (QueryService.list service ~entity_type:(Some "todo") ~statuses:["open"])
+    unwrap_query (QueryService.list service ~entity_type:(Some "todo") ~statuses:["open"] ())
     |> print_items);
   [%expect {|
     kb-0 todo open Open todo
@@ -96,7 +99,7 @@ let%expect_test "list combines statuses across types" =
       ~status:Todo.In_Progress ()));
     ignore (unwrap_note_repo (NoteRepo.create (Root.note root)
       ~title:(Title.make "Active note") ~content:(Content.make "Body") ()));
-    unwrap_query (QueryService.list service ~entity_type:None ~statuses:["open"; "active"])
+    unwrap_query (QueryService.list service ~entity_type:None ~statuses:["open"; "active"] ())
     |> print_items);
   [%expect {|
     kb-0 todo open Open todo
@@ -105,7 +108,7 @@ let%expect_test "list combines statuses across types" =
 
 let%expect_test "list rejects invalid status for entity type" =
   with_query_service (fun _root service ->
-    match QueryService.list service ~entity_type:(Some "note") ~statuses:["done"] with
+    match QueryService.list service ~entity_type:(Some "note") ~statuses:["done"] () with
     | Ok _ -> print_endline "unexpected success"
     | Error err -> pp_error err);
   [%expect {|
@@ -114,7 +117,7 @@ let%expect_test "list rejects invalid status for entity type" =
 
 let%expect_test "list rejects invalid entity type" =
   with_query_service (fun _root service ->
-    match QueryService.list service ~entity_type:(Some "banana") ~statuses:[] with
+    match QueryService.list service ~entity_type:(Some "banana") ~statuses:[] () with
     | Ok _ -> print_endline "unexpected success"
     | Error err -> pp_error err);
   [%expect {|
@@ -241,4 +244,64 @@ let%expect_test "show unknown typeid prefix" =
     | Error err -> pp_error err);
   [%expect {|
     validation error: unknown typeid prefix "banana"
+  |}]
+
+let make_blocking_rel ~source ~target =
+  Relation.make ~source:(Todo.id source) ~target:(Todo.id target)
+    ~kind:(Relation_kind.make "depends-on") ~bidirectional:false ~blocking:true
+
+let%expect_test "list available returns only open unblocked todos" =
+  with_query_service (fun root service ->
+    ignore (unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Unblocked") ~content:(Content.make "Body") ()));
+    let todo_b = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Blocked") ~content:(Content.make "Body") ()) in
+    let _todo_c = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Dependency") ~content:(Content.make "Body") ()) in
+    let rel = make_blocking_rel ~source:todo_b ~target:_todo_c in
+    ignore (RelationRepo.create (Root.relation root) rel);
+    unwrap_query (QueryService.list service ~entity_type:None ~statuses:[] ~available:true ())
+    |> print_items);
+  [%expect {|
+    kb-0 todo open Unblocked
+    kb-2 todo open Dependency
+  |}]
+
+let%expect_test "list available excludes blocked even with done blocker resolved" =
+  with_query_service (fun root service ->
+    let todo_a = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Blocked") ~content:(Content.make "Body") ()) in
+    let dep = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Dep done") ~content:(Content.make "Body")
+      ~status:Todo.Done ()) in
+    let rel = make_blocking_rel ~source:todo_a ~target:dep in
+    ignore (RelationRepo.create (Root.relation root) rel);
+    (* todo_a depends on dep which is done, so todo_a is unblocked *)
+    unwrap_query (QueryService.list service ~entity_type:None ~statuses:[] ~available:true ())
+    |> print_items);
+  [%expect {|
+    kb-0 todo open Blocked
+  |}]
+
+let%expect_test "list available returns empty when no open todos" =
+  with_query_service (fun root service ->
+    ignore (unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Done") ~content:(Content.make "Body")
+      ~status:Todo.Done ()));
+    ignore (unwrap_note_repo (NoteRepo.create (Root.note root)
+      ~title:(Title.make "A note") ~content:(Content.make "Body") ()));
+    unwrap_query (QueryService.list service ~entity_type:None ~statuses:[] ~available:true ())
+    |> print_items);
+  [%expect {| |}]
+
+let%expect_test "list available ignores notes" =
+  with_query_service (fun root service ->
+    ignore (unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Open todo") ~content:(Content.make "Body") ()));
+    ignore (unwrap_note_repo (NoteRepo.create (Root.note root)
+      ~title:(Title.make "Active note") ~content:(Content.make "Body") ()));
+    unwrap_query (QueryService.list service ~entity_type:None ~statuses:[] ~available:true ())
+    |> print_items);
+  [%expect {|
+    kb-0 todo open Open todo
   |}]

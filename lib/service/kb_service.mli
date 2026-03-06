@@ -37,6 +37,7 @@ type relation_entry = {
   niceid      : Data.Identifier.t;
   entity_type : string;
   title       : Data.Title.t;
+  blocking    : bool option;
 }
 
 (** Result of showing a single item, including its relations. *)
@@ -51,6 +52,7 @@ type relate_spec = Relation_service.relate_spec = {
   target        : string;
   kind          : string;
   bidirectional : bool;
+  blocking      : bool;
 }
 
 (** Result of a successful relate operation. *)
@@ -61,6 +63,14 @@ type relate_result = Relation_service.relate_result = {
   target_type   : string;
   target_title  : Data.Title.t;
 }
+
+(** Errors specific to claim and next operations. *)
+type claim_error = Mutation_service.claim_error =
+  | Not_a_todo of string
+  | Not_open of { niceid : string; status : string }
+  | Blocked of { niceid : string; blocked_by : string list }
+  | Nothing_available of { stuck_count : int }
+  | Service_error of Item_service.error
 
 (** Result of an [add_*_with_relations] operation. *)
 type add_with_relations_result = {
@@ -76,7 +86,7 @@ type add_with_relations_result = {
     handle. The service does not own the root — callers manage its lifecycle. *)
 val init : Repository.Root.t -> t
 
-(** [build_specs ~depends_on ~related_to ~uni ~bi] constructs a
+(** [build_specs ~depends_on ~related_to ~uni ~bi ~blocking] constructs a
     {!relate_spec} list from the four relation categories. See
     {!Relation_service.build_specs}. *)
 val build_specs :
@@ -84,6 +94,7 @@ val build_specs :
   related_to:string list ->
   uni:(string * string) list ->
   bi:(string * string) list ->
+  blocking:bool ->
   relate_spec list
 
 (** [open_kb ()] finds the git root from the current directory, opens the
@@ -139,16 +150,22 @@ val add_todo_with_relations :
 
 (* --- Query --- *)
 
-(** [list t ~entity_type ~statuses] returns todos and/or notes filtered by type and status.
+(** [list t ~entity_type ~statuses ?available ()] returns todos and/or notes
+    filtered by type and status.
 
     When [entity_type] is [None], both entity types are considered. When it is
     [Some "todo"] or [Some "note"], only that type is listed. [statuses] is a
     set of status strings; when empty, default exclusions apply (exclude done
-    todos and archived notes). *)
+    todos and archived notes).
+
+    When [available] is [true], returns only open unblocked todos, ignoring
+    [entity_type] and [statuses]. *)
 val list :
   t ->
   entity_type:string option ->
   statuses:string list ->
+  ?available:bool ->
+  unit ->
   (item list, error) result
 
 (** [show t ~identifier] looks up a single item by niceid or TypeId, including
@@ -183,6 +200,13 @@ val resolve : t -> identifier:string -> (Data.Todo.t, error) result
 
 (** [archive t ~identifier] sets a note's status to [Archived]. *)
 val archive : t -> identifier:string -> (Data.Note.t, error) result
+
+(** [next t] selects the first open, unblocked todo and transitions it to
+    [In_Progress]. Returns [Ok None] when no open todos exist. *)
+val next : t -> (Data.Todo.t option, claim_error) result
+
+(** [claim t ~identifier] transitions an open, unblocked todo to [In_Progress]. *)
+val claim : t -> identifier:string -> (Data.Todo.t, claim_error) result
 
 (** [relate t ~source ~specs] creates one or more relations from [source]
     atomically. All specs are validated before any relation is inserted.

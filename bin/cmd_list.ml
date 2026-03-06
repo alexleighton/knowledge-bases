@@ -39,10 +39,15 @@ let item_to_json = function
         "title", `String (Title.to_string (Note.title note));
       ]
 
-let run entity_type statuses json =
+let run entity_type statuses json available =
+  if available && statuses <> [] then
+    Common.exit_with_error ~json "--available cannot be combined with --status"
+  else if available && entity_type = Some "note" then
+    Common.exit_with_error ~json "--available applies only to todos, not notes"
+  else
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
-    match Service.list (App_context.service ctx) ~entity_type ~statuses with
+    match Service.list (App_context.service ctx) ~entity_type ~statuses ~available () with
     | Ok items ->
         if json then
           Common.print_json (`Assoc [
@@ -51,7 +56,7 @@ let run entity_type statuses json =
           ])
         else
           List.iter format_item items
-    | Error err -> Common.exit_with (Common.service_error_msg err))
+    | Error err -> Common.exit_with_error ~json (Common.service_error_msg err))
 
 let type_arg =
   let doc = "Optional entity type to list (todo|note)." in
@@ -72,6 +77,10 @@ let status_opt =
   ] in
   Arg.(value & opt_all (enum statuses) [] & info [ "status" ] ~docv:"STATUS" ~doc)
 
+let available_flag =
+  let doc = "List only open, unblocked todos (available for claiming)." in
+  Arg.(value & flag & info [ "available" ] ~doc)
+
 let cmd_man = [
   `S "EXAMPLES";
   `P "List all open todos and active notes:";
@@ -80,10 +89,12 @@ let cmd_man = [
   `P "  bs list todo --status open";
   `P "Combine multiple status filters:";
   `P "  bs list --status open --status active";
+  `P "List available (unblocked) todos:";
+  `P "  bs list --available";
 ]
 
 let cmd_info = Cmd.info "list" ~doc:"List todos and notes in the knowledge base." ~man:cmd_man
 
 let cmd =
-  let term = Term.(const run $ type_arg $ status_opt $ Common.json_flag) in
+  let term = Term.(const run $ type_arg $ status_opt $ Common.json_flag $ available_flag) in
   Cmd.v cmd_info term

@@ -23,6 +23,7 @@ type relation_entry = {
   niceid      : Data.Identifier.t;
   entity_type : string;
   title       : Data.Title.t;
+  blocking    : bool option;
 }
 
 type show_result = {
@@ -45,7 +46,53 @@ let raw_id_of_item = function
 let sort_items items =
   List.sort (fun a b -> Int.compare (raw_id_of_item a) (raw_id_of_item b)) items
 
-let list t ~entity_type ~statuses =
+let _map_relation_repo_error = function
+  | RelationRepo.Duplicate -> Item_service.Validation_error "unexpected"
+  | RelationRepo.Backend_failure msg -> Item_service.Repository_error msg
+
+let _is_blocked t rels_by_source todo =
+  let key = Data.Uuid.Typeid.to_string (Data.Todo.id todo) in
+  match Hashtbl.find_opt rels_by_source key with
+  | None -> false
+  | Some rels ->
+      List.exists (fun rel ->
+        if not (Data.Relation.is_blocking rel) then false
+        else
+          let target_id = Data.Uuid.Typeid.to_string (Data.Relation.target rel) in
+          match Item_service.find t.items ~identifier:target_id with
+          | Ok (Item_service.Todo_item target_todo) ->
+              Data.Todo.status target_todo <> Data.Todo.Done
+          | Ok (Item_service.Note_item _) -> false
+          | Error _ -> false
+      ) rels
+
+let _list_available t =
+  let open Result.Syntax in
+  let* todos =
+    Todo.list t.todo_repo ~statuses:[Data.Todo.Open]
+    |> Result.map_error Item_service.map_todo_repo_error
+  in
+  let* all_rels =
+    RelationRepo.list_all t.relation_repo
+    |> Result.map_error _map_relation_repo_error
+  in
+  let rels_by_source = Hashtbl.create (List.length all_rels) in
+  List.iter (fun rel ->
+    let key = Data.Uuid.Typeid.to_string (Data.Relation.source rel) in
+    let existing = match Hashtbl.find_opt rels_by_source key with
+      | None -> []
+      | Some l -> l
+    in
+    Hashtbl.replace rels_by_source key (rel :: existing)
+  ) all_rels;
+  let unblocked = List.filter (fun todo ->
+    not (_is_blocked t rels_by_source todo)
+  ) todos in
+  Ok (sort_items (List.map (fun todo -> Todo_item todo) unblocked))
+
+let list t ~entity_type ~statuses ?(available = false) () =
+  if available then _list_available t
+  else
   let open Result.Syntax in
   let try_parse_status status =
     match Data.Todo.status_of_string status with
@@ -102,24 +149,36 @@ let _typeid_of_item = function
   | Todo_item t -> Data.Todo.id t
   | Note_item n -> Data.Note.id n
 
-let _entry_of_typeid items typeid rel_kind =
+let _entry_of_rel items rel direction =
+  let typeid = match direction with
+    | `Outgoing -> Data.Relation.target rel
+    | `Incoming -> Data.Relation.source rel
+  in
+  let blocking =
+    if Data.Relation.is_blocking rel then
+      Some true
+    else
+      None
+  in
   let identifier = Data.Uuid.Typeid.to_string typeid in
   match Item_service.find items ~identifier with
   | Ok (Todo_item t) ->
-      Some { kind = rel_kind;
+      let blocking = match blocking with
+        | Some true -> Some (Data.Todo.status t <> Data.Todo.Done)
+        | other -> other
+      in
+      Some { kind = Data.Relation.kind rel;
              niceid = Data.Todo.niceid t;
              entity_type = "todo";
-             title = Data.Todo.title t }
+             title = Data.Todo.title t;
+             blocking }
   | Ok (Note_item n) ->
-      Some { kind = rel_kind;
+      Some { kind = Data.Relation.kind rel;
              niceid = Data.Note.niceid n;
              entity_type = "note";
-             title = Data.Note.title n }
+             title = Data.Note.title n;
+             blocking = Option.map (fun _ -> false) blocking }
   | Error _ -> None
-
-let _map_relation_repo_error = function
-  | RelationRepo.Duplicate -> Item_service.Validation_error "unexpected"
-  | RelationRepo.Backend_failure msg -> Item_service.Repository_error msg
 
 let show t ~identifier =
   let open Result.Syntax in
@@ -135,18 +194,18 @@ let show t ~identifier =
   in
   let outgoing =
     List.filter_map (fun rel ->
-      _entry_of_typeid t.items (Data.Relation.target rel) (Data.Relation.kind rel)
+      _entry_of_rel t.items rel `Outgoing
     ) from_source
     @ List.filter_map (fun rel ->
         if Data.Relation.is_bidirectional rel then
-          _entry_of_typeid t.items (Data.Relation.source rel) (Data.Relation.kind rel)
+          _entry_of_rel t.items rel `Incoming
         else None
       ) from_target
   in
   let incoming =
     List.filter_map (fun rel ->
       if not (Data.Relation.is_bidirectional rel) then
-        _entry_of_typeid t.items (Data.Relation.source rel) (Data.Relation.kind rel)
+        _entry_of_rel t.items rel `Incoming
       else None
     ) from_target
   in

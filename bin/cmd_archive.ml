@@ -20,7 +20,7 @@ let run identifier json =
           ])
         else
           Printf.printf "Archived note: %s\n" niceid
-    | Error err -> Common.exit_with (Common.service_error_msg err))
+    | Error err -> Common.exit_with_error ~json (Common.service_error_msg err))
 
 let identifier_arg =
   let doc = "Niceid (e.g. kb-0) or TypeId of the note to archive." in

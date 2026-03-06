@@ -11,6 +11,7 @@ type relate_spec = {
   target        : string;
   kind          : string;
   bidirectional : bool;
+  blocking      : bool;
 }
 
 (** Result of a successful relate operation. *)
@@ -26,18 +27,21 @@ type relate_result = {
     {!Repository.Root.t} handle. *)
 val init : Repository.Root.t -> t
 
-(** [build_specs ~depends_on ~related_to ~uni ~bi] constructs a
+(** [build_specs ~depends_on ~related_to ~uni ~bi ~blocking] constructs a
     {!relate_spec} list from the four relation categories.
 
     - [depends_on]: target identifiers for unidirectional ["depends-on"] relations.
+      Always blocking regardless of [~blocking].
     - [related_to]: target identifiers for bidirectional ["related-to"] relations.
     - [uni]: [(kind, target)] pairs for user-defined unidirectional relations.
-    - [bi]: [(kind, target)] pairs for user-defined bidirectional relations. *)
+    - [bi]: [(kind, target)] pairs for user-defined bidirectional relations.
+    - [blocking]: when [true], marks non-depends-on relations as blocking. *)
 val build_specs :
   depends_on:string list ->
   related_to:string list ->
   uni:(string * string) list ->
   bi:(string * string) list ->
+  blocking:bool ->
   relate_spec list
 
 (** [relate t ~source ~target ~kind ~bidirectional] creates a relation
@@ -57,6 +61,7 @@ val relate :
   target:string ->
   kind:string ->
   bidirectional:bool ->
+  blocking:bool ->
   (relate_result, Item_service.error) result
 
 (** [relate_many t ~source ~specs] validates all specs (resolves targets,

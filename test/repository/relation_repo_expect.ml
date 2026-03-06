@@ -51,7 +51,7 @@ let%expect_test "create relation and verify row in DB" =
     let src = Kbases.Data.Todo.id t1 in
     let tgt = Kbases.Data.Todo.id t2 in
     let kind = Relation_kind.make "depends-on" in
-    let rel = Relation.make ~source:src ~target:tgt ~kind ~bidirectional:false in
+    let rel = Relation.make ~source:src ~target:tgt ~kind ~bidirectional:false ~blocking:false in
     (match RelationRepo.create (Root.relation root) rel with
      | Ok r ->
          Printf.printf "created: kind=%s bidi=%b\n"
@@ -71,7 +71,7 @@ let%expect_test "exact duplicate returns Duplicate" =
     let src = Kbases.Data.Todo.id t1 in
     let tgt = Kbases.Data.Todo.id t2 in
     let kind = Relation_kind.make "depends-on" in
-    let rel = Relation.make ~source:src ~target:tgt ~kind ~bidirectional:false in
+    let rel = Relation.make ~source:src ~target:tgt ~kind ~bidirectional:false ~blocking:false in
     ignore (RelationRepo.create (Root.relation root) rel);
     match RelationRepo.create (Root.relation root) rel with
     | Ok _ -> print_endline "unexpected success"
@@ -85,9 +85,9 @@ let%expect_test "bidirectional reverse duplicate returns Duplicate" =
     let src = Kbases.Data.Todo.id t1 in
     let tgt = Kbases.Data.Todo.id t2 in
     let kind = Relation_kind.make "related-to" in
-    let forward = Relation.make ~source:src ~target:tgt ~kind ~bidirectional:true in
+    let forward = Relation.make ~source:src ~target:tgt ~kind ~bidirectional:true ~blocking:false in
     ignore (RelationRepo.create (Root.relation root) forward);
-    let reverse = Relation.make ~source:tgt ~target:src ~kind ~bidirectional:true in
+    let reverse = Relation.make ~source:tgt ~target:src ~kind ~bidirectional:true ~blocking:false in
     match RelationRepo.create (Root.relation root) reverse with
     | Ok _ -> print_endline "unexpected success"
     | Error err -> pp_error err);
@@ -100,9 +100,9 @@ let%expect_test "unidirectional reverse is allowed" =
     let src = Kbases.Data.Todo.id t1 in
     let tgt = Kbases.Data.Todo.id t2 in
     let kind = Relation_kind.make "depends-on" in
-    let forward = Relation.make ~source:src ~target:tgt ~kind ~bidirectional:false in
+    let forward = Relation.make ~source:src ~target:tgt ~kind ~bidirectional:false ~blocking:false in
     ignore (RelationRepo.create (Root.relation root) forward);
-    let reverse = Relation.make ~source:tgt ~target:src ~kind ~bidirectional:false in
+    let reverse = Relation.make ~source:tgt ~target:src ~kind ~bidirectional:false ~blocking:false in
     match RelationRepo.create (Root.relation root) reverse with
     | Ok r ->
         Printf.printf "created reverse: kind=%s\n"
@@ -121,8 +121,8 @@ let%expect_test "list_all returns all relations" =
     let tgt2 = Kbases.Data.Todo.id t3 in
     let k1 = Relation_kind.make "depends-on" in
     let k2 = Relation_kind.make "related-to" in
-    let r1 = Relation.make ~source:src1 ~target:tgt1 ~kind:k1 ~bidirectional:false in
-    let r2 = Relation.make ~source:src2 ~target:tgt2 ~kind:k2 ~bidirectional:true in
+    let r1 = Relation.make ~source:src1 ~target:tgt1 ~kind:k1 ~bidirectional:false ~blocking:false in
+    let r2 = Relation.make ~source:src2 ~target:tgt2 ~kind:k2 ~bidirectional:true ~blocking:false in
     ignore (RelationRepo.create (Root.relation root) r1);
     ignore (RelationRepo.create (Root.relation root) r2);
     match RelationRepo.list_all (Root.relation root) with
@@ -152,7 +152,7 @@ let%expect_test "delete_all removes all relations" =
     let src = Kbases.Data.Todo.id t1 in
     let tgt = Kbases.Data.Todo.id t2 in
     let kind = Relation_kind.make "depends-on" in
-    let rel = Relation.make ~source:src ~target:tgt ~kind ~bidirectional:false in
+    let rel = Relation.make ~source:src ~target:tgt ~kind ~bidirectional:false ~blocking:false in
     ignore (RelationRepo.create (Root.relation root) rel);
     (match RelationRepo.delete_all (Root.relation root) with
      | Ok () -> print_endline "delete_all ok"
@@ -173,8 +173,8 @@ let%expect_test "same pair with different kind is allowed" =
     let tgt = Kbases.Data.Todo.id t2 in
     let k1 = Relation_kind.make "depends-on" in
     let k2 = Relation_kind.make "related-to" in
-    let r1 = Relation.make ~source:src ~target:tgt ~kind:k1 ~bidirectional:false in
-    let r2 = Relation.make ~source:src ~target:tgt ~kind:k2 ~bidirectional:true in
+    let r1 = Relation.make ~source:src ~target:tgt ~kind:k1 ~bidirectional:false ~blocking:false in
+    let r2 = Relation.make ~source:src ~target:tgt ~kind:k2 ~bidirectional:true ~blocking:false in
     ignore (RelationRepo.create (Root.relation root) r1);
     (match RelationRepo.create (Root.relation root) r2 with
      | Ok _ -> print_endline "second kind ok"

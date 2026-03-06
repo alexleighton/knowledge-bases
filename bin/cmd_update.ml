@@ -21,14 +21,14 @@ let run identifier status title content_opt json =
       | None -> None
       | Some t ->
           (try Some (Title.make t)
-           with Invalid_argument msg -> Common.exit_with msg)
+           with Invalid_argument msg -> Common.exit_with_error ~json msg)
     in
     let content =
       match resolve_update_content content_opt with
       | None -> None
       | Some raw ->
           (try Some (Content.make raw)
-           with Invalid_argument msg -> Common.exit_with msg)
+           with Invalid_argument msg -> Common.exit_with_error ~json msg)
     in
     match Service.update (App_context.service ctx) ~identifier ?status ?title ?content () with
     | Ok (Service.Todo_item todo) ->
@@ -49,7 +49,7 @@ let run identifier status title content_opt json =
           ])
         else
           Printf.printf "Updated note: %s\n" niceid
-    | Error err -> Common.exit_with (Common.service_error_msg err))
+    | Error err -> Common.exit_with_error ~json (Common.service_error_msg err))
 
 let identifier_arg =
   let doc = "Niceid (e.g. kb-0) or TypeId of the item to update." in

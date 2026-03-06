@@ -29,7 +29,7 @@ let%expect_test "write and read round-trip with todos, notes, relations" =
     let t2 = Todo.make tid2 niceid (Title.make "Second todo") (Content.make "Body two") Todo.Done in
     let n1 = Note.make nid1 niceid (Title.make "A note") (Content.make "Note body") Note.Active in
     let r1 = Relation.make ~source:tid1 ~target:nid1
-      ~kind:(Relation_kind.make "blocks") ~bidirectional:false in
+      ~kind:(Relation_kind.make "blocks") ~bidirectional:false ~blocking:false in
 
     let () = _unwrap (Jsonl.write ~path:tmp ~namespace:"kb"
       ~todos:[t1; t2] ~notes:[n1] ~relations:[r1]) in

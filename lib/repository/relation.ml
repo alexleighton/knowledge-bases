@@ -24,6 +24,7 @@ let init ~db =
        target TEXT NOT NULL,\
        kind TEXT NOT NULL,\
        bidirectional INTEGER NOT NULL,\
+       blocking INTEGER NOT NULL DEFAULT 0,\
        PRIMARY KEY (source, target, kind)\
      );"
   in
@@ -63,14 +64,16 @@ let create repo rel =
     let target = Data.Uuid.Typeid.to_string (Data.Relation.target rel) in
     let kind = Data.Relation_kind.to_string (Data.Relation.kind rel) in
     let bidi = if Data.Relation.is_bidirectional rel then 1 else 0 in
+    let block = if Data.Relation.is_blocking rel then 1 else 0 in
     Sqlite.with_stmt_cmd repo.db
-      "INSERT INTO relation(source, target, kind, bidirectional) \
-       VALUES (?, ?, ?, ?);"
+      "INSERT INTO relation(source, target, kind, bidirectional, blocking) \
+       VALUES (?, ?, ?, ?, ?);"
       [
         (1, Sql.Data.TEXT source);
         (2, Sql.Data.TEXT target);
         (3, Sql.Data.TEXT kind);
         (4, Sql.Data.INT (Int64.of_int bidi));
+        (5, Sql.Data.INT (Int64.of_int block));
       ]
     |> map_sqlite_error
     |> Result.map (fun () -> rel)
@@ -80,11 +83,12 @@ let _relation_of_row stmt =
   let target = Data.Uuid.Typeid.of_string (Sql.column_text stmt 1) in
   let kind = Data.Relation_kind.make (Sql.column_text stmt 2) in
   let bidirectional = Sql.column_int stmt 3 <> 0 in
-  Ok (Data.Relation.make ~source ~target ~kind ~bidirectional)
+  let blocking = Sql.column_int stmt 4 <> 0 in
+  Ok (Data.Relation.make ~source ~target ~kind ~bidirectional ~blocking)
 
 let list_all repo =
   Sqlite.with_stmt repo.db
-    "SELECT source, target, kind, bidirectional \
+    "SELECT source, target, kind, bidirectional, blocking \
      FROM relation ORDER BY source, target, kind;"
     []
     _relation_of_row
@@ -93,7 +97,7 @@ let list_all repo =
 let find_by_source repo typeid =
   let id = Data.Uuid.Typeid.to_string typeid in
   Sqlite.with_stmt repo.db
-    "SELECT source, target, kind, bidirectional \
+    "SELECT source, target, kind, bidirectional, blocking \
      FROM relation WHERE source = ? ORDER BY target, kind;"
     [(1, Sql.Data.TEXT id)]
     _relation_of_row
@@ -102,7 +106,7 @@ let find_by_source repo typeid =
 let find_by_target repo typeid =
   let id = Data.Uuid.Typeid.to_string typeid in
   Sqlite.with_stmt repo.db
-    "SELECT source, target, kind, bidirectional \
+    "SELECT source, target, kind, bidirectional, blocking \
      FROM relation WHERE target = ? ORDER BY source, kind;"
     [(1, Sql.Data.TEXT id)]
     _relation_of_row

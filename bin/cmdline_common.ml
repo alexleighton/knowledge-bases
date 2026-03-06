@@ -3,12 +3,23 @@ module Service = Kbases.Service.Kb_service
 let service_error_msg = function
   | Service.Repository_error text | Service.Validation_error text -> text
 
-let exit_with msg =
+let exit_with ?(code = 1) msg =
   prerr_endline ("Error: " ^ msg);
-  exit 1
+  exit code
 
 let print_json json =
   print_endline (Yojson.Safe.to_string json)
+
+let exit_with_error ?(code = 1) ~json msg =
+  if json then begin
+    print_json (`Assoc [
+      "ok", `Bool false;
+      "reason", `String "error";
+      "message", `String msg;
+    ]);
+    exit code
+  end else
+    exit_with ~code msg
 
 let resolve_content_source content_opt =
   match content_opt with
@@ -56,3 +67,8 @@ let bi_opt =
   in
   Cmdliner.Arg.(value & opt_all (pair ~sep:',' string string) []
     & info [ "bi" ] ~docv:"KIND,TARGET" ~doc)
+
+let blocking_flag =
+  let doc = "Mark non-depends-on relations as blocking. \
+             Dependencies (--depends-on) are always blocking." in
+  Cmdliner.Arg.(value & flag & info [ "blocking" ] ~doc)

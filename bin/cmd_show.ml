@@ -29,11 +29,12 @@ let format_item = function
         (Content.to_string (Note.content note))
 
 let format_relation_entry (entry : Service.relation_entry) =
-  Printf.printf "  %s  %s  %s  %s\n"
+  Printf.printf "  %s  %s  %s  %s%s\n"
     (Relation_kind.to_string entry.Service.kind)
     (Identifier.to_string entry.Service.niceid)
     entry.Service.entity_type
     (Title.to_string entry.Service.title)
+    (match entry.Service.blocking with Some true -> "  [blocking]" | _ -> "")
 
 let format_relations ~outgoing ~incoming =
   if outgoing <> [] then begin
@@ -50,12 +51,17 @@ let format_show_result Service.{ item; outgoing; incoming } =
   format_relations ~outgoing ~incoming
 
 let relation_entry_to_json (entry : Service.relation_entry) =
-  `Assoc [
+  let base = [
     "kind", `String (Relation_kind.to_string entry.Service.kind);
     "niceid", `String (Identifier.to_string entry.Service.niceid);
     "type", `String entry.Service.entity_type;
     "title", `String (Title.to_string entry.Service.title);
-  ]
+  ] in
+  let fields = match entry.Service.blocking with
+    | Some b -> base @ ["blocking", `Bool b]
+    | None -> base
+  in
+  `Assoc fields
 
 let item_to_json Service.{ item; outgoing; incoming } =
   let item_fields = match item with
@@ -99,7 +105,7 @@ let run first_identifier rest_identifiers json =
             if i > 0 then print_string "---\n";
             format_show_result result
           ) results
-    | Error err -> Common.exit_with (Common.service_error_msg err))
+    | Error err -> Common.exit_with_error ~json (Common.service_error_msg err))
 
 let first_identifier_arg =
   let doc = "Niceid (e.g. kb-0) or TypeId (e.g. todo_01abc...) of the item to show." in

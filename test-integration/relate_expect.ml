@@ -127,6 +127,41 @@ let%expect_test "bs relate --json" =
     directionality: unidirectional
   |}]
 
+let%expect_test "bs relate --json error target not found" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "Source"]);
+    let result = Helper.run_bs ~dir ["relate"; "kb-0"; "--depends-on"; "kb-999"; "--json"] in
+    Printf.printf "[exit %d]\n" result.exit_code;
+    Printf.printf "stderr empty: %b\n" (result.stderr = "");
+    let json = Helper.parse_json result.stdout in
+    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
+    Printf.printf "reason: %s\n" (Helper.get_string json "reason");
+    Printf.printf "message: %s\n" (Helper.get_string json "message"));
+  [%expect {|
+    [exit 1]
+    stderr empty: true
+    ok: false
+    reason: error
+    message: item not found: kb-999
+  |}]
+
+let%expect_test "bs relate --json error no relation flags" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    let result = Helper.run_bs ~dir ["relate"; "kb-0"; "--json"] in
+    Printf.printf "[exit %d]\n" result.exit_code;
+    Printf.printf "stderr empty: %b\n" (result.stderr = "");
+    let json = Helper.parse_json result.stdout in
+    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
+    Printf.printf "reason: %s\n" (Helper.get_string json "reason"));
+  [%expect {|
+    [exit 1]
+    stderr empty: true
+    ok: false
+    reason: error
+  |}]
+
 let%expect_test "bs relate with multiple --depends-on flags" =
   Helper.with_git_root (fun dir ->
     Helper.init_kb dir;
@@ -190,4 +225,30 @@ let%expect_test "bs relate auto-rebuilds when db is missing" =
   [%expect {|
     [exit 0]
     Related: kb-0 related-to kb-1 (bidirectional)
+  |}]
+
+let%expect_test "bs relate --related-to with --blocking" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "Source"]);
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "Target"]);
+    let result = Helper.run_bs ~dir
+      ["relate"; "kb-0"; "--related-to"; "kb-1"; "--blocking"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 0]
+    Related: kb-0 related-to kb-1 (bidirectional)
+  |}]
+
+let%expect_test "bs relate --uni with --blocking" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "Source"]);
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "note"; "Target"]);
+    let result = Helper.run_bs ~dir
+      ["relate"; "kb-0"; "--uni"; "tracks,kb-1"; "--blocking"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 0]
+    Related: kb-0 tracks kb-1 (unidirectional)
   |}]

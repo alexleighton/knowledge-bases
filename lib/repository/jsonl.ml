@@ -41,6 +41,7 @@ let _relation_to_json rel =
     ("target", `String (Data.Uuid.Typeid.to_string (Data.Relation.target rel)));
     ("kind", `String (Data.Relation_kind.to_string (Data.Relation.kind rel)));
     ("bidirectional", `Bool (Data.Relation.is_bidirectional rel));
+    ("blocking", `Bool (Data.Relation.is_blocking rel));
   ]
 
 let _sort_key_todo todo =
@@ -152,6 +153,15 @@ let _parse_note_record json =
     |> Result.map_error (fun msg -> Parse_error msg) in
   Ok (Note { id; title; content; status })
 
+let _get_bool_default json key default =
+  match json with
+  | `Assoc pairs ->
+      (match List.assoc_opt key pairs with
+       | Some (`Bool b) -> Ok b
+       | Some _ -> Error (Parse_error (Printf.sprintf "field %S is not a bool" key))
+       | None -> Ok default)
+  | _ -> Error (Parse_error "expected JSON object")
+
 let _parse_relation_record json =
   let open Data.Result.Syntax in
   let* source_s = _get_string json "source" in
@@ -160,8 +170,9 @@ let _parse_relation_record json =
   let* target = _parse_typeid target_s in
   let* kind_s = _get_string json "kind" in
   let* bidirectional = _get_bool json "bidirectional" in
+  let* blocking = _get_bool_default json "blocking" false in
   let* kind = _try_make Data.Relation_kind.make kind_s in
-  Ok (Relation (Data.Relation.make ~source ~target ~kind ~bidirectional))
+  Ok (Relation (Data.Relation.make ~source ~target ~kind ~bidirectional ~blocking))
 
 let _parse_entity_line line =
   let open Data.Result.Syntax in

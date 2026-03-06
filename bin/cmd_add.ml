@@ -11,18 +11,18 @@ module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
 module Typeid = Kbases.Data.Uuid.Typeid
 
-let resolve_content content_opt =
+let resolve_content ~json content_opt =
   match Common.resolve_content_source content_opt with
   | Some content -> content
-  | None -> Common.exit_with "No content provided. Use --content or pipe content to stdin."
+  | None -> Common.exit_with_error ~json "No content provided. Use --content or pipe content to stdin."
 
-let run_note title content_opt depends_on related_to uni bi json =
-  let specs = Service.build_specs ~depends_on ~related_to ~uni ~bi in
+let run_note title content_opt depends_on related_to uni bi blocking json =
+  let specs = Service.build_specs ~depends_on ~related_to ~uni ~bi ~blocking in
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
-    let content = resolve_content content_opt in
-    let title   = try Title.make   title   with Invalid_argument msg -> Common.exit_with msg in
-    let content = try Content.make content with Invalid_argument msg -> Common.exit_with msg in
+    let content = resolve_content ~json content_opt in
+    let title   = try Title.make   title   with Invalid_argument msg -> Common.exit_with_error ~json msg in
+    let content = try Content.make content with Invalid_argument msg -> Common.exit_with_error ~json msg in
     match specs with
     | [] ->
         (match Service.add_note (App_context.service ctx) ~title ~content with
@@ -38,7 +38,7 @@ let run_note title content_opt depends_on related_to uni bi json =
               ])
             else
               Printf.printf "Created note: %s (%s)\n" niceid typeid
-        | Error err -> Common.exit_with (Common.service_error_msg err))
+        | Error err -> Common.exit_with_error ~json (Common.service_error_msg err))
     | specs ->
         (match Service.add_note_with_relations (App_context.service ctx) ~title ~content ~specs with
         | Ok r ->
@@ -56,15 +56,15 @@ let run_note title content_opt depends_on related_to uni bi json =
               Printf.printf "Created note: %s (%s)\n" niceid typeid;
               List.iter Cmd_show.format_relation_entry r.Service.relations
             end
-        | Error err -> Common.exit_with (Common.service_error_msg err)))
+        | Error err -> Common.exit_with_error ~json (Common.service_error_msg err)))
 
-let run_todo title content_opt depends_on related_to uni bi json =
-  let specs = Service.build_specs ~depends_on ~related_to ~uni ~bi in
+let run_todo title content_opt depends_on related_to uni bi blocking json =
+  let specs = Service.build_specs ~depends_on ~related_to ~uni ~bi ~blocking in
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
-    let content = resolve_content content_opt in
-    let title = try Title.make title with Invalid_argument msg -> Common.exit_with msg in
-    let content = try Content.make content with Invalid_argument msg -> Common.exit_with msg in
+    let content = resolve_content ~json content_opt in
+    let title = try Title.make title with Invalid_argument msg -> Common.exit_with_error ~json msg in
+    let content = try Content.make content with Invalid_argument msg -> Common.exit_with_error ~json msg in
     match specs with
     | [] ->
         (match Service.add_todo (App_context.service ctx) ~title ~content () with
@@ -80,7 +80,7 @@ let run_todo title content_opt depends_on related_to uni bi json =
               ])
             else
               Printf.printf "Created todo: %s (%s)\n" niceid typeid
-        | Error err -> Common.exit_with (Common.service_error_msg err))
+        | Error err -> Common.exit_with_error ~json (Common.service_error_msg err))
     | specs ->
         (match Service.add_todo_with_relations (App_context.service ctx) ~title ~content ~specs () with
         | Ok r ->
@@ -98,7 +98,7 @@ let run_todo title content_opt depends_on related_to uni bi json =
               Printf.printf "Created todo: %s (%s)\n" niceid typeid;
               List.iter Cmd_show.format_relation_entry r.Service.relations
             end
-        | Error err -> Common.exit_with (Common.service_error_msg err)))
+        | Error err -> Common.exit_with_error ~json (Common.service_error_msg err)))
 
 (* --- CLI definitions --- *)
 
@@ -139,7 +139,7 @@ let note_man = [
 let note_info = Cmd.info "note" ~doc:note_doc ~man:note_man
 
 let note_cmd =
-  let term = Term.(const run_note $ title_arg $ content_opt $ Common.depends_on_opt $ Common.related_to_opt $ Common.uni_opt $ Common.bi_opt $ Common.json_flag) in
+  let term = Term.(const run_note $ title_arg $ content_opt $ Common.depends_on_opt $ Common.related_to_opt $ Common.uni_opt $ Common.bi_opt $ Common.blocking_flag $ Common.json_flag) in
   Cmd.v note_info term
 
 let todo_doc = "Create a new todo in the knowledge base."
@@ -159,7 +159,7 @@ let todo_man = [
 let todo_info = Cmd.info "todo" ~doc:todo_doc ~man:todo_man
 
 let todo_cmd =
-  let term = Term.(const run_todo $ title_arg $ content_opt $ Common.depends_on_opt $ Common.related_to_opt $ Common.uni_opt $ Common.bi_opt $ Common.json_flag) in
+  let term = Term.(const run_todo $ title_arg $ content_opt $ Common.depends_on_opt $ Common.related_to_opt $ Common.uni_opt $ Common.bi_opt $ Common.blocking_flag $ Common.json_flag) in
   Cmd.v todo_info term
 
 let cmd = Cmd.group add_info [note_cmd; todo_cmd]

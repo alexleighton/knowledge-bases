@@ -76,7 +76,21 @@ Approaches for reducing nesting:
   structure repeats across call sites — e.g., acquire a resource, match on the
   result, use it, clean up — give that shape a name.
 
-## 5. Every subcommand supports `--json`
+## 5. Parameterize shared helpers
+
+When a shared helper hardcodes a behavioral choice — an exit code, an output
+destination, an error-mapping strategy — callers that need a different value are
+forced to bypass the helper entirely, duplicating its other responsibilities.
+
+Make the varying choice a parameter with a sensible default so existing callers
+don't change and new callers can override just the part that differs.
+
+**Example:** `exit_with` hardcodes `exit 1`. A command that needs exit code 123
+for a specific failure mode must bypass `exit_with` and duplicate the
+stderr-formatting logic. Adding `?(code = 1)` solves this — existing callers
+are unchanged.
+
+## 6. Every subcommand supports `--json`
 
 All subcommands that produce output must accept a `--json` flag. When
 passed, the command prints a single JSON object (or array, for `list`)
@@ -100,14 +114,14 @@ When adding a new subcommand, include `--json` support from the start
 and add at least one `--json` integration test in the command's
 `test-integration/<command>_expect.ml` file.
 
-## 6. File length
+## 7. File length
 
 Keep files below approximately 300 lines. Larger files are harder to read and
 understand. A file approaching this limit is often a sign that the concept it
 represents is too complex and should be broken into smaller, composable
 pieces.
 
-## 7. Help text and examples
+## 8. Help text and examples
 
 Every subcommand must have:
 

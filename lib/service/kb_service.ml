@@ -44,6 +44,7 @@ type relation_entry = Query.relation_entry = {
   niceid      : Data.Identifier.t;
   entity_type : string;
   title       : Data.Title.t;
+  blocking    : bool option;
 }
 
 type show_result = Query.show_result = {
@@ -56,6 +57,7 @@ type relate_spec = Relation.relate_spec = {
   target        : string;
   kind          : string;
   bidirectional : bool;
+  blocking      : bool;
 }
 
 type relate_result = Relation.relate_result = {
@@ -65,6 +67,13 @@ type relate_result = Relation.relate_result = {
   target_type   : string;
   target_title  : Data.Title.t;
 }
+
+type claim_error = Mutation.claim_error =
+  | Not_a_todo of string
+  | Not_open of { niceid : string; status : string }
+  | Blocked of { niceid : string; blocked_by : string list }
+  | Nothing_available of { stuck_count : int }
+  | Service_error of Item_service.error
 
 type add_with_relations_result = {
   niceid      : Data.Identifier.t;
@@ -86,24 +95,28 @@ let map_todo_error = function
 let map_sync_error = function
   | Sync_service.Sync_failed msg -> Repository_error msg
 
-let _with_flush t f =
+let _with_flush_map t ~map_err f =
   let open Result.Syntax in
   let* () = match t.sync with
     | None -> Ok ()
-    | Some sync -> Sync_service.mark_dirty sync |> Result.map_error map_sync_error
+    | Some sync -> Sync_service.mark_dirty sync |> Result.map_error map_err
   in
   let* result = f () in
   let* () = match t.sync with
     | None -> Ok ()
-    | Some sync -> Sync_service.flush sync |> Result.map_error map_sync_error
+    | Some sync -> Sync_service.flush sync |> Result.map_error map_err
   in
   Ok result
+
+let _with_flush t f =
+  _with_flush_map t ~map_err:map_sync_error f
 
 let relation_entry_of_relate_result (r : Relation.relate_result) : relation_entry = {
   kind        = Data.Relation.kind r.relation;
   niceid      = r.target_niceid;
   entity_type = r.target_type;
   title       = r.target_title;
+  blocking    = None;
 }
 
 let build_specs = Relation.build_specs
@@ -179,8 +192,8 @@ let add_todo_with_relations t ~title ~content ~specs ?status () =
              entity_type = "todo";
              relations }))
 
-let list t ~entity_type ~statuses =
-  Query.list t.query ~entity_type ~statuses
+let list t ~entity_type ~statuses ?(available = false) () =
+  Query.list t.query ~entity_type ~statuses ~available ()
 
 let show t ~identifier =
   Query.show t.query ~identifier
@@ -199,6 +212,16 @@ let resolve t ~identifier =
 let archive t ~identifier =
   _with_flush t (fun () ->
     Mutation.archive t.mutation ~identifier)
+
+let _map_sync_to_claim_error e = Service_error (map_sync_error e)
+
+let next t =
+  _with_flush_map t ~map_err:_map_sync_to_claim_error (fun () ->
+    Mutation.next t.mutation)
+
+let claim t ~identifier =
+  _with_flush_map t ~map_err:_map_sync_to_claim_error (fun () ->
+    Mutation.claim t.mutation ~identifier)
 
 let relate t ~source ~specs =
   _with_flush t (fun () ->
