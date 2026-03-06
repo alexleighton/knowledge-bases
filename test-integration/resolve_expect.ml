@@ -19,6 +19,18 @@ let%expect_test "bs resolve open todo" =
     Todo body
   |}]
 
+let%expect_test "bs resolve already-done todo fails" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "Fix bug"]);
+    ignore (Helper.run_bs ~dir ["resolve"; "kb-0"]);
+    let result = Helper.run_bs ~dir ["resolve"; "kb-0"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 1]
+    STDERR: Error: nothing to update
+  |}]
+
 let%expect_test "bs resolve a note fails" =
   Helper.with_git_root (fun dir ->
     Helper.init_kb dir;

@@ -97,6 +97,17 @@ let%expect_test "bs update multiple fields at once" =
     New body
   |}]
 
+let%expect_test "bs update with same status is a no-op" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "Title"]);
+    let result = Helper.run_bs ~dir ["update"; "kb-0"; "--status"; "open"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 1]
+    STDERR: Error: nothing to update
+  |}]
+
 let%expect_test "bs update with no flags" =
   Helper.with_git_root (fun dir ->
     Helper.init_kb dir;

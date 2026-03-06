@@ -19,6 +19,18 @@ let%expect_test "bs archive active note" =
     Note body
   |}]
 
+let%expect_test "bs archive already-archived note fails" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "note"; "Research"]);
+    ignore (Helper.run_bs ~dir ["archive"; "kb-0"]);
+    let result = Helper.run_bs ~dir ["archive"; "kb-0"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 1]
+    STDERR: Error: nothing to update
+  |}]
+
 let%expect_test "bs archive a todo fails" =
   Helper.with_git_root (fun dir ->
     Helper.init_kb dir;

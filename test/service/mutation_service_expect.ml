@@ -147,6 +147,17 @@ let%expect_test "resolve open todo sets status to done" =
     kb-0|done
   |}]
 
+let%expect_test "resolve already-done todo returns nothing to update" =
+  with_mutation_service (fun root service ->
+    let todo = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Fix bug") ~content:(Content.make "Details") ()) in
+    let niceid_str = Identifier.to_string (Todo.niceid todo) in
+    ignore (MutationService.resolve service ~identifier:niceid_str);
+    match MutationService.resolve service ~identifier:niceid_str with
+    | Ok _ -> print_endline "unexpected success"
+    | Error err -> pp_error err);
+  [%expect {| validation error: nothing to update |}]
+
 let%expect_test "resolve a note returns validation error" =
   with_mutation_service (fun root service ->
     let note = unwrap_note_repo (NoteRepo.create (Root.note root)
@@ -185,6 +196,17 @@ let%expect_test "archive active note sets status to archived" =
     Archived: kb-0 status=archived
     kb-0|archived
   |}]
+
+let%expect_test "archive already-archived note returns nothing to update" =
+  with_mutation_service (fun root service ->
+    let note = unwrap_note_repo (NoteRepo.create (Root.note root)
+      ~title:(Title.make "Research") ~content:(Content.make "Findings") ()) in
+    let niceid_str = Identifier.to_string (Note.niceid note) in
+    ignore (MutationService.archive service ~identifier:niceid_str);
+    match MutationService.archive service ~identifier:niceid_str with
+    | Ok _ -> print_endline "unexpected success"
+    | Error err -> pp_error err);
+  [%expect {| validation error: nothing to update |}]
 
 let%expect_test "archive a todo returns validation error" =
   with_mutation_service (fun root service ->
