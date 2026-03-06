@@ -16,89 +16,71 @@ let resolve_content ~json content_opt =
   | Some content -> content
   | None -> Common.exit_with_error ~json "No content provided. Use --content or pipe content to stdin."
 
-let run_note title content_opt depends_on related_to uni bi blocking json =
+let run_add ~entity_type ~add_simple ~add_with_relations
+    title content_opt depends_on related_to uni bi blocking json =
   let specs = Service.build_specs ~depends_on ~related_to ~uni ~bi ~blocking in
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
     let content = resolve_content ~json content_opt in
     let title   = try Title.make   title   with Invalid_argument msg -> Common.exit_with_error ~json msg in
     let content = try Content.make content with Invalid_argument msg -> Common.exit_with_error ~json msg in
+    let service = App_context.service ctx in
     match specs with
     | [] ->
-        (match Service.add_note (App_context.service ctx) ~title ~content with
-        | Ok note ->
-            let niceid = Identifier.to_string (Note.niceid note) in
-            let typeid = Typeid.to_string (Note.id note) in
+        (match add_simple service ~title ~content with
+        | Ok (niceid, typeid) ->
             if json then
               Common.print_json (`Assoc [
                 "ok", `Bool true;
-                "type", `String "note";
+                "type", `String entity_type;
                 "niceid", `String niceid;
                 "typeid", `String typeid;
               ])
             else
-              Printf.printf "Created note: %s (%s)\n" niceid typeid
+              Printf.printf "Created %s: %s (%s)\n" entity_type niceid typeid
         | Error err -> Common.exit_with_error ~json (Common.service_error_msg err))
     | specs ->
-        (match Service.add_note_with_relations (App_context.service ctx) ~title ~content ~specs with
-        | Ok r ->
-            let niceid = Identifier.to_string r.Service.niceid in
-            let typeid = Typeid.to_string r.Service.typeid in
+        (match add_with_relations service ~title ~content ~specs with
+        | Ok { Service.niceid; typeid; relations; _ } ->
+            let niceid = Identifier.to_string niceid in
+            let typeid = Typeid.to_string typeid in
             if json then
               Common.print_json (`Assoc [
                 "ok", `Bool true;
-                "type", `String "note";
+                "type", `String entity_type;
                 "niceid", `String niceid;
                 "typeid", `String typeid;
-                "relations", `List (List.map Cmd_show.relation_entry_to_json r.Service.relations);
+                "relations", `List (List.map Cmd_show.relation_entry_to_json relations);
               ])
             else begin
-              Printf.printf "Created note: %s (%s)\n" niceid typeid;
-              List.iter Cmd_show.format_relation_entry r.Service.relations
+              Printf.printf "Created %s: %s (%s)\n" entity_type niceid typeid;
+              List.iter Cmd_show.format_relation_entry relations
             end
         | Error err -> Common.exit_with_error ~json (Common.service_error_msg err)))
 
-let run_todo title content_opt depends_on related_to uni bi blocking json =
-  let specs = Service.build_specs ~depends_on ~related_to ~uni ~bi ~blocking in
-  let ctx = App_context.init () in
-  Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
-    let content = resolve_content ~json content_opt in
-    let title = try Title.make title with Invalid_argument msg -> Common.exit_with_error ~json msg in
-    let content = try Content.make content with Invalid_argument msg -> Common.exit_with_error ~json msg in
-    match specs with
-    | [] ->
-        (match Service.add_todo (App_context.service ctx) ~title ~content () with
-        | Ok todo ->
-            let niceid = Identifier.to_string (Todo.niceid todo) in
-            let typeid = Typeid.to_string (Todo.id todo) in
-            if json then
-              Common.print_json (`Assoc [
-                "ok", `Bool true;
-                "type", `String "todo";
-                "niceid", `String niceid;
-                "typeid", `String typeid;
-              ])
-            else
-              Printf.printf "Created todo: %s (%s)\n" niceid typeid
-        | Error err -> Common.exit_with_error ~json (Common.service_error_msg err))
-    | specs ->
-        (match Service.add_todo_with_relations (App_context.service ctx) ~title ~content ~specs () with
-        | Ok r ->
-            let niceid = Identifier.to_string r.Service.niceid in
-            let typeid = Typeid.to_string r.Service.typeid in
-            if json then
-              Common.print_json (`Assoc [
-                "ok", `Bool true;
-                "type", `String "todo";
-                "niceid", `String niceid;
-                "typeid", `String typeid;
-                "relations", `List (List.map Cmd_show.relation_entry_to_json r.Service.relations);
-              ])
-            else begin
-              Printf.printf "Created todo: %s (%s)\n" niceid typeid;
-              List.iter Cmd_show.format_relation_entry r.Service.relations
-            end
-        | Error err -> Common.exit_with_error ~json (Common.service_error_msg err)))
+let add_note_simple svc ~title ~content =
+  Service.add_note svc ~title ~content
+  |> Result.map (fun note ->
+    Identifier.to_string (Note.niceid note),
+    Typeid.to_string (Note.id note))
+
+let add_note_with_rels svc ~title ~content ~specs =
+  Service.add_note_with_relations svc ~title ~content ~specs
+
+let add_todo_simple svc ~title ~content =
+  Service.add_todo svc ~title ~content ()
+  |> Result.map (fun todo ->
+    Identifier.to_string (Todo.niceid todo),
+    Typeid.to_string (Todo.id todo))
+
+let add_todo_with_rels svc ~title ~content ~specs =
+  Service.add_todo_with_relations svc ~title ~content ~specs ()
+
+let run_note = run_add ~entity_type:"note"
+  ~add_simple:add_note_simple ~add_with_relations:add_note_with_rels
+
+let run_todo = run_add ~entity_type:"todo"
+  ~add_simple:add_todo_simple ~add_with_relations:add_todo_with_rels
 
 (* --- CLI definitions --- *)
 

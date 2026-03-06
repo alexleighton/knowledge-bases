@@ -41,46 +41,51 @@ let claim_error_json = function
       `Assoc ["ok", `Bool false; "reason", `String "error";
               "message", `String msg]
 
+let print_claimed_todo ~show ~json (service : Service.t) (todo : Todo.t) =
+  let niceid = Identifier.to_string (Todo.niceid todo) in
+  let typeid = Typeid.to_string (Todo.id todo) in
+  if show then begin
+    match Service.show service ~identifier:niceid with
+    | Ok result ->
+        if json then
+          Common.print_json (`Assoc [
+            "ok", `Bool true;
+            "action", `String "claimed";
+            "item", Cmd_show.item_to_json result;
+          ])
+        else begin
+          Printf.printf "Claimed todo: %s\n" niceid;
+          Cmd_show.format_show_result result
+        end
+    | Error err -> Common.exit_with_error ~json (Common.service_error_msg err)
+  end else begin
+    if json then
+      Common.print_json (`Assoc [
+        "ok", `Bool true;
+        "action", `String "claimed";
+        "type", `String "todo";
+        "niceid", `String niceid;
+        "typeid", `String typeid;
+      ])
+    else
+      Printf.printf "Claimed todo: %s  %s\n" niceid
+        (Title.to_string (Todo.title todo))
+  end
+
+let exit_claim_error ~json err =
+  if json then begin
+    Common.print_json (claim_error_json err);
+    exit 1
+  end else
+    Common.exit_with (claim_error_msg err)
+
 let run identifier show json =
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
     match Service.claim (App_context.service ctx) ~identifier with
     | Ok todo ->
-        let niceid = Identifier.to_string (Todo.niceid todo) in
-        let typeid = Typeid.to_string (Todo.id todo) in
-        if show then begin
-          match Service.show (App_context.service ctx) ~identifier:niceid with
-          | Ok result ->
-              if json then
-                Common.print_json (`Assoc [
-                  "ok", `Bool true;
-                  "action", `String "claimed";
-                  "item", Cmd_show.item_to_json result;
-                ])
-              else begin
-                Printf.printf "Claimed todo: %s\n" niceid;
-                Cmd_show.format_show_result result
-              end
-          | Error err -> Common.exit_with (Common.service_error_msg err)
-        end else begin
-          if json then
-            Common.print_json (`Assoc [
-              "ok", `Bool true;
-              "action", `String "claimed";
-              "type", `String "todo";
-              "niceid", `String niceid;
-              "typeid", `String typeid;
-            ])
-          else
-            Printf.printf "Claimed todo: %s  %s\n" niceid
-              (Title.to_string (Todo.title todo))
-        end
-    | Error err ->
-        if json then begin
-          Common.print_json (claim_error_json err);
-          exit 1
-        end else
-          Common.exit_with (claim_error_msg err))
+        print_claimed_todo ~show ~json (App_context.service ctx) todo
+    | Error err -> exit_claim_error ~json err)
 
 let identifier_arg =
   let doc = "Niceid (e.g. kb-0) or TypeId of the todo to claim." in

@@ -10,9 +10,6 @@ module Title = Kbases.Data.Title
 module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
 
-let resolve_update_content content_opt =
-  Common.resolve_content_source content_opt
-
 let run identifier status title content_opt json =
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
@@ -24,7 +21,7 @@ let run identifier status title content_opt json =
            with Invalid_argument msg -> Common.exit_with_error ~json msg)
     in
     let content =
-      match resolve_update_content content_opt with
+      match Common.resolve_content_source content_opt with
       | None -> None
       | Some raw ->
           (try Some (Content.make raw)

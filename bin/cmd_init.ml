@@ -35,7 +35,7 @@ let run directory namespace json =
         Printf.printf "  Git exclude: %s\n" (git_exclude_msg git_exclude)
       end
   | Error (Service.Validation_error msg | Service.Repository_error msg) ->
-      Common.exit_with msg
+      Common.exit_with_error ~json msg
 
 let directory_arg =
   let doc = "Git repository directory for the knowledge base." in
@@ -53,8 +53,10 @@ let namespace_arg =
 
 let cmd_man = [
   `S "EXAMPLES";
-  `P "bs init";
-  `P "bs init -d /path/to/repo -n ns";
+  `P "Initialise in the current git repo:";
+  `P "  bs init";
+  `P "Specify directory and namespace:";
+  `P "  bs init -d /path/to/repo -n ns";
 ]
 
 let cmd_info = Cmd.info "init" ~doc:"Initialise a new knowledge base." ~man:cmd_man

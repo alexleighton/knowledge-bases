@@ -104,8 +104,10 @@ the result.
 
 - The top-level object includes `"ok": true` on success.
 - Keys use `snake_case`.
-- Errors are **not** JSON-formatted — they go to stderr and the process
-  exits non-zero, which is already machine-detectable.
+- Errors **are** JSON-formatted when `--json` is passed: the command
+  prints `{"ok": false, "reason": "…", "message": "…"}` to stdout and
+  exits non-zero. Use `Common.exit_with_error ~json` to get this
+  behaviour. Without `--json`, errors go to stderr as plain text.
 - Each command's JSON serialization lives inline in its `cmd_*.ml`
   file. The shapes are a presentation concern and intentionally
   separate from the JSONL persistence format in `lib/`.
