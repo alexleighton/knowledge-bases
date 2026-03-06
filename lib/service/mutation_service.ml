@@ -1,12 +1,11 @@
 module TodoRepo = Repository.Todo
 module NoteRepo = Repository.Note
-module RelationRepo = Repository.Relation
 
 type t = {
-  items         : Item_service.t;
-  todo_repo     : TodoRepo.t;
-  note_repo     : NoteRepo.t;
-  relation_repo : RelationRepo.t;
+  items        : Item_service.t;
+  todo_repo    : TodoRepo.t;
+  note_repo    : NoteRepo.t;
+  relation_svc : Relation_service.t;
 }
 
 type claim_error =
@@ -17,37 +16,11 @@ type claim_error =
   | Service_error of Item_service.error
 
 let init root = {
-  items         = Item_service.init root;
-  todo_repo     = Repository.Root.todo root;
-  note_repo     = Repository.Root.note root;
-  relation_repo = Repository.Root.relation root;
+  items        = Item_service.init root;
+  todo_repo    = Repository.Root.todo root;
+  note_repo    = Repository.Root.note root;
+  relation_svc = Relation_service.init root;
 }
-
-let _map_relation_repo_error = function
-  | RelationRepo.Duplicate ->
-      Item_service.Validation_error "relation already exists"
-  | RelationRepo.Backend_failure msg ->
-      Item_service.Repository_error msg
-
-let _is_blocked t todo =
-  let typeid = Data.Todo.id todo in
-  match RelationRepo.find_by_source t.relation_repo typeid with
-  | Error err -> Error (_map_relation_repo_error err)
-  | Ok rels ->
-      let blocking = List.filter Data.Relation.is_blocking rels in
-      let blockers =
-        List.filter_map (fun rel ->
-          let target_id = Data.Uuid.Typeid.to_string (Data.Relation.target rel) in
-          match Item_service.find t.items ~identifier:target_id with
-          | Ok (Item_service.Todo_item target_todo) ->
-              if Data.Todo.status target_todo <> Data.Todo.Done then
-                Some (Data.Identifier.to_string (Data.Todo.niceid target_todo))
-              else None
-          | Ok (Item_service.Note_item _) -> None
-          | Error _ -> None
-        ) blocking
-      in
-      Ok blockers
 
 let update t ~identifier ?status ?title ?content () =
   let open Item_service in
@@ -100,7 +73,7 @@ let next t =
         if stuck_count = 0 then Ok None
         else Error (Nothing_available { stuck_count })
     | todo :: rest ->
-        let* blockers = _is_blocked t todo
+        let* blockers = Relation_service.find_blockers t.relation_svc todo
                         |> Result.map_error (fun e -> Service_error e) in
         match blockers with
         | [] ->
@@ -122,7 +95,7 @@ let claim t ~identifier =
       let niceid_str = Data.Identifier.to_string (Data.Todo.niceid todo) in
       match Data.Todo.status todo with
       | Data.Todo.Open ->
-          let* blockers = _is_blocked t todo
+          let* blockers = Relation_service.find_blockers t.relation_svc todo
                           |> Result.map_error (fun e -> Service_error e) in
           (match blockers with
            | [] ->

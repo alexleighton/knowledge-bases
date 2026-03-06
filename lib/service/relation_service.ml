@@ -20,11 +20,7 @@ type relate_result = {
   target_title  : Data.Title.t;
 }
 
-let map_relation_repo_error = function
-  | RelationRepo.Duplicate ->
-      Item_service.Validation_error "relation already exists"
-  | RelationRepo.Backend_failure msg ->
-      Item_service.Repository_error msg
+let map_relation_repo_error = Item_service.map_relation_repo_error
 
 let init root = {
   items         = Item_service.init root;
@@ -64,6 +60,26 @@ let build_specs ~depends_on ~related_to ~uni ~bi ~blocking =
       { target = tgt; kind = k; bidirectional = true;
         blocking })
     bi
+
+let find_blockers t todo =
+  let typeid = Data.Todo.id todo in
+  match RelationRepo.find_by_source t.relation_repo typeid with
+  | Error err -> Error (map_relation_repo_error err)
+  | Ok rels ->
+      let blocking = List.filter Data.Relation.is_blocking rels in
+      let blockers =
+        List.filter_map (fun rel ->
+          let target_id = Data.Uuid.Typeid.to_string (Data.Relation.target rel) in
+          match Item_service.find t.items ~identifier:target_id with
+          | Ok (Item_service.Todo_item target_todo) ->
+              if Data.Todo.status target_todo <> Data.Todo.Done then
+                Some (Data.Identifier.to_string (Data.Todo.niceid target_todo))
+              else None
+          | Ok (Item_service.Note_item _) -> None
+          | Error _ -> None
+        ) blocking
+      in
+      Ok blockers
 
 let relate_many t ~source ~specs =
   let open Result.Syntax in

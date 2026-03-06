@@ -8,6 +8,7 @@ type t = {
   note_repo     : Note.t;
   todo_repo     : Todo.t;
   relation_repo : RelationRepo.t;
+  relation_svc  : Relation_service.t;
 }
 
 type error = Item_service.error =
@@ -37,6 +38,7 @@ let init root = {
   note_repo     = Repository.Root.note root;
   todo_repo     = Repository.Root.todo root;
   relation_repo = Repository.Root.relation root;
+  relation_svc  = Relation_service.init root;
 }
 
 let raw_id_of_item = function
@@ -46,25 +48,7 @@ let raw_id_of_item = function
 let sort_items items =
   List.sort (fun a b -> Int.compare (raw_id_of_item a) (raw_id_of_item b)) items
 
-let _map_relation_repo_error = function
-  | RelationRepo.Duplicate -> Item_service.Validation_error "unexpected"
-  | RelationRepo.Backend_failure msg -> Item_service.Repository_error msg
-
-let _is_blocked t rels_by_source todo =
-  let key = Data.Uuid.Typeid.to_string (Data.Todo.id todo) in
-  match Hashtbl.find_opt rels_by_source key with
-  | None -> false
-  | Some rels ->
-      List.exists (fun rel ->
-        if not (Data.Relation.is_blocking rel) then false
-        else
-          let target_id = Data.Uuid.Typeid.to_string (Data.Relation.target rel) in
-          match Item_service.find t.items ~identifier:target_id with
-          | Ok (Item_service.Todo_item target_todo) ->
-              Data.Todo.status target_todo <> Data.Todo.Done
-          | Ok (Item_service.Note_item _) -> false
-          | Error _ -> false
-      ) rels
+let _map_relation_repo_error = Item_service.map_relation_repo_error
 
 let _list_available t =
   let open Result.Syntax in
@@ -72,22 +56,14 @@ let _list_available t =
     Todo.list t.todo_repo ~statuses:[Data.Todo.Open]
     |> Result.map_error Item_service.map_todo_repo_error
   in
-  let* all_rels =
-    RelationRepo.list_all t.relation_repo
-    |> Result.map_error _map_relation_repo_error
+  let rec filter_unblocked acc = function
+    | [] -> Ok (List.rev acc)
+    | todo :: rest ->
+        let* blockers = Relation_service.find_blockers t.relation_svc todo in
+        if blockers = [] then filter_unblocked (todo :: acc) rest
+        else filter_unblocked acc rest
   in
-  let rels_by_source = Hashtbl.create (List.length all_rels) in
-  List.iter (fun rel ->
-    let key = Data.Uuid.Typeid.to_string (Data.Relation.source rel) in
-    let existing = match Hashtbl.find_opt rels_by_source key with
-      | None -> []
-      | Some l -> l
-    in
-    Hashtbl.replace rels_by_source key (rel :: existing)
-  ) all_rels;
-  let unblocked = List.filter (fun todo ->
-    not (_is_blocked t rels_by_source todo)
-  ) todos in
+  let* unblocked = filter_unblocked [] todos in
   Ok (sort_items (List.map (fun todo -> Todo_item todo) unblocked))
 
 let list t ~entity_type ~statuses ?(available = false) () =

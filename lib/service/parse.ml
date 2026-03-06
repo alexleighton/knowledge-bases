@@ -1,4 +1,4 @@
-type parsed_identifier =
+type parsed_identifier = Item_service.parsed_identifier =
   | Niceid of Data.Identifier.t
   | Typeid of Data.Uuid.Typeid.t
 
@@ -26,14 +26,4 @@ let entity_type s =
       Error (Item_service.Validation_error
         (Printf.sprintf "invalid entity type %S" s))
 
-let identifier s =
-  match Data.Identifier.parse s with
-  | Ok id -> Ok (Niceid id)
-  | Error _ ->
-      match Data.Uuid.Typeid.parse s with
-      | Ok tid -> Ok (Typeid tid)
-      | Error _ ->
-          Error (Item_service.Validation_error
-            (Printf.sprintf
-              "invalid identifier %S — expected a niceid (e.g. kb-0) \
-               or typeid (e.g. todo_01abc...)" s))
+let identifier = Item_service.parse_identifier

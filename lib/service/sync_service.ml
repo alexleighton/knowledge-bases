@@ -86,22 +86,13 @@ let flush t =
     let* () = _set_config t "content_hash" file_hash in
     _set_config t "dirty" "false"
 
-let _record_sort_key = function
-  | Jsonl.Todo { id; _ } -> Data.Uuid.Typeid.to_string id
-  | Jsonl.Note { id; _ } -> Data.Uuid.Typeid.to_string id
-  | Jsonl.Relation rel ->
-      "relation:" ^
-      Data.Uuid.Typeid.to_string (Data.Relation.source rel) ^ ":" ^
-      Data.Uuid.Typeid.to_string (Data.Relation.target rel) ^ ":" ^
-      Data.Relation_kind.to_string (Data.Relation.kind rel)
-
 let force_rebuild t =
   let open Data.Result.Syntax in
   let* (_header, records) =
     Jsonl.read ~path:t.jsonl_path
     |> Result.map_error _map_jsonl_error in
   let sorted_records =
-    List.sort (fun a b -> String.compare (_record_sort_key a) (_record_sort_key b)) records
+    List.sort (fun a b -> String.compare (Jsonl.record_sort_key a) (Jsonl.record_sort_key b)) records
   in
   let* () =
     Repository.Todo.delete_all (Root.todo t.root)

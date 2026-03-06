@@ -77,3 +77,9 @@ val relate_many :
   source:string ->
   specs:relate_spec list ->
   (relate_result list, Item_service.error) result
+
+(** [find_blockers t todo] returns the niceids of unresolved todos that
+    block [todo] via blocking relations.  Returns an empty list when
+    [todo] is not blocked. *)
+val find_blockers :
+  t -> Data.Todo.t -> (string list, Item_service.error) result

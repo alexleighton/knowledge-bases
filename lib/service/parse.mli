@@ -3,8 +3,9 @@
     Each function delegates to a Data-layer result-returning parser
     and wraps the [string] error into {!Item_service.Validation_error}. *)
 
-(** Parsed form of a user-supplied identifier. *)
-type parsed_identifier =
+(** Parsed form of a user-supplied identifier.
+    Re-exported from {!Item_service.parsed_identifier}. *)
+type parsed_identifier = Item_service.parsed_identifier =
   | Niceid of Data.Identifier.t
   | Typeid of Data.Uuid.Typeid.t
 

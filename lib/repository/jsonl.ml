@@ -44,17 +44,22 @@ let _relation_to_json rel =
     ("blocking", `Bool (Data.Relation.is_blocking rel));
   ]
 
+let _relation_sort_key rel =
+  "relation:" ^
+  Data.Uuid.Typeid.to_string (Data.Relation.source rel) ^ ":" ^
+  Data.Uuid.Typeid.to_string (Data.Relation.target rel) ^ ":" ^
+  Data.Relation_kind.to_string (Data.Relation.kind rel)
+
 let _sort_key_todo todo =
   Data.Uuid.Typeid.to_string (Data.Todo.id todo)
 
 let _sort_key_note note =
   Data.Uuid.Typeid.to_string (Data.Note.id note)
 
-let _sort_key_relation rel =
-  "relation:" ^
-  Data.Uuid.Typeid.to_string (Data.Relation.source rel) ^ ":" ^
-  Data.Uuid.Typeid.to_string (Data.Relation.target rel) ^ ":" ^
-  Data.Relation_kind.to_string (Data.Relation.kind rel)
+let record_sort_key = function
+  | Todo { id; _ } -> Data.Uuid.Typeid.to_string id
+  | Note { id; _ } -> Data.Uuid.Typeid.to_string id
+  | Relation rel -> _relation_sort_key rel
 
 let _header_to_json ~namespace =
   `Assoc [
@@ -67,7 +72,7 @@ let write ~path ~namespace ~todos ~notes ~relations =
     let keyed =
       List.map (fun t -> (_sort_key_todo t, _todo_to_json t)) todos
       @ List.map (fun n -> (_sort_key_note n, _note_to_json n)) notes
-      @ List.map (fun r -> (_sort_key_relation r, _relation_to_json r)) relations
+      @ List.map (fun r -> (_relation_sort_key r, _relation_to_json r)) relations
     in
     let sorted = List.sort (fun (k1, _) (k2, _) -> String.compare k1 k2) keyed in
     let entity_lines =

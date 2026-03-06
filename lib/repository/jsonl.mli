@@ -35,3 +35,9 @@ val read_header : path:string -> (header, error) result
     and all parsed entity records. *)
 val read : path:string -> (header * entity_record list, error) result
 
+(** [record_sort_key record] returns the deterministic sort key for
+    [record].  This is the canonical ordering used by both [write]
+    and rebuild — callers that need to sort {!entity_record} values
+    should use this function rather than reimplementing the key. *)
+val record_sort_key : entity_record -> string
+

@@ -1,5 +1,6 @@
 module Note = Repository.Note
 module Todo = Repository.Todo
+module Relation = Repository.Relation
 
 type error =
   | Repository_error of string
@@ -24,6 +25,12 @@ let map_note_repo_error = function
   | Note.Duplicate_niceid niceid ->
       Repository_error ("duplicate nice id " ^ Data.Identifier.to_string niceid)
   | Note.Not_found _ -> Repository_error "note not found"
+
+let map_relation_repo_error = function
+  | Relation.Duplicate ->
+      Validation_error "relation already exists"
+  | Relation.Backend_failure msg ->
+      Repository_error msg
 
 let map_todo_repo_error = function
   | Todo.Backend_failure msg -> Repository_error msg
@@ -70,13 +77,24 @@ let find_by_typeid t typeid =
   | prefix ->
       Error (Validation_error (Printf.sprintf "unknown typeid prefix %S" prefix))
 
-let find t ~identifier =
-  match Data.Identifier.parse identifier with
-  | Ok niceid -> find_by_niceid t niceid
+type parsed_identifier =
+  | Niceid of Data.Identifier.t
+  | Typeid of Data.Uuid.Typeid.t
+
+let parse_identifier s =
+  match Data.Identifier.parse s with
+  | Ok id -> Ok (Niceid id)
   | Error _ ->
-      match Data.Uuid.Typeid.parse identifier with
-      | Ok typeid -> find_by_typeid t typeid
+      match Data.Uuid.Typeid.parse s with
+      | Ok tid -> Ok (Typeid tid)
       | Error _ ->
-          Error (Validation_error (Printf.sprintf
-            "invalid identifier %S — expected a niceid (e.g. kb-0) or typeid (e.g. todo_01abc...)"
-            identifier))
+          Error (Validation_error
+            (Printf.sprintf
+              "invalid identifier %S — expected a niceid (e.g. kb-0) \
+               or typeid (e.g. todo_01abc...)" s))
+
+let find t ~identifier =
+  match parse_identifier identifier with
+  | Ok (Niceid niceid) -> find_by_niceid t niceid
+  | Ok (Typeid typeid) -> find_by_typeid t typeid
+  | Error _ as e -> e

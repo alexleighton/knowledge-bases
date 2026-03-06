@@ -1,8 +1,6 @@
 (** Note repository API.
 
-    This module defines the CRUD surface that higher layers should use to
-    persist {!Note_data.t} values. The implementation will be backed by a database
-    in a later iteration. *)
+    CRUD surface for persisting {!Data.Note.t} values. *)
 
 (** Abstract handle to the repository backend. *)
 type t

@@ -19,6 +19,15 @@ type t
     {!Repository.Root.t} handle. *)
 val init : Repository.Root.t -> t
 
+(** Parsed form of a user-supplied identifier. *)
+type parsed_identifier =
+  | Niceid of Data.Identifier.t
+  | Typeid of Data.Uuid.Typeid.t
+
+(** [parse_identifier s] interprets [s] as a niceid or TypeId.
+    Returns [Validation_error] if [s] matches neither format. *)
+val parse_identifier : string -> (parsed_identifier, error) result
+
 (** [find t ~identifier] resolves a niceid or TypeId string to an item.
 
     [identifier] is parsed first as a niceid (e.g. ["kb-0"]); if that fails,
@@ -31,3 +40,6 @@ val map_todo_repo_error : Repository.Todo.error -> error
 
 (** [map_note_repo_error err] maps a note repository error to a service error. *)
 val map_note_repo_error : Repository.Note.error -> error
+
+(** [map_relation_repo_error err] maps a relation repository error to a service error. *)
+val map_relation_repo_error : Repository.Relation.error -> error
