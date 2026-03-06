@@ -129,12 +129,22 @@ Every subcommand must have:
 
 - An **EXAMPLES** section demonstrating every flag and common flag
   combinations. Each example should be preceded by a short annotation
-  explaining what it does (e.g., `"Filter by type and status:"`).
-- A **semantic `~doc` string** for any flag whose effect is not obvious from
-  its name. The description should explain what the flag *does*, not just
-  restate its syntax. For relation flags, mention directionality and how
-  the relation appears in `show` output.
+  explaining *when* or *why* you would use it, not just restating the
+  command (e.g., `"List only todos you can start working on:"` rather than
+  `"Use the available flag:"`).
+- A **`--json` example** in every subcommand's EXAMPLES section, even simple
+  ones like `resolve` or `archive`. Agents and scripts rely on JSON output
+  and won't discover it without an example.
+- A **`--show` example** for any command that supports it (e.g., `claim`,
+  `next`), showing that it can be combined with `--json`.
+- A **semantic `~doc` string** for every flag. The description should explain
+  what the flag *does* and *when* to use it, not just restate its name. For
+  relation flags, mention directionality and how the relation appears in
+  `show` output.
+- **Constraint documentation** in `~doc` strings: when a flag has
+  interactions or restrictions with other flags (e.g., `--available` cannot
+  be combined with `--status`), state that in the flag's `~doc`.
 
 When adding a new command or flag, include corresponding help text updates in
 the same change. The root `bs --help` should include a lifecycle example that
-walks through init, create, query, update, and sync.
+walks through init, create, query, claim, complete, and sync.

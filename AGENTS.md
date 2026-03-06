@@ -31,9 +31,22 @@ This repository uses `bs` to track todos and notes. Use it to
 externalize work you've identified, decisions, and research.
 
 ```
+# Create items (content from --content or stdin)
 echo "Description" | bs add todo "Title"
-bs list todo --status open
+echo "Research findings" | bs add note "Title"
+
+# Browse
+bs list
+bs list --available
 bs show kb-0
+
+# Claim and work on todos
+bs next --show
+bs claim kb-0
+
+# Complete and archive
+bs resolve kb-0
+bs archive kb-5
 ```
 
 Run `bs --help` for the full command reference.
