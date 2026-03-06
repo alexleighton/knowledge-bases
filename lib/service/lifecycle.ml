@@ -38,6 +38,8 @@ type init_result = {
   git_exclude : git_exclude_action;
 }
 
+(* --- Initialization helpers --- *)
+
 let resolve_directory = function
   | None -> (
       match Git.find_repo_root () with
@@ -96,6 +98,8 @@ let install_git_exclude ~directory =
   match Git.add_exclude ~directory db_filename with
   | Git.Added -> Excluded
   | Git.Already_present -> Already_excluded
+
+(* --- Public operations --- *)
 
 let open_kb () =
   match Git.find_repo_root () with

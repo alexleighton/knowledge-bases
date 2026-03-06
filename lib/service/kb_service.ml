@@ -82,6 +82,8 @@ type add_with_relations_result = {
   relations   : relation_entry list;
 }
 
+(* --- Error mapping --- *)
+
 let map_lifecycle_error = function
   | Lifecycle.Repository_error msg -> Repository_error msg
   | Lifecycle.Validation_error msg -> Validation_error msg
@@ -94,6 +96,10 @@ let map_todo_error = function
 
 let map_sync_error = function
   | Sync_service.Sync_failed msg -> Repository_error msg
+
+let _map_sync_to_claim_error e = Service_error (map_sync_error e)
+
+(* --- Internal helpers --- *)
 
 let _with_flush_map t ~map_err f =
   let open Result.Syntax in
@@ -121,6 +127,8 @@ let relation_entry_of_relate_result (r : Relation.relate_result) : relation_entr
 
 let build_specs = Relation.build_specs
 
+(* --- Initialization --- *)
+
 let init root = {
   notes    = Note.init root;
   todos    = Todo.init root;
@@ -130,6 +138,8 @@ let init root = {
   sync     = None;
   db       = Repository.Root.db root;
 }
+
+(* --- Lifecycle --- *)
 
 let open_kb () =
   let open Result.Syntax in
@@ -149,6 +159,8 @@ let open_kb () =
 let init_kb ~directory ~namespace =
   Lifecycle.init_kb ~directory ~namespace
   |> Result.map_error map_lifecycle_error
+
+(* --- Add operations --- *)
 
 let add_note t ~title ~content =
   _with_flush t (fun () ->
@@ -192,6 +204,8 @@ let add_todo_with_relations t ~title ~content ~specs ?status () =
              entity_type = "todo";
              relations }))
 
+(* --- Query operations --- *)
+
 let list t ~entity_type ~statuses ?(available = false) () =
   Query.list t.query ~entity_type ~statuses ~available ()
 
@@ -200,6 +214,8 @@ let show t ~identifier =
 
 let show_many t ~identifiers =
   Query.show_many t.query ~identifiers
+
+(* --- Mutation operations --- *)
 
 let update t ~identifier ?status ?title ?content () =
   _with_flush t (fun () ->
@@ -212,8 +228,6 @@ let resolve t ~identifier =
 let archive t ~identifier =
   _with_flush t (fun () ->
     Mutation.archive t.mutation ~identifier)
-
-let _map_sync_to_claim_error e = Service_error (map_sync_error e)
 
 let next t =
   _with_flush_map t ~map_err:_map_sync_to_claim_error (fun () ->
@@ -229,6 +243,8 @@ let relate t ~source ~specs =
       ~on_begin_error:(fun msg -> Repository_error msg)
       (fun () ->
         Relation.relate_many t.relation_svc ~source ~specs))
+
+(* --- Sync operations --- *)
 
 let flush t =
   let open Result.Syntax in

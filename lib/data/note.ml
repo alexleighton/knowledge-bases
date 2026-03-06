@@ -8,6 +8,17 @@ type id = Typeid.t
 
 type status = Active | Archived [@@deriving show]
 
+let status_to_string = function Active -> "active" | Archived -> "archived"
+
+let status_from_string = function
+  | "active" -> Active
+  | "archived" -> Archived
+  | s -> CE.invalid_argf "Invalid status \"%s\"" s
+
+let status_of_string s =
+  try Ok (status_from_string s)
+  with Invalid_argument msg -> Error msg
+
 let show_id = Typeid.to_string
 let pp_id fmt id = Format.pp_print_string fmt (show_id id)
 
@@ -36,17 +47,6 @@ let make id niceid title content status = {
   content = content;
   status  = status;
 }
-
-let status_to_string = function Active -> "active" | Archived -> "archived"
-
-let status_from_string = function
-  | "active" -> Active
-  | "archived" -> Archived
-  | s -> CE.invalid_argf "Invalid status \"%s\"" s
-
-let status_of_string s =
-  try Ok (status_from_string s)
-  with Invalid_argument msg -> Error msg
 
 let id      { id;      _ } = id
 let niceid  { niceid;  _ } = niceid

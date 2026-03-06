@@ -33,6 +33,8 @@ type show_result = {
   incoming : relation_entry list;
 }
 
+let _map_relation_repo_error = Item_service.map_relation_repo_error
+
 let init root = {
   items         = Item_service.init root;
   note_repo     = Repository.Root.note root;
@@ -48,7 +50,7 @@ let raw_id_of_item = function
 let sort_items items =
   List.sort (fun a b -> Int.compare (raw_id_of_item a) (raw_id_of_item b)) items
 
-let _map_relation_repo_error = Item_service.map_relation_repo_error
+(* --- Listing --- *)
 
 let _list_available t =
   let open Result.Syntax in
@@ -120,6 +122,8 @@ let list t ~entity_type ~statuses ?(available = false) () =
         @ (List.map (fun note -> Note_item note) notes)
       in
       Ok (sort_items items)
+
+(* --- Show --- *)
 
 let _typeid_of_item = function
   | Todo_item t -> Data.Todo.id t

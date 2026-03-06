@@ -104,13 +104,16 @@ let _get_string json key =
        | None -> Error (Parse_error (Printf.sprintf "missing field %S" key)))
   | _ -> Error (Parse_error "expected JSON object")
 
-let _get_bool json key =
+let _get_bool ?default json key =
   match json with
   | `Assoc pairs ->
       (match List.assoc_opt key pairs with
        | Some (`Bool b) -> Ok b
        | Some _ -> Error (Parse_error (Printf.sprintf "field %S is not a bool" key))
-       | None -> Error (Parse_error (Printf.sprintf "missing field %S" key)))
+       | None ->
+           match default with
+           | Some d -> Ok d
+           | None -> Error (Parse_error (Printf.sprintf "missing field %S" key)))
   | _ -> Error (Parse_error "expected JSON object")
 
 let _parse_header_json json =
@@ -158,15 +161,6 @@ let _parse_note_record json =
     |> Result.map_error (fun msg -> Parse_error msg) in
   Ok (Note { id; title; content; status })
 
-let _get_bool_default json key default =
-  match json with
-  | `Assoc pairs ->
-      (match List.assoc_opt key pairs with
-       | Some (`Bool b) -> Ok b
-       | Some _ -> Error (Parse_error (Printf.sprintf "field %S is not a bool" key))
-       | None -> Ok default)
-  | _ -> Error (Parse_error "expected JSON object")
-
 let _parse_relation_record json =
   let open Data.Result.Syntax in
   let* source_s = _get_string json "source" in
@@ -175,7 +169,7 @@ let _parse_relation_record json =
   let* target = _parse_typeid target_s in
   let* kind_s = _get_string json "kind" in
   let* bidirectional = _get_bool json "bidirectional" in
-  let* blocking = _get_bool_default json "blocking" false in
+  let* blocking = _get_bool ~default:false json "blocking" in
   let* kind = _try_make Data.Relation_kind.make kind_s in
   Ok (Relation (Data.Relation.make ~source ~target ~kind ~bidirectional ~blocking))
 

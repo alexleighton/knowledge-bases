@@ -10,6 +10,8 @@ module Title = Kbases.Data.Title
 module Identifier = Kbases.Data.Identifier
 module Typeid = Kbases.Data.Uuid.Typeid
 
+(* --- Error handling --- *)
+
 let claim_error_msg = function
   | Service.Not_a_todo id ->
       Printf.sprintf "%s is not a todo" id
@@ -40,6 +42,15 @@ let claim_error_json = function
   | Service.Service_error (ItemService.Validation_error msg) ->
       `Assoc ["ok", `Bool false; "reason", `String "error";
               "message", `String msg]
+
+let exit_claim_error ~json err =
+  if json then begin
+    Common.print_json (claim_error_json err);
+    exit 1
+  end else
+    Common.exit_with (claim_error_msg err)
+
+(* --- Output --- *)
 
 let print_claimed_todo ~show ~json (service : Service.t) (todo : Todo.t) =
   let niceid = Identifier.to_string (Todo.niceid todo) in
@@ -72,13 +83,6 @@ let print_claimed_todo ~show ~json (service : Service.t) (todo : Todo.t) =
         (Title.to_string (Todo.title todo))
   end
 
-let exit_claim_error ~json err =
-  if json then begin
-    Common.print_json (claim_error_json err);
-    exit 1
-  end else
-    Common.exit_with (claim_error_msg err)
-
 let run identifier show json =
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
@@ -86,6 +90,8 @@ let run identifier show json =
     | Ok todo ->
         print_claimed_todo ~show ~json (App_context.service ctx) todo
     | Error err -> exit_claim_error ~json err)
+
+(* --- CLI definitions --- *)
 
 let identifier_arg =
   let doc = "Niceid (e.g. kb-0) or TypeId of the todo to claim." in

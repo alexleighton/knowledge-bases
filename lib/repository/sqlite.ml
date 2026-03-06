@@ -16,8 +16,7 @@ let error_message = function
   | Constraint_violation -> "constraint violation"
   | No_row_found -> "no row found"
 
-let _step_failed rc =
-  Step_failed (Printf.sprintf "sqlite step failed: %s" (Sql.Rc.to_string rc))
+(* --- Exec and transactions --- *)
 
 let exec db sql =
   try
@@ -60,6 +59,11 @@ let with_savepoint db ~name ~on_begin_error f =
          ignore (exec db ("ROLLBACK TO SAVEPOINT " ^ name));
          ignore (exec db ("RELEASE " ^ name));
          raise exn)
+
+(* --- Prepared statements --- *)
+
+let _step_failed rc =
+  Step_failed (Printf.sprintf "sqlite step failed: %s" (Sql.Rc.to_string rc))
 
 let _finalize stmt =
   match Sql.finalize stmt with

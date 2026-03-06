@@ -12,6 +12,8 @@ module Identifier = Kbases.Data.Identifier
 module Typeid = Kbases.Data.Uuid.Typeid
 module Relation_kind = Kbases.Data.Relation_kind
 
+(* --- Output formatting --- *)
+
 let format_item = function
   | Service.Todo_item todo ->
       Printf.printf "todo %s (%s)\nStatus: %s\nTitle:  %s\n\n%s\n"
@@ -106,6 +108,8 @@ let run first_identifier rest_identifiers json =
             format_show_result result
           ) results
     | Error err -> Common.exit_with_error ~json (Common.service_error_msg err))
+
+(* --- CLI definitions --- *)
 
 let first_identifier_arg =
   let doc = "Niceid (e.g. kb-0) or TypeId (e.g. todo_01abc...) of the item to show." in

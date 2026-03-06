@@ -10,6 +10,10 @@ type item =
   | Todo_item of Data.Todo.t
   | Note_item of Data.Note.t
 
+type parsed_identifier =
+  | Niceid of Data.Identifier.t
+  | Typeid of Data.Uuid.Typeid.t
+
 type t = {
   note_repo : Note.t;
   todo_repo : Todo.t;
@@ -76,10 +80,6 @@ let find_by_typeid t typeid =
   | "note" -> find_note_by_typeid t typeid
   | prefix ->
       Error (Validation_error (Printf.sprintf "unknown typeid prefix %S" prefix))
-
-type parsed_identifier =
-  | Niceid of Data.Identifier.t
-  | Typeid of Data.Uuid.Typeid.t
 
 let parse_identifier s =
   match Data.Identifier.parse s with

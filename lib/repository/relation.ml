@@ -52,6 +52,14 @@ let _reverse_exists repo rel =
           | Sqlite.Row_parse_failed _ | Sqlite.Constraint_violation as err) ->
       Error (Backend_failure (Sqlite.error_message err))
 
+let _relation_of_row stmt =
+  let source = Data.Uuid.Typeid.of_string (Sql.column_text stmt 0) in
+  let target = Data.Uuid.Typeid.of_string (Sql.column_text stmt 1) in
+  let kind = Data.Relation_kind.make (Sql.column_text stmt 2) in
+  let bidirectional = Sql.column_int stmt 3 <> 0 in
+  let blocking = Sql.column_int stmt 4 <> 0 in
+  Ok (Data.Relation.make ~source ~target ~kind ~bidirectional ~blocking)
+
 let create repo rel =
   let open Result.Syntax in
   let* reverse =
@@ -77,14 +85,6 @@ let create repo rel =
       ]
     |> map_sqlite_error
     |> Result.map (fun () -> rel)
-
-let _relation_of_row stmt =
-  let source = Data.Uuid.Typeid.of_string (Sql.column_text stmt 0) in
-  let target = Data.Uuid.Typeid.of_string (Sql.column_text stmt 1) in
-  let kind = Data.Relation_kind.make (Sql.column_text stmt 2) in
-  let bidirectional = Sql.column_int stmt 3 <> 0 in
-  let blocking = Sql.column_int stmt 4 <> 0 in
-  Ok (Data.Relation.make ~source ~target ~kind ~bidirectional ~blocking)
 
 let list_all repo =
   Sqlite.with_stmt repo.db

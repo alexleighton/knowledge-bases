@@ -16,6 +16,24 @@ let resolve_content ~json content_opt =
   | Some content -> content
   | None -> Common.exit_with_error ~json "No content provided. Use --content or pipe content to stdin."
 
+let add_note_simple svc ~title ~content =
+  Service.add_note svc ~title ~content
+  |> Result.map (fun note ->
+    Identifier.to_string (Note.niceid note),
+    Typeid.to_string (Note.id note))
+
+let add_note_with_rels svc ~title ~content ~specs =
+  Service.add_note_with_relations svc ~title ~content ~specs
+
+let add_todo_simple svc ~title ~content =
+  Service.add_todo svc ~title ~content ()
+  |> Result.map (fun todo ->
+    Identifier.to_string (Todo.niceid todo),
+    Typeid.to_string (Todo.id todo))
+
+let add_todo_with_rels svc ~title ~content ~specs =
+  Service.add_todo_with_relations svc ~title ~content ~specs ()
+
 let run_add ~entity_type ~add_simple ~add_with_relations
     title content_opt depends_on related_to uni bi blocking json =
   let specs = Service.build_specs ~depends_on ~related_to ~uni ~bi ~blocking in
@@ -57,24 +75,6 @@ let run_add ~entity_type ~add_simple ~add_with_relations
               List.iter Cmd_show.format_relation_entry relations
             end
         | Error err -> Common.exit_with_error ~json (Common.service_error_msg err)))
-
-let add_note_simple svc ~title ~content =
-  Service.add_note svc ~title ~content
-  |> Result.map (fun note ->
-    Identifier.to_string (Note.niceid note),
-    Typeid.to_string (Note.id note))
-
-let add_note_with_rels svc ~title ~content ~specs =
-  Service.add_note_with_relations svc ~title ~content ~specs
-
-let add_todo_simple svc ~title ~content =
-  Service.add_todo svc ~title ~content ()
-  |> Result.map (fun todo ->
-    Identifier.to_string (Todo.niceid todo),
-    Typeid.to_string (Todo.id todo))
-
-let add_todo_with_rels svc ~title ~content ~specs =
-  Service.add_todo_with_relations svc ~title ~content ~specs ()
 
 let run_note = run_add ~entity_type:"note"
   ~add_simple:add_note_simple ~add_with_relations:add_note_with_rels

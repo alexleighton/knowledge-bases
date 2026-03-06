@@ -21,6 +21,8 @@ let make prefix =
   let uuid = Uuidv7.make () in
   { prefix; suffix = Uuidv7.to_uuidm uuid |> Base32.encode }
 
+let of_guid prefix uuid = { prefix; suffix = Uuidv7.to_uuidm uuid |> Base32.encode }
+
 let to_string { prefix; suffix; _ } = prefix ^ "_" ^ suffix
 
 let of_string str =
@@ -36,8 +38,6 @@ let of_string str =
 let parse s =
   try Ok (of_string s)
   with Invalid_argument msg -> Error msg
-
-let of_guid prefix uuid = { prefix; suffix = Uuidv7.to_uuidm uuid |> Base32.encode }
 
 let get_prefix t = t.prefix
 let get_suffix t = t.suffix
