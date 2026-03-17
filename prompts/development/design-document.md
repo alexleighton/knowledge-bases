@@ -2,8 +2,8 @@
 
 Produce a written design document that explores a question about the
 project and evaluates approaches to address it. The document is a
-markdown file at the top level of the project (e.g.,
-`design-the-thing.md`). It is a thinking tool — a place to lay out
+markdown file under `docs/designs/` (e.g.,
+`docs/designs/design-the-thing.md`). It is a thinking tool — a place to lay out
 the problem, explore the solution space, and reach a recommendation
 before any code is written. It is not an implementation plan; it
 should not break work into executable tasks.

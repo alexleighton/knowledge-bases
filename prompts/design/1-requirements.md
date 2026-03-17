@@ -134,6 +134,6 @@ it in place, do not create new files.
 
 ## Examples
 
-See `examples/` for completed design documents that went through
+See `docs/designs/` for completed design documents that went through
 all four steps of the pipeline (requirements → background →
 refinement → approaches).
