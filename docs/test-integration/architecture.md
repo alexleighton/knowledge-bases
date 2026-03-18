@@ -33,14 +33,22 @@ When adding a new CLI command, create a new file following this convention.
 When modifying an existing command's behaviour or output, extend the
 corresponding file.
 
-**Exception:** `workflow_expect.ml` contains cross-command scenario tests that
-chain many operations within a single knowledge base, simulating natural usage.
-These tests do not map to a single command and intentionally cut across the
-per-command boundary. Each scenario should read like a realistic session — seed
-data, build relationships, progress through statuses, query results. Taken
+When a command's test file exceeds ~300 lines, split it into
+`<command>_<aspect>_expect.ml` files and remove the original unsuffixed file.
+Aspects should reflect user-visible feature areas (e.g., `basic`, `json`,
+`relations`, `filter`). Use the glob `<command>_*_expect.ml` to discover all
+test files for a given command.
+
+**Exception:** `workflow_*_expect.ml` files contain cross-command scenario tests
+that chain many operations within a single knowledge base, simulating natural
+usage. These tests do not map to a single command and intentionally cut across
+the per-command boundary. Each scenario should read like a realistic session —
+seed data, build relationships, progress through statuses, query results. Taken
 together, the workflow tests should exercise every CLI command at least once.
 When adding a new command, extend an existing workflow or add a new one so the
 command appears in a lifelike context, not only in its isolated command file.
+When the workflow tests outgrow ~300 lines, split by theme (e.g.,
+`workflow_lifecycle_expect.ml`, `workflow_persistence_expect.ml`).
 
 **Per-command feature tests belong in the command file.** When a feature applies
 to many commands (e.g., `--json` output), each command's test for that feature

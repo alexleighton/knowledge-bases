@@ -34,10 +34,15 @@ let _todo_of_row stmt =
   let title = Sql.column_text stmt 2 in
   let content = Sql.column_text stmt 3 in
   let status_s = Sql.column_text stmt 4 in
+  let created_at = Data.Timestamp.make (Sql.column_int stmt 5) in
+  let updated_at = Data.Timestamp.make (Sql.column_int stmt 6) in
   let typeid = Data.Uuid.Typeid.of_string id_str in
   let niceid = Data.Identifier.from_string niceid_s in
   let status = Data.Todo.status_from_string status_s in
-  Ok (Data.Todo.make typeid niceid (Data.Title.make title) (Data.Content.make content) status)
+  Ok (Data.Todo.make typeid niceid (Data.Title.make title) (Data.Content.make content) status
+        ~created_at ~updated_at)
+
+let _select_cols = "id, niceid, title, content, status, created_at, updated_at"
 
 let init ~db ~niceid_repo =
   try
@@ -47,7 +52,9 @@ let init ~db ~niceid_repo =
          niceid TEXT UNIQUE NOT NULL,\
          title TEXT NOT NULL,\
          content TEXT NOT NULL,\
-         status TEXT NOT NULL\
+         status TEXT NOT NULL,\
+         created_at INTEGER NOT NULL,\
+         updated_at INTEGER NOT NULL\
        );"
     in
     match exec_sql db create_sql with
@@ -56,43 +63,50 @@ let init ~db ~niceid_repo =
   with
   | Sql.Error msg -> Error (Backend_failure msg)
 
-let _insert repo ~todo_id ~title ~content ~status =
+
+let _insert repo ~todo_id ~title ~content ~status ~created_at ~updated_at =
   let open Result.Syntax in
   let* niceid =
     Niceid.allocate repo.niceid_repo todo_id
-    |> Result.map_error (function Niceid.Backend_failure msg -> Backend_failure msg)
+    |> Result.map_error (function
+      | Niceid.Backend_failure msg -> Backend_failure msg
+      | Niceid.Not_found -> Backend_failure "niceid not found")
   in
-  let todo = Data.Todo.make todo_id niceid title content status in
+  let todo = Data.Todo.make todo_id niceid title content status ~created_at ~updated_at in
   let+ () =
     Sqlite.with_stmt_cmd repo.db
-      "INSERT INTO todo(id, niceid, title, content, status) VALUES (?, ?, ?, ?, ?);"
+      "INSERT INTO todo(id, niceid, title, content, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?);"
       [
         (1, Sql.Data.TEXT (Data.Uuid.Typeid.to_string todo_id));
         (2, Sql.Data.TEXT (Data.Identifier.to_string niceid));
         (3, Sql.Data.TEXT (Data.Title.to_string (Data.Todo.title todo)));
         (4, Sql.Data.TEXT (Data.Content.to_string (Data.Todo.content todo)));
         (5, Sql.Data.TEXT (Data.Todo.status_to_string (Data.Todo.status todo)));
+        (6, Sql.Data.INT (Int64.of_int (Data.Timestamp.to_epoch created_at)));
+        (7, Sql.Data.INT (Int64.of_int (Data.Timestamp.to_epoch updated_at)));
       ]
     |> map_sqlite_error ~niceid:niceid
   in
   todo
 
-let create repo ~title ~content ?(status = Data.Todo.Open) () =
+let create repo ~title ~content ?(status = Data.Todo.Open) ?(now = Data.Timestamp.now) () =
+  let ts = now () in
   _insert repo ~todo_id:(Data.Todo.make_id ()) ~title ~content ~status
+    ~created_at:ts ~updated_at:ts
 
-let import repo ~id ~title ~content ?(status = Data.Todo.Open) () =
-  _insert repo ~todo_id:id ~title ~content ~status
+let import repo ~id ~title ~content ?(status = Data.Todo.Open) ~created_at ~updated_at () =
+  _insert repo ~todo_id:id ~title ~content ~status ~created_at ~updated_at
 
 let get repo id =
   Sqlite.with_stmt_single repo.db
-    "SELECT id, niceid, title, content, status FROM todo WHERE id = ?;"
+    (Printf.sprintf "SELECT %s FROM todo WHERE id = ?;" _select_cols)
     [(1, Sql.Data.TEXT (Data.Uuid.Typeid.to_string id))]
     _todo_of_row
   |> map_sqlite_error ~id
 
 let get_by_niceid repo niceid =
   Sqlite.with_stmt_single repo.db
-    "SELECT id, niceid, title, content, status FROM todo WHERE niceid = ?;"
+    (Printf.sprintf "SELECT %s FROM todo WHERE niceid = ?;" _select_cols)
     [(1, Sql.Data.TEXT (Data.Identifier.to_string niceid))]
     _todo_of_row
   |> map_sqlite_error ~niceid
@@ -101,13 +115,16 @@ let update repo todo =
   let open Result.Syntax in
   let* () =
     Sqlite.with_stmt_cmd repo.db
-      "UPDATE todo SET niceid = ?, title = ?, content = ?, status = ? WHERE id = ?;"
+      "UPDATE todo SET niceid = ?, title = ?, content = ?, status = ?, \
+       created_at = ?, updated_at = ? WHERE id = ?;"
       [
         (1, Sql.Data.TEXT (Data.Identifier.to_string (Data.Todo.niceid todo)));
         (2, Sql.Data.TEXT (Data.Title.to_string (Data.Todo.title todo)));
         (3, Sql.Data.TEXT (Data.Content.to_string (Data.Todo.content todo)));
         (4, Sql.Data.TEXT (Data.Todo.status_to_string (Data.Todo.status todo)));
-        (5, Sql.Data.TEXT (Data.Uuid.Typeid.to_string (Data.Todo.id todo)));
+        (5, Sql.Data.INT (Int64.of_int (Data.Timestamp.to_epoch (Data.Todo.created_at todo))));
+        (6, Sql.Data.INT (Int64.of_int (Data.Timestamp.to_epoch (Data.Todo.updated_at todo))));
+        (7, Sql.Data.TEXT (Data.Uuid.Typeid.to_string (Data.Todo.id todo)));
       ]
     |> map_sqlite_error ~id:(Data.Todo.id todo) ~niceid:(Data.Todo.niceid todo)
   in
@@ -129,8 +146,7 @@ let list repo ~statuses =
   let sql, params =
     match statuses with
     | [] ->
-        "SELECT id, niceid, title, content, status \
-         FROM todo WHERE status != ? ORDER BY niceid;",
+        Printf.sprintf "SELECT %s FROM todo WHERE status != ? ORDER BY niceid;" _select_cols,
         [ (1, Sql.Data.TEXT (Data.Todo.status_to_string Data.Todo.Done)) ]
     | statuses ->
         let placeholders =
@@ -144,9 +160,8 @@ let list repo ~statuses =
               (idx + 1, Sql.Data.TEXT (Data.Todo.status_to_string status)))
         in
         (Printf.sprintf
-           "SELECT id, niceid, title, content, status \
-            FROM todo WHERE status IN (%s) ORDER BY niceid;"
-           placeholders,
+           "SELECT %s FROM todo WHERE status IN (%s) ORDER BY niceid;"
+           _select_cols placeholders,
          params)
   in
   Sqlite.with_stmt repo.db sql params _todo_of_row
@@ -154,7 +169,7 @@ let list repo ~statuses =
 
 let list_all repo =
   Sqlite.with_stmt repo.db
-    "SELECT id, niceid, title, content, status FROM todo ORDER BY id;"
+    (Printf.sprintf "SELECT %s FROM todo ORDER BY id;" _select_cols)
     []
     _todo_of_row
   |> map_sqlite_error

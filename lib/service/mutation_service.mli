@@ -60,3 +60,10 @@ val resolve :
     @return [Validation_error] if the item is a todo or not found. *)
 val archive :
   t -> identifier:string -> (Data.Note.t, Item_service.error) result
+
+(** [reopen t ~identifier] returns a terminal item to its initial status:
+    Done todos become Open, Archived notes become Active.
+
+    @return [Validation_error] if the item is not in a terminal state. *)
+val reopen :
+  t -> identifier:string -> (Item_service.item, Item_service.error) result

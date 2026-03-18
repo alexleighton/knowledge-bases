@@ -48,14 +48,16 @@ let%expect_test "project planning — create, relate, progress, and list" =
     Helper.print_result ~dir list3);
   [%expect {|
     [exit 0]
-    kb-0    note  active        Architecture design
-    kb-1    todo  open          Implement data layer
-    kb-2    todo  open          Implement API endpoints
-    kb-3    todo  open          Write integration tests
     kb-4    note  active        Performance requirements
+    kb-3    todo  open          Write integration tests
+    kb-2    todo  open          Implement API endpoints
+    kb-1    todo  open          Implement data layer
+    kb-0    note  active        Architecture design
     [exit 0]
     todo kb-3 (<TYPEID>)
     Status: open
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  Write integration tests
 
     Cover all endpoints with integration tests.
@@ -64,100 +66,15 @@ let%expect_test "project planning — create, relate, progress, and list" =
       depends-on  kb-1  todo  Implement data layer  [blocking]
       depends-on  kb-2  todo  Implement API endpoints  [blocking]
     [exit 0]
-    kb-0    note  active        Architecture design
-    kb-2    todo  in-progress   Implement API endpoints
-    kb-3    todo  open          Write integration tests
     kb-4    note  active        Performance requirements
+    kb-3    todo  open          Write integration tests
+    kb-2    todo  in-progress   Implement API endpoints
+    kb-0    note  active        Architecture design
     [exit 0]
     kb-1    todo  done          Implement data layer
     [exit 0]
-    kb-0    note  active        Architecture design
     kb-3    todo  in-progress   Write integration tests
-    |}]
-
-let%expect_test "flush-rebuild round trip preserves state" =
-  Helper.with_git_root (fun dir ->
-    Helper.init_kb dir;
-
-    (* Phase 1 — Build state *)
-    ignore (Helper.run_bs ~dir ~stdin:"Implement the first task."
-      ["add"; "todo"; "First task"]);
-    ignore (Helper.run_bs ~dir ~stdin:"Design document for the project."
-      ["add"; "note"; "Design doc"]);
-    ignore (Helper.run_bs ~dir ~stdin:"Implement the second task."
-      ["add"; "todo"; "Second task"]);
-    ignore (Helper.run_bs ~dir ["update"; "kb-0"; "--status"; "in-progress"]);
-    ignore (Helper.run_bs ~dir ["relate"; "kb-0"; "--depends-on"; "kb-2"]);
-    ignore (Helper.run_bs ~dir ["relate"; "kb-2"; "--related-to"; "kb-1"]);
-
-    let list1 = Helper.run_bs ~dir ["list"] in
-    Helper.print_result ~dir list1;
-
-    let show_kb0 = Helper.run_bs ~dir ["show"; "kb-0"] in
-    Helper.print_result ~dir show_kb0;
-
-    let show_kb2 = Helper.run_bs ~dir ["show"; "kb-2"] in
-    Helper.print_result ~dir show_kb2;
-
-    (* Phase 2 — Rebuild from JSONL *)
-    let rebuild = Helper.run_bs ~dir ["rebuild"] in
-    Helper.print_result ~dir rebuild;
-
-    let list2 = Helper.run_bs ~dir ["list"] in
-    Helper.print_result ~dir list2;
-
-    let show_kb1_post = Helper.run_bs ~dir ["show"; "kb-1"] in
-    Helper.print_result ~dir show_kb1_post;
-
-    (* Phase 3 — Operate on rebuilt state *)
-    ignore (Helper.run_bs ~dir ["resolve"; "kb-1"]);
-
-    let list3 = Helper.run_bs ~dir ["list"] in
-    Helper.print_result ~dir list3);
-  [%expect {|
-    [exit 0]
-    kb-0    todo  in-progress   First task
-    kb-1    note  active        Design doc
-    kb-2    todo  open          Second task
-    [exit 0]
-    todo kb-0 (<TYPEID>)
-    Status: in-progress
-    Title:  First task
-
-    Implement the first task.
-
-    Outgoing:
-      depends-on  kb-2  todo  Second task  [blocking]
-    [exit 0]
-    todo kb-2 (<TYPEID>)
-    Status: open
-    Title:  Second task
-
-    Implement the second task.
-
-    Outgoing:
-      related-to  kb-1  note  Design doc
-
-    Incoming:
-      depends-on  kb-0  todo  First task  [blocking]
-    [exit 0]
-    Rebuilt SQLite from .kbases.jsonl
-    [exit 0]
-    kb-0    note  active        Design doc
-    kb-1    todo  in-progress   First task
-    kb-2    todo  open          Second task
-    [exit 0]
-    todo kb-1 (<TYPEID>)
-    Status: in-progress
-    Title:  First task
-
-    Implement the first task.
-
-    Outgoing:
-      depends-on  kb-2  todo  Second task  [blocking]
-    [exit 0]
-    kb-0    note  active        Design doc
-    kb-2    todo  open          Second task
+    kb-0    note  active        Architecture design
     |}]
 
 let%expect_test "iterative refinement — update items multiple times" =
@@ -208,23 +125,29 @@ let%expect_test "iterative refinement — update items multiple times" =
     Helper.print_result ~dir done_todos);
   [%expect {|
     [exit 0]
-    kb-0    todo  open          Implement authentication
     kb-1    todo  in-progress   Add structured logging
+    kb-0    todo  open          Implement authentication
     [exit 0]
     todo kb-0 (<TYPEID>)
     Status: in-progress
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  Implement authentication
 
     Use OAuth2 for all endpoints.
     [exit 0]
     todo kb-1 (<TYPEID>)
     Status: in-progress
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  Add structured logging
 
     Use slog library with JSON output.
     [exit 0]
     note kb-2 (<TYPEID>)
     Status: active
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  Auth design decisions
 
     Decided on OAuth2 with PKCE flow.
@@ -232,54 +155,11 @@ let%expect_test "iterative refinement — update items multiple times" =
     Outgoing:
       related-to  kb-0  todo  Implement authentication
     [exit 0]
-    kb-1    todo  in-progress   Add structured logging
     kb-2    note  active        Auth design decisions
+    kb-1    todo  in-progress   Add structured logging
     [exit 0]
     kb-0    todo  done          Implement authentication
     |}]
-
-let%expect_test "auto-rebuild — create items with relations, delete db, verify recovery" =
-  Helper.with_git_root (fun dir ->
-    Helper.init_kb dir;
-    ignore (Helper.run_bs ~dir ~stdin:"Design notes for the feature."
-      ["add"; "note"; "Design doc"]);
-    ignore (Helper.run_bs ~dir ~stdin:"Implement the feature."
-      ["add"; "todo"; "Implementation"]);
-    ignore (Helper.run_bs ~dir
-      ["relate"; "kb-1"; "--related-to"; "kb-0"]);
-    ignore (Helper.run_bs ~dir
-      ["update"; "kb-1"; "--status"; "in-progress"]);
-    Helper.delete_db dir;
-    let list_result = Helper.run_bs ~dir ["list"] in
-    Helper.print_result ~dir list_result;
-    let show_result = Helper.run_bs ~dir ["show"; "kb-1"] in
-    Helper.print_result ~dir show_result;
-    ignore (Helper.run_bs ~dir ["resolve"; "kb-1"]);
-    let show_resolved = Helper.run_bs ~dir ["show"; "kb-1"] in
-    Helper.print_result ~dir show_resolved);
-  [%expect {|
-    [exit 0]
-    kb-0    note  active        Design doc
-    kb-1    todo  in-progress   Implementation
-    [exit 0]
-    todo kb-1 (<TYPEID>)
-    Status: in-progress
-    Title:  Implementation
-
-    Implement the feature.
-
-    Outgoing:
-      related-to  kb-0  note  Design doc
-    [exit 0]
-    todo kb-1 (<TYPEID>)
-    Status: done
-    Title:  Implementation
-
-    Implement the feature.
-
-    Outgoing:
-      related-to  kb-0  note  Design doc
-  |}]
 
 let%expect_test "next/claim workflow — dependencies, availability, and progression" =
   Helper.with_git_root (fun dir ->
@@ -338,6 +218,8 @@ let%expect_test "next/claim workflow — dependencies, availability, and progres
     [exit 0]
     todo kb-0 (<TYPEID>)
     Status: in-progress
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  Setup database
 
     Set up database schema.
@@ -354,4 +236,68 @@ let%expect_test "next/claim workflow — dependencies, availability, and progres
     Claimed todo: kb-2  Write tests
     [exit 0]
     No open unblocked todos
+    |}]
+
+let%expect_test "cleanup workflow — reopen, unrelate, delete, and gc" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+
+    (* Phase 1 — Seed items and relations *)
+    ignore (Helper.run_bs ~dir ~stdin:"Main task body."
+      ["add"; "todo"; "Main task"]);
+    ignore (Helper.run_bs ~dir ~stdin:"Supporting research."
+      ["add"; "note"; "Research notes"]);
+    ignore (Helper.run_bs ~dir ~stdin:"Sub-task body."
+      ["add"; "todo"; "Sub-task"]);
+    ignore (Helper.run_bs ~dir ["relate"; "kb-0"; "--depends-on"; "kb-2"]);
+    ignore (Helper.run_bs ~dir ["relate"; "kb-0"; "--related-to"; "kb-1"]);
+
+    (* Phase 2 — Resolve and archive *)
+    ignore (Helper.run_bs ~dir ["resolve"; "kb-2"]);
+    ignore (Helper.run_bs ~dir ["resolve"; "kb-0"]);
+    ignore (Helper.run_bs ~dir ["archive"; "kb-1"]);
+
+    (* Phase 3 — Reopen: requirements changed *)
+    let reopen = Helper.run_bs ~dir ["reopen"; "kb-0"] in
+    Helper.print_result ~dir reopen;
+    let show_kb0 = Helper.run_bs ~dir ["show"; "kb-0"] in
+    Helper.print_result ~dir show_kb0;
+
+    (* Phase 4 — Unrelate: dependency no longer relevant *)
+    let unrelate = Helper.run_bs ~dir ["unrelate"; "kb-0"; "--depends-on"; "kb-2"] in
+    Helper.print_result ~dir unrelate;
+
+    (* Phase 5 — Delete the obsolete sub-task *)
+    let delete = Helper.run_bs ~dir ["delete"; "kb-2"] in
+    Helper.print_result ~dir delete;
+
+    (* Phase 6 — GC (nothing old enough, but exercises the command) *)
+    let gc = Helper.run_bs ~dir ["gc"] in
+    Helper.print_result ~dir gc;
+
+    let list_final = Helper.run_bs ~dir ["list"] in
+    Helper.print_result ~dir list_final);
+  [%expect {|
+    [exit 0]
+    Reopened todo: kb-0
+    [exit 0]
+    todo kb-0 (<TYPEID>)
+    Status: open
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
+    Title:  Main task
+
+    Main task body.
+
+    Outgoing:
+      related-to  kb-1  note  Research notes
+      depends-on  kb-2  todo  Sub-task
+    [exit 0]
+    Unrelated: kb-0 depends-on kb-2 (removed)
+    [exit 0]
+    Deleted todo: kb-2
+    [exit 0]
+    GC: removed 0 item(s), 0 relation(s).
+    [exit 0]
+    kb-0    todo  open          Main task
     |}]

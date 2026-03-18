@@ -235,10 +235,12 @@ let%expect_test "bs add todo with --content flag" =
     [exit 0]
     todo kb-0 (<TYPEID>)
     Status: open
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  Flag todo
 
     Body from flag
-  |}]
+    |}]
 
 let%expect_test "bs add todo errors on --content and stdin" =
   Helper.with_git_root (fun dir ->
@@ -289,6 +291,6 @@ let%expect_test "bs add todo auto-rebuilds when db is missing" =
     [exit 0]
     Created todo: kb-1 (<TYPEID>)
     [exit 0]
-    kb-0    todo  open          First
     kb-1    todo  open          Second
-  |}]
+    kb-0    todo  open          First
+    |}]

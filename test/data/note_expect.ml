@@ -3,6 +3,7 @@ module Id = Kbases.Data.Identifier
 module Typeid = Kbases.Data.Uuid.Typeid
 module Title = Kbases.Data.Title
 module Content = Kbases.Data.Content
+module Timestamp = Kbases.Data.Timestamp
 
 let%expect_test "make comprehensive test" =
   let test_cases = [
@@ -21,21 +22,23 @@ let%expect_test "make comprehensive test" =
     let tid = Typeid.of_string typeid in
     try
       print_endline (Note.show
-        (Note.make tid identifier (Title.make title) (Content.make content) Note.Active))
+        (Note.make tid identifier (Title.make title) (Content.make content) Note.Active ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0)))
     with Invalid_argument msg -> Printf.printf "ERR: %s\n" msg
   ) test_cases;
   [%expect {|
     { Note.id = note_01h455vb4pex5vsknk084sn02q; niceid = test-1;
-      title = "Test Title"; content = "Simple note"; status = Note.Active }
+      title = "Test Title"; content = "Simple note"; status = Note.Active;
+      created_at = 0; updated_at = 0 }
     { Note.id = note_0123456789abcdefghjkmnpqrs; niceid = abc-0;
-      title = "Test Title"; content = "Note with zero ID"; status = Note.Active }
+      title = "Test Title"; content = "Note with zero ID"; status = Note.Active;
+      created_at = 0; updated_at = 0 }
     { Note.id = note_01h455vb4pex5vsknk084sn02r; niceid = data-999;
-      title = "Test Title"; content = "Note with larger ID"; status = Note.Active
-      }
+      title = "Test Title"; content = "Note with larger ID";
+      status = Note.Active; created_at = 0; updated_at = 0 }
     { Note.id = note_01h455vb4pex5vsknk084sn02s; niceid = note-42;
       title = "Test Title";
       content = "Longer content with special chars: \"quotes\" and | pipes";
-      status = Note.Active }
+      status = Note.Active; created_at = 0; updated_at = 0 }
     ERR: note TypeId prefix must be "note", got "task"
     |}]
 
@@ -47,7 +50,7 @@ let%expect_test "make boundary lengths" =
       identifier
       (Title.make (String.make 1 't'))
       (Content.make (String.make 1 'c'))
-      Note.Active
+      Note.Active ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0)
   in
   let note_max =
     Note.make
@@ -55,7 +58,7 @@ let%expect_test "make boundary lengths" =
       identifier
       (Title.make (String.make 100 't'))
       (Content.make (String.make 10000 'c'))
-      Note.Archived
+      Note.Archived ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0)
   in
   Printf.printf "Boundary lengths: min title=%d content=%d; max title=%d content=%d\n"
     (String.length (Title.to_string (Note.title note_min)))
@@ -67,7 +70,7 @@ let%expect_test "make boundary lengths" =
 let%expect_test "accessor functions" =
   let identifier = Id.from_string "test-42" in
   let tid = Typeid.of_string "note_01h455vb4pex5vsknk084sn02r" in
-  let note = Note.make tid identifier (Title.make "My Title") (Content.make "My content") Note.Archived in
+  let note = Note.make tid identifier (Title.make "My Title") (Content.make "My content") Note.Archived ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0) in
   Printf.printf "TypeId: %s\n" (Typeid.to_string (Note.id note));
   Printf.printf "NiceId: %s\n" (Id.to_string (Note.niceid note));
   Printf.printf "Title: %S\n" (Title.to_string (Note.title note));
@@ -88,23 +91,24 @@ let%expect_test "to_string with special characters" =
     Note.make tid identifier
       (Title.make "Title with | pipe")
       (Content.make "Content with \"quotes\" and \\ backslash")
-      Note.Active
+      Note.Active ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0)
   in
   let note2 =
     Note.make tid identifier
       (Title.make "Normal Title")
       (Content.make "Normal content")
-      Note.Active
+      Note.Active ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0)
   in
   print_endline (Note.show note1);
   print_endline (Note.show note2);
   [%expect {|
     { Note.id = note_01h455vb4pex5vsknk084sn02q; niceid = test-1;
       title = "Title with | pipe";
-      content = "Content with \"quotes\" and \\ backslash"; status = Note.Active
-      }
+      content = "Content with \"quotes\" and \\ backslash"; status = Note.Active;
+      created_at = 0; updated_at = 0 }
     { Note.id = note_01h455vb4pex5vsknk084sn02q; niceid = test-1;
-      title = "Normal Title"; content = "Normal content"; status = Note.Active }
+      title = "Normal Title"; content = "Normal content"; status = Note.Active;
+      created_at = 0; updated_at = 0 }
     |}]
 
 let%expect_test "pretty printing" =
@@ -115,13 +119,13 @@ let%expect_test "pretty printing" =
       identifier
       (Title.make "Sample Title")
       (Content.make "Sample content with \"quotes\".")
-      Note.Active
+      Note.Active ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0)
   in
   Format.printf "%a@." Note.pp note;
   [%expect {|
     { Note.id = note_01h455vb4pex5vsknk084sn02r; niceid = demo-123;
       title = "Sample Title"; content = "Sample content with \"quotes\".";
-      status = Note.Active }
+      status = Note.Active; created_at = 0; updated_at = 0 }
     |}]
 
 let%expect_test "status conversion helpers" =
@@ -148,7 +152,7 @@ let%expect_test "status_from_string rejects invalid input" =
 let%expect_test "with_status changes status, preserves other fields" =
   let identifier = Id.from_string "test-1" in
   let tid = Typeid.of_string "note_01h455vb4pex5vsknk084sn02q" in
-  let note = Note.make tid identifier (Title.make "My note") (Content.make "Body") Note.Active in
+  let note = Note.make tid identifier (Title.make "My note") (Content.make "Body") Note.Active ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0) in
   let updated = Note.with_status note Note.Archived in
   Printf.printf "Status: %s\n" (Note.status_to_string (Note.status updated));
   Printf.printf "Title: %s\n" (Title.to_string (Note.title updated));
@@ -166,7 +170,7 @@ let%expect_test "with_status changes status, preserves other fields" =
 let%expect_test "with_title changes title, preserves other fields" =
   let identifier = Id.from_string "test-2" in
   let tid = Typeid.of_string "note_01h455vb4pex5vsknk084sn02r" in
-  let note = Note.make tid identifier (Title.make "Old title") (Content.make "Body") Note.Archived in
+  let note = Note.make tid identifier (Title.make "Old title") (Content.make "Body") Note.Archived ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0) in
   let updated = Note.with_title note (Title.make "New title") in
   Printf.printf "Title: %s\n" (Title.to_string (Note.title updated));
   Printf.printf "Status: %s\n" (Note.status_to_string (Note.status updated));
@@ -201,7 +205,7 @@ let%expect_test "status_of_string invalid input" =
 let%expect_test "with_content changes content, preserves other fields" =
   let identifier = Id.from_string "test-3" in
   let tid = Typeid.of_string "note_01h455vb4pex5vsknk084sn02s" in
-  let note = Note.make tid identifier (Title.make "Title") (Content.make "Old body") Note.Active in
+  let note = Note.make tid identifier (Title.make "Title") (Content.make "Old body") Note.Active ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0) in
   let updated = Note.with_content note (Content.make "New body") in
   Printf.printf "Content: %s\n" (Content.to_string (Note.content updated));
   Printf.printf "Title: %s\n" (Title.to_string (Note.title updated));
@@ -210,4 +214,31 @@ let%expect_test "with_content changes content, preserves other fields" =
     Content: New body
     Title: Title
     Status: active
+  |}]
+
+let%expect_test "timestamp accessors return expected values" =
+  let identifier = Id.from_string "test-10" in
+  let tid = Typeid.of_string "note_01h455vb4pex5vsknk084sn02q" in
+  let note = Note.make tid identifier (Title.make "Timed") (Content.make "Body")
+    Note.Active ~created_at:(Timestamp.make 1710000000) ~updated_at:(Timestamp.make 1710003600) in
+  Printf.printf "created_at: %d\n" (Timestamp.to_epoch (Note.created_at note));
+  Printf.printf "updated_at: %d\n" (Timestamp.to_epoch (Note.updated_at note));
+  [%expect {|
+    created_at: 1710000000
+    updated_at: 1710003600
+  |}]
+
+let%expect_test "with_updated_at returns copy with new value" =
+  let identifier = Id.from_string "test-11" in
+  let tid = Typeid.of_string "note_01h455vb4pex5vsknk084sn02r" in
+  let note = Note.make tid identifier (Title.make "Original") (Content.make "Body")
+    Note.Active ~created_at:(Timestamp.make 1710000000) ~updated_at:(Timestamp.make 1710000000) in
+  let updated = Note.with_updated_at note (Timestamp.make 1710099999) in
+  Printf.printf "created_at: %d\n" (Timestamp.to_epoch (Note.created_at updated));
+  Printf.printf "updated_at: %d\n" (Timestamp.to_epoch (Note.updated_at updated));
+  Printf.printf "title: %s\n" (Title.to_string (Note.title updated));
+  [%expect {|
+    created_at: 1710000000
+    updated_at: 1710099999
+    title: Original
   |}]

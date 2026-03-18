@@ -14,10 +14,12 @@ let%expect_test "bs archive active note" =
     [exit 0]
     note kb-0 (<TYPEID>)
     Status: archived
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  Research
 
     Note body
-  |}]
+    |}]
 
 let%expect_test "bs archive already-archived note fails" =
   Helper.with_git_root (fun dir ->

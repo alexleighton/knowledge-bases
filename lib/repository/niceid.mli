@@ -5,6 +5,7 @@ type t
 
 (** Errors that can arise while interacting with the allocator. *)
 type error =
+  | Not_found
   | Backend_failure of string
 
 (** [init ~db ~namespace] ensures the [niceid] table exists in [db] and returns
@@ -18,6 +19,11 @@ val allocate :
   t ->
   Data.Uuid.Typeid.t ->
   (Data.Identifier.t, error) result
+
+(** [delete repo typeid] removes the niceid mapping for [typeid].
+
+    @return [Error Not_found] if no mapping exists for the given TypeId. *)
+val delete : t -> Data.Uuid.Typeid.t -> (unit, error) result
 
 (** [delete_all repo] removes every niceid mapping from the table. *)
 val delete_all : t -> (unit, error) result

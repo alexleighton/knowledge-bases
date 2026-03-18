@@ -47,6 +47,7 @@ let init ~db_file ~namespace =
       match Niceid.init ~db ~namespace with
       | Ok repo -> repo
       | Error (Niceid.Backend_failure msg) -> fail msg
+      | Error Niceid.Not_found -> fail "Unexpected error during niceid initialization"
     in
     let note_repo =
       match Note.init ~db ~niceid_repo with
@@ -66,7 +67,7 @@ let init ~db_file ~namespace =
       match Relation.init ~db with
       | Ok repo -> repo
       | Error (Relation.Backend_failure msg) -> fail msg
-      | Error Relation.Duplicate ->
+      | Error (Relation.Duplicate | Relation.Not_found) ->
           fail "Unexpected error during relation repository initialization"
     in
     Ok {

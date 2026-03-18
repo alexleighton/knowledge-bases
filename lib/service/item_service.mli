@@ -7,8 +7,9 @@
 (** Shared service-level error type. *)
 type error = Repository_error of string | Validation_error of string
 
-(** Shared item type for cross-entity results. *)
-type item =
+(** Shared item type for cross-entity results.
+    Re-exports {!Data.Item.t} so service modules can use a single type. *)
+type item = Data.Item.t =
   | Todo_item of Data.Todo.t
   | Note_item of Data.Note.t
 
@@ -34,6 +35,12 @@ val parse_identifier : string -> (parsed_identifier, error) result
     as a TypeId (e.g. ["todo_01abc..."]). Returns a [Validation_error] if the
     item is not found or the identifier format is unrecognised. *)
 val find : t -> identifier:string -> (item, error) result
+
+(** [map_niceid_repo_error err] maps a niceid repository error to a service error. *)
+val map_niceid_repo_error : Repository.Niceid.error -> error
+
+(** [map_config_error err] maps a config repository error to a service error. *)
+val map_config_error : Repository.Config.error -> error
 
 (** [map_todo_repo_error err] maps a todo repository error to a service error. *)
 val map_todo_repo_error : Repository.Todo.error -> error

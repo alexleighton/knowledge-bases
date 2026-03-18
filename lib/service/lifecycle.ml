@@ -156,7 +156,12 @@ let open_kb () =
           Error
             (Validation_error "No knowledge base found. Run 'bs init' first.")
 
-let init_kb ~directory ~namespace =
+let _map_config_error e =
+  match Item_service.map_config_error e with
+  | Item_service.Repository_error msg -> Repository_error msg
+  | Item_service.Validation_error msg -> Validation_error msg
+
+let init_kb ~directory ~namespace ~gc_max_age =
   let open Result.Syntax in
   let* directory = resolve_directory directory in
   let* namespace = resolve_namespace ~directory namespace in
@@ -174,13 +179,14 @@ let init_kb ~directory ~namespace =
     Fun.protect
       ~finally:(fun () -> Root.close root)
       (fun () ->
-        Config.set (Root.config root) "namespace" namespace
-        |> Result.map_error (fun err ->
-               match err with
-               | Config.Backend_failure msg -> Repository_error msg
-               | Config.Not_found key ->
-                   Repository_error ("Config key not found: " ^ key))
-        |> Result.map (fun () ->
-               let agents_md = install_agents_md ~directory in
-               let git_exclude = install_git_exclude ~directory in
-               { directory; namespace; db_file; agents_md; git_exclude }))
+        let config = Root.config root in
+        let* () = Config.set config "namespace" namespace
+                   |> Result.map_error _map_config_error in
+        let* () = match gc_max_age with
+          | Some age -> Config.set config "gc_max_age" age
+                        |> Result.map_error _map_config_error
+          | None -> Ok ()
+        in
+        let agents_md = install_agents_md ~directory in
+        let git_exclude = install_git_exclude ~directory in
+        Ok { directory; namespace; db_file; agents_md; git_exclude })

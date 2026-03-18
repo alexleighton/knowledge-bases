@@ -23,11 +23,13 @@ type init_result = {
   git_exclude : git_exclude_action;
 }
 
-(** [init_kb ~directory ~namespace] initializes a knowledge base in a git
-    repository, creates [.kbases.db], and persists the effective namespace. *)
+(** [init_kb ~directory ~namespace ~gc_max_age] initializes a knowledge base in
+    a git repository, creates [.kbases.db], and persists the effective namespace.
+    When [gc_max_age] is provided, stores it in the config table. *)
 val init_kb :
   directory:string option ->
   namespace:string option ->
+  gc_max_age:string option ->
   (init_result, error) result
 
 (** JSONL filename used for the git-tracked snapshot (e.g. [".kbases.jsonl"]). *)

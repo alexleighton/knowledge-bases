@@ -6,6 +6,7 @@ module Relation_kind = Kbases.Data.Relation_kind
 module Title = Kbases.Data.Title
 module Content = Kbases.Data.Content
 module Typeid = Kbases.Data.Uuid.Typeid
+module Timestamp = Kbases.Data.Timestamp
 
 let todo_id s = Typeid.of_string ("todo_" ^ s)
 let note_id s = Typeid.of_string ("note_" ^ s)
@@ -25,9 +26,9 @@ let%expect_test "write and read round-trip with todos, notes, relations" =
     let tid2 = todo_id "0123456789abcdefghjkmnpqrt" in
     let nid1 = note_id "0123456789abcdefghjkmnpqrs" in
     let niceid = Kbases.Data.Identifier.make "kb" 0 in
-    let t1 = Todo.make tid1 niceid (Title.make "First todo") (Content.make "Body one") Todo.Open in
-    let t2 = Todo.make tid2 niceid (Title.make "Second todo") (Content.make "Body two") Todo.Done in
-    let n1 = Note.make nid1 niceid (Title.make "A note") (Content.make "Note body") Note.Active in
+    let t1 = Todo.make tid1 niceid (Title.make "First todo") (Content.make "Body one") Todo.Open ~created_at:(Timestamp.make 1710000000) ~updated_at:(Timestamp.make 1710003600) in
+    let t2 = Todo.make tid2 niceid (Title.make "Second todo") (Content.make "Body two") Todo.Done ~created_at:(Timestamp.make 1710000000) ~updated_at:(Timestamp.make 1710000000) in
+    let n1 = Note.make nid1 niceid (Title.make "A note") (Content.make "Note body") Note.Active ~created_at:(Timestamp.make 1710000000) ~updated_at:(Timestamp.make 1710000000) in
     let r1 = Relation.make ~source:tid1 ~target:nid1
       ~kind:(Relation_kind.make "blocks") ~bidirectional:false ~blocking:false in
 
@@ -41,14 +42,14 @@ let%expect_test "write and read round-trip with todos, notes, relations" =
 
     List.iter (fun record ->
       match record with
-      | Jsonl.Todo { id; title; status; _ } ->
-          Printf.printf "todo id=%s title=%s status=%s\n"
+      | Jsonl.Todo { id; title; status; created_at; updated_at; _ } ->
+          Printf.printf "todo id=%s title=%s status=%s created=%d updated=%d\n"
             (Typeid.to_string id) (Title.to_string title)
-            (Todo.status_to_string status)
-      | Jsonl.Note { id; title; status; _ } ->
-          Printf.printf "note id=%s title=%s status=%s\n"
+            (Todo.status_to_string status) (Timestamp.to_epoch created_at) (Timestamp.to_epoch updated_at)
+      | Jsonl.Note { id; title; status; created_at; updated_at; _ } ->
+          Printf.printf "note id=%s title=%s status=%s created=%d updated=%d\n"
             (Typeid.to_string id) (Title.to_string title)
-            (Note.status_to_string status)
+            (Note.status_to_string status) (Timestamp.to_epoch created_at) (Timestamp.to_epoch updated_at)
       | Jsonl.Relation rel ->
           Printf.printf "relation src=%s tgt=%s kind=%s bidi=%b\n"
             (Typeid.to_string (Relation.source rel))
@@ -59,10 +60,10 @@ let%expect_test "write and read round-trip with todos, notes, relations" =
   [%expect {|
     version=1 namespace=kb
     record count=4
-    note id=note_0123456789abcdefghjkmnpqrs title=A note status=active
+    note id=note_0123456789abcdefghjkmnpqrs title=A note status=active created=1710000000 updated=1710000000
     relation src=todo_0123456789abcdefghjkmnpqrs tgt=note_0123456789abcdefghjkmnpqrs kind=blocks bidi=false
-    todo id=todo_0123456789abcdefghjkmnpqrs title=First todo status=open
-    todo id=todo_0123456789abcdefghjkmnpqrt title=Second todo status=done
+    todo id=todo_0123456789abcdefghjkmnpqrs title=First todo status=open created=1710000000 updated=1710003600
+    todo id=todo_0123456789abcdefghjkmnpqrt title=Second todo status=done created=1710000000 updated=1710000000
     |}]
 
 let%expect_test "file hash is deterministic" =
@@ -70,7 +71,7 @@ let%expect_test "file hash is deterministic" =
   with_tmp_jsonl (fun tmp2 ->
     let tid = todo_id "0123456789abcdefghjkmnpqrs" in
     let niceid = Kbases.Data.Identifier.make "kb" 0 in
-    let todo = Todo.make tid niceid (Title.make "Hello") (Content.make "World") Todo.Open in
+    let todo = Todo.make tid niceid (Title.make "Hello") (Content.make "World") Todo.Open ~created_at:(Timestamp.make 1710000000) ~updated_at:(Timestamp.make 1710000000) in
 
     let () = unwrap (Jsonl.write ~path:tmp1 ~namespace:"kb"
       ~todos:[todo] ~notes:[] ~relations:[]) in

@@ -3,6 +3,9 @@ module Todo = Todo_service
 module Query = Query_service
 module Mutation = Mutation_service
 module Relation = Relation_service
+module Delete = Delete_service
+
+module Gc = Gc_service
 
 type t = {
   notes        : Note.t;
@@ -10,6 +13,8 @@ type t = {
   query        : Query.t;
   mutation     : Mutation.t;
   relation_svc : Relation.t;
+  delete_svc   : Delete.t;
+  gc_svc       : Gc.t;
   sync         : Sync_service.t option;
   db           : Sqlite3.db;
 }
@@ -18,7 +23,7 @@ type error = Item_service.error =
   | Repository_error of string
   | Validation_error of string
 
-type item = Item_service.item =
+type item = Data.Item.t =
   | Todo_item of Data.Todo.t
   | Note_item of Data.Note.t
 
@@ -68,6 +73,19 @@ type relate_result = Relation.relate_result = {
   target_title  : Data.Title.t;
 }
 
+type unrelate_spec = Relation.unrelate_spec = {
+  target        : string;
+  kind          : string;
+  bidirectional : bool;
+}
+
+type unrelate_result = Relation.unrelate_result = {
+  source_niceid : Data.Identifier.t;
+  target_niceid : Data.Identifier.t;
+  kind          : Data.Relation_kind.t;
+  bidirectional : bool;
+}
+
 type claim_error = Mutation.claim_error =
   | Not_a_todo of string
   | Not_open of { niceid : string; status : string }
@@ -82,11 +100,25 @@ type add_with_relations_result = {
   relations   : relation_entry list;
 }
 
+type delete_result = Delete.delete_result = {
+  niceid            : Data.Identifier.t;
+  entity_type       : string;
+  relations_removed : int;
+}
+
+type delete_error = Delete.delete_error =
+  | Blocked_dependency of { niceid : string; dependents : string list }
+  | Service_error of Item_service.error
+
 (* --- Error mapping --- *)
 
 let map_lifecycle_error = function
   | Lifecycle.Repository_error msg -> Repository_error msg
   | Lifecycle.Validation_error msg -> Validation_error msg
+
+let map_sync_error_from_item = function
+  | Item_service.Repository_error msg -> Repository_error msg
+  | Item_service.Validation_error msg -> Validation_error msg
 
 let map_note_error = function
   | Note.Repository_error msg -> Repository_error msg
@@ -97,7 +129,7 @@ let map_todo_error = function
 let map_sync_error = function
   | Sync_service.Sync_failed msg -> Repository_error msg
 
-let _map_sync_to_claim_error e = Service_error (map_sync_error e)
+let _map_sync_to_claim_error e : claim_error = Service_error (map_sync_error e)
 
 (* --- Internal helpers --- *)
 
@@ -126,6 +158,7 @@ let relation_entry_of_relate_result (r : Relation.relate_result) : relation_entr
 }
 
 let build_specs = Relation.build_specs
+let build_unrelate_specs = Relation.build_unrelate_specs
 
 (* --- Initialization --- *)
 
@@ -135,11 +168,23 @@ let init root = {
   query    = Query.init root;
   mutation = Mutation.init root;
   relation_svc = Relation.init root;
+  delete_svc = Delete.init root;
+  gc_svc   = Gc.init root;
   sync     = None;
   db       = Repository.Root.db root;
 }
 
 (* --- Lifecycle --- *)
+
+let _run_gc root sync =
+  let open Result.Syntax in
+  let gc = Gc_service.init root in
+  let* result = Gc_service.run_with_config gc
+    |> Result.map_error map_sync_error_from_item in
+  if result.Gc_service.items_removed > 0 then begin
+    let* () = Sync_service.mark_dirty sync |> Result.map_error map_sync_error in
+    Sync_service.flush sync |> Result.map_error map_sync_error
+  end else Ok ()
 
 let open_kb () =
   let open Result.Syntax in
@@ -153,11 +198,12 @@ let open_kb () =
     Sync_service.rebuild_if_needed sync
     |> Result.map_error map_sync_error
   in
+  let* () = _run_gc root sync in
   let t = { (init root) with sync = Some sync } in
   Ok (root, t)
 
-let init_kb ~directory ~namespace =
-  Lifecycle.init_kb ~directory ~namespace
+let init_kb ~directory ~namespace ~gc_max_age =
+  Lifecycle.init_kb ~directory ~namespace ~gc_max_age
   |> Result.map_error map_lifecycle_error
 
 (* --- Add operations --- *)
@@ -206,8 +252,29 @@ let add_todo_with_relations t ~title ~content ~specs ?status () =
 
 (* --- Query operations --- *)
 
-let list t ~entity_type ~statuses ?(available = false) () =
-  Query.list t.query ~entity_type ~statuses ~available ()
+type sort_order = Query.sort_order = Sort_created | Sort_updated
+type relation_filter = Query.relation_filter = {
+  target    : string;
+  kind      : string;
+  direction : Graph_service.direction;
+}
+type list_spec = Query.list_spec = {
+  entity_type      : string option;
+  statuses         : string list;
+  available        : bool;
+  sort             : sort_order option;
+  ascending        : bool;
+  count_only       : bool;
+  relation_filters : relation_filter list;
+  transitive       : bool;
+  blocked          : bool;
+}
+type list_result = Query.list_result
+
+let build_filters = Query.build_filters
+
+let list t spec =
+  Query.list t.query spec
 
 let show t ~identifier =
   Query.show t.query ~identifier
@@ -229,6 +296,10 @@ let archive t ~identifier =
   _with_flush t (fun () ->
     Mutation.archive t.mutation ~identifier)
 
+let reopen t ~identifier =
+  _with_flush t (fun () ->
+    Mutation.reopen t.mutation ~identifier)
+
 let next t =
   _with_flush_map t ~map_err:_map_sync_to_claim_error (fun () ->
     Mutation.next t.mutation)
@@ -237,12 +308,61 @@ let claim t ~identifier =
   _with_flush_map t ~map_err:_map_sync_to_claim_error (fun () ->
     Mutation.claim t.mutation ~identifier)
 
+let _map_sync_to_delete_error e =
+  Delete.Service_error (map_sync_error e)
+
+let delete t ~identifier ~force =
+  _with_flush_map t ~map_err:_map_sync_to_delete_error (fun () ->
+    Repository.Sqlite.with_transaction t.db
+      ~on_begin_error:(fun msg -> Delete.Service_error (Repository_error msg))
+      (fun () ->
+        Delete.delete t.delete_svc ~identifier ~force))
+
+let delete_many t ~identifiers ~force =
+  _with_flush_map t ~map_err:_map_sync_to_delete_error (fun () ->
+    Repository.Sqlite.with_transaction t.db
+      ~on_begin_error:(fun msg -> Delete.Service_error (Repository_error msg))
+      (fun () ->
+        Delete.delete_many t.delete_svc ~identifiers ~force))
+
 let relate t ~source ~specs =
   _with_flush t (fun () ->
     Repository.Sqlite.with_transaction t.db
       ~on_begin_error:(fun msg -> Repository_error msg)
       (fun () ->
         Relation.relate_many t.relation_svc ~source ~specs))
+
+let unrelate t ~source ~specs =
+  _with_flush t (fun () ->
+    Relation.unrelate_many t.relation_svc ~source ~specs)
+
+(* --- GC operations --- *)
+
+type gc_item = Gc.gc_item = {
+  niceid      : Data.Identifier.t;
+  entity_type : string;
+  title       : Data.Title.t;
+  age_days    : int;
+}
+
+type gc_result = Gc.gc_result = {
+  items_removed     : int;
+  relations_removed : int;
+}
+
+type max_age_result = Gc.max_age_result =
+  | Configured of string
+  | Default
+
+let default_max_age_display = Gc.default_max_age_display
+
+let gc_get_max_age t = Gc.get_max_age t.gc_svc
+
+let gc_set_max_age t age_str = Gc.set_max_age t.gc_svc age_str
+
+let gc_collect_with_config t = Gc.collect_with_config t.gc_svc
+
+let gc_run_with_config t = Gc.run_with_config t.gc_svc
 
 (* --- Sync operations --- *)
 

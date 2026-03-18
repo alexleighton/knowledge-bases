@@ -13,9 +13,9 @@ let%expect_test "bs next claims first open todo" =
     [exit 0]
     Claimed todo: kb-0  First task
     [exit 0]
-    kb-0    todo  in-progress   First task
     kb-1    todo  open          Second task
-  |}]
+    kb-0    todo  in-progress   First task
+    |}]
 
 let%expect_test "bs next skips blocked and claims unblocked" =
   Helper.with_git_root (fun dir ->
@@ -121,10 +121,12 @@ let%expect_test "bs next --show" =
     Claimed todo: kb-0
     todo kb-0 (<TYPEID>)
     Status: in-progress
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  My task
 
     Todo body
-  |}]
+    |}]
 
 let%expect_test "bs next auto-rebuilds when db is missing" =
   Helper.with_git_root (fun dir ->

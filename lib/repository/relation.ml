@@ -4,6 +4,7 @@ type t = { db : Sql.db }
 
 type error =
   | Duplicate
+  | Not_found
   | Backend_failure of string
 
 let exec_sql db sql =
@@ -111,6 +112,37 @@ let find_by_target repo typeid =
     [(1, Sql.Data.TEXT id)]
     _relation_of_row
   |> map_sqlite_error
+
+let _delete_row repo ~source ~target ~kind =
+  let src = Data.Uuid.Typeid.to_string source in
+  let tgt = Data.Uuid.Typeid.to_string target in
+  let k = Data.Relation_kind.to_string kind in
+  Sqlite.with_stmt_cmd repo.db
+    "DELETE FROM relation WHERE source = ? AND target = ? AND kind = ?;"
+    [
+      (1, Sql.Data.TEXT src);
+      (2, Sql.Data.TEXT tgt);
+      (3, Sql.Data.TEXT k);
+    ]
+  |> map_sqlite_error
+  |> Result.map (fun () -> Sql.changes repo.db)
+
+let delete repo ~source ~target ~kind ~bidirectional =
+  let open Result.Syntax in
+  let* n = _delete_row repo ~source ~target ~kind in
+  if n > 0 then Ok ()
+  else if bidirectional then
+    let* n2 = _delete_row repo ~source:target ~target:source ~kind in
+    if n2 > 0 then Ok () else Error Not_found
+  else Error Not_found
+
+let delete_by_entity repo typeid =
+  let id = Data.Uuid.Typeid.to_string typeid in
+  Sqlite.with_stmt_cmd repo.db
+    "DELETE FROM relation WHERE source = ? OR target = ?;"
+    [(1, Sql.Data.TEXT id); (2, Sql.Data.TEXT id)]
+  |> map_sqlite_error
+  |> Result.map (fun () -> Sql.changes repo.db)
 
 let delete_all repo =
   Sqlite.with_stmt_cmd repo.db "DELETE FROM relation;" []

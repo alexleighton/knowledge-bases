@@ -1,6 +1,7 @@
 module TodoRepo = Repository.Todo
 module NoteRepo = Repository.Note
 
+
 type t = {
   items        : Item_service.t;
   todo_repo    : TodoRepo.t;
@@ -51,6 +52,7 @@ let update t ~identifier ?status ?title ?content () =
           if not (_todo_changed old todo) then
             Error (Validation_error "nothing to update")
           else
+            let todo = Data.Todo.with_updated_at todo (Data.Timestamp.now ()) in
             let+ todo = TodoRepo.update t.todo_repo todo |> Result.map_error map_todo_repo_error in
             Todo_item todo
       | Note_item old ->
@@ -64,6 +66,7 @@ let update t ~identifier ?status ?title ?content () =
           if not (_note_changed old note) then
             Error (Validation_error "nothing to update")
           else
+            let note = Data.Note.with_updated_at note (Data.Timestamp.now ()) in
             let+ note = NoteRepo.update t.note_repo note |> Result.map_error map_note_repo_error in
             Note_item note
 
@@ -96,6 +99,7 @@ let next t =
         match blockers with
         | [] ->
             let todo = Data.Todo.with_status todo Data.Todo.In_Progress in
+            let todo = Data.Todo.with_updated_at todo (Data.Timestamp.now ()) in
             let+ todo = TodoRepo.update t.todo_repo todo
                         |> Result.map_error (fun e -> Service_error (Item_service.map_todo_repo_error e)) in
             Some todo
@@ -118,6 +122,7 @@ let claim t ~identifier =
           (match blockers with
            | [] ->
                let todo = Data.Todo.with_status todo Data.Todo.In_Progress in
+               let todo = Data.Todo.with_updated_at todo (Data.Timestamp.now ()) in
                TodoRepo.update t.todo_repo todo
                |> Result.map_error (fun e -> Service_error (Item_service.map_todo_repo_error e))
            | _ -> Error (Blocked { niceid = niceid_str; blocked_by = blockers }))
@@ -139,3 +144,25 @@ let archive t ~identifier =
       match item with
       | Note_item note -> note
       | Todo_item _ -> assert false
+
+let reopen t ~identifier =
+  let open Item_service in
+  let open Result.Syntax in
+  let* item = find t.items ~identifier in
+  match item with
+  | Todo_item todo ->
+      (match Data.Todo.status todo with
+       | Data.Todo.Done ->
+           update t ~identifier ~status:"open" ()
+       | Data.Todo.Open | Data.Todo.In_Progress ->
+           Error (Validation_error
+             (Printf.sprintf "%s is not in a terminal state (status: %s)"
+                identifier (Data.Todo.status_to_string (Data.Todo.status todo)))))
+  | Note_item note ->
+      (match Data.Note.status note with
+       | Data.Note.Archived ->
+           update t ~identifier ~status:"active" ()
+       | Data.Note.Active ->
+           Error (Validation_error
+             (Printf.sprintf "%s is not in a terminal state (status: %s)"
+                identifier (Data.Note.status_to_string (Data.Note.status note)))))

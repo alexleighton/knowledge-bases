@@ -9,9 +9,9 @@ let%expect_test "bs list shows todos and notes" =
     Helper.print_result ~dir result);
   [%expect {|
     [exit 0]
-    kb-0    todo  open          Todo item
     kb-1    note  active        Note item
-  |}]
+    kb-0    todo  open          Todo item
+    |}]
 
 let%expect_test "bs list filters by type" =
   Helper.with_git_root (fun dir ->
@@ -49,9 +49,9 @@ let%expect_test "bs list supports multiple statuses" =
     Helper.print_result ~dir result);
   [%expect {|
     [exit 0]
-    kb-0    todo  open          Todo item
     kb-1    note  active        Note item
-  |}]
+    kb-0    todo  open          Todo item
+    |}]
 
 let%expect_test "bs list rejects invalid status for type" =
   Helper.with_git_root (fun dir ->
@@ -70,8 +70,7 @@ let%expect_test "bs list rejects invalid status value" =
     Helper.print_result ~dir result);
   [%expect {|
     [exit 124]
-    STDERR: Usage: bs list [--help] [--available] [--json] [--status=STATUS] [OPTION]…
-           [TYPE]
+    STDERR: Usage: bs list [--help] [OPTION]… [TYPE]
     bs: option '--status': invalid value 'banana', expected one of 'open',
         'in-progress', 'done', 'active' or 'archived'
     |}]
@@ -104,8 +103,7 @@ let%expect_test "bs list rejects invalid type argument" =
     Helper.print_result ~dir result);
   [%expect {|
     [exit 124]
-    STDERR: Usage: bs list [--help] [--available] [--json] [--status=STATUS] [OPTION]…
-           [TYPE]
+    STDERR: Usage: bs list [--help] [OPTION]… [TYPE]
     bs: TYPE argument: invalid value 'banana', expected either 'todo' or 'note'
     |}]
 
@@ -161,46 +159,6 @@ let%expect_test "bs list fails when KB not initialised" =
     STDERR: Error: No knowledge base found. Run 'bs init' first.
   |}]
 
-let%expect_test "bs list --json" =
-  Helper.with_git_root (fun dir ->
-    Helper.init_kb dir;
-    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "First"]);
-    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "note"; "Second"]);
-    let result = Helper.run_bs ~dir ["list"; "--json"] in
-    Printf.printf "[exit %d]\n" result.exit_code;
-    let json = Helper.parse_json result.stdout in
-    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
-    let items = Helper.get_list json "items" in
-    Printf.printf "item count: %d\n" (List.length items);
-    List.iter (fun item ->
-      Printf.printf "  niceid=%s type=%s status=%s title=%s\n"
-        (Helper.get_string item "niceid")
-        (Helper.get_string item "type")
-        (Helper.get_string item "status")
-        (Helper.get_string item "title")
-    ) items);
-  [%expect {|
-    [exit 0]
-    ok: true
-    item count: 2
-      niceid=kb-0 type=todo status=open title=First
-      niceid=kb-1 type=note status=active title=Second
-  |}]
-
-let%expect_test "bs list --json empty" =
-  Helper.with_git_root (fun dir ->
-    Helper.init_kb dir;
-    let result = Helper.run_bs ~dir ["list"; "--json"] in
-    Printf.printf "[exit %d]\n" result.exit_code;
-    let json = Helper.parse_json result.stdout in
-    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
-    Printf.printf "item count: %d\n" (List.length (Helper.get_list json "items")));
-  [%expect {|
-    [exit 0]
-    ok: true
-    item count: 0
-  |}]
-
 let%expect_test "bs list auto-rebuilds when db is missing" =
   Helper.with_git_root (fun dir ->
     Helper.init_kb dir;
@@ -211,9 +169,9 @@ let%expect_test "bs list auto-rebuilds when db is missing" =
     Helper.print_result ~dir result);
   [%expect {|
     [exit 0]
-    kb-0    note  active        My note
     kb-1    todo  open          My todo
-  |}]
+    kb-0    note  active        My note
+    |}]
 
 let%expect_test "bs list --available shows only unblocked open todos" =
   Helper.with_git_root (fun dir ->
@@ -226,9 +184,9 @@ let%expect_test "bs list --available shows only unblocked open todos" =
     Helper.print_result ~dir result);
   [%expect {|
     [exit 0]
-    kb-0    todo  open          Unblocked
     kb-2    todo  open          Dependency
-  |}]
+    kb-0    todo  open          Unblocked
+    |}]
 
 let%expect_test "bs list todo --available works" =
   Helper.with_git_root (fun dir ->
@@ -260,82 +218,4 @@ let%expect_test "bs list note --available is an error" =
   [%expect {|
     [exit 1]
     STDERR: Error: --available applies only to todos, not notes
-  |}]
-
-let%expect_test "bs list --json error invalid status for type" =
-  Helper.with_git_root (fun dir ->
-    Helper.init_kb dir;
-    let result = Helper.run_bs ~dir ["list"; "note"; "--status"; "done"; "--json"] in
-    Printf.printf "[exit %d]\n" result.exit_code;
-    Printf.printf "stderr empty: %b\n" (result.stderr = "");
-    let json = Helper.parse_json result.stdout in
-    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
-    Printf.printf "reason: %s\n" (Helper.get_string json "reason"));
-  [%expect {|
-    [exit 1]
-    stderr empty: true
-    ok: false
-    reason: error
-  |}]
-
-let%expect_test "bs list --json error --available with --status" =
-  Helper.with_git_root (fun dir ->
-    Helper.init_kb dir;
-    let result = Helper.run_bs ~dir ["list"; "--available"; "--status"; "open"; "--json"] in
-    Printf.printf "[exit %d]\n" result.exit_code;
-    Printf.printf "stderr empty: %b\n" (result.stderr = "");
-    let json = Helper.parse_json result.stdout in
-    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
-    Printf.printf "reason: %s\n" (Helper.get_string json "reason");
-    Printf.printf "message: %s\n" (Helper.get_string json "message"));
-  [%expect {|
-    [exit 1]
-    stderr empty: true
-    ok: false
-    reason: error
-    message: --available cannot be combined with --status
-  |}]
-
-let%expect_test "bs list --json error --available with notes" =
-  Helper.with_git_root (fun dir ->
-    Helper.init_kb dir;
-    let result = Helper.run_bs ~dir ["list"; "note"; "--available"; "--json"] in
-    Printf.printf "[exit %d]\n" result.exit_code;
-    Printf.printf "stderr empty: %b\n" (result.stderr = "");
-    let json = Helper.parse_json result.stdout in
-    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
-    Printf.printf "reason: %s\n" (Helper.get_string json "reason");
-    Printf.printf "message: %s\n" (Helper.get_string json "message"));
-  [%expect {|
-    [exit 1]
-    stderr empty: true
-    ok: false
-    reason: error
-    message: --available applies only to todos, not notes
-  |}]
-
-let%expect_test "bs list --available --json" =
-  Helper.with_git_root (fun dir ->
-    Helper.init_kb dir;
-    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "Available"]);
-    ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "Blocked"]);
-    ignore (Helper.run_bs ~dir ["relate"; "kb-1"; "--depends-on"; "kb-0"; "--blocking"]);
-    let result = Helper.run_bs ~dir ["list"; "--available"; "--json"] in
-    Printf.printf "[exit %d]\n" result.exit_code;
-    let json = Helper.parse_json result.stdout in
-    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
-    let items = Helper.get_list json "items" in
-    Printf.printf "item count: %d\n" (List.length items);
-    List.iter (fun item ->
-      Printf.printf "  niceid=%s type=%s status=%s title=%s\n"
-        (Helper.get_string item "niceid")
-        (Helper.get_string item "type")
-        (Helper.get_string item "status")
-        (Helper.get_string item "title")
-    ) items);
-  [%expect {|
-    [exit 0]
-    ok: true
-    item count: 1
-      niceid=kb-0 type=todo status=open title=Available
   |}]

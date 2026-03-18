@@ -9,17 +9,19 @@ type t = {
   todo_repo     : Todo.t;
   relation_repo : RelationRepo.t;
   relation_svc  : Relation_service.t;
+  graph_svc     : Graph_service.t;
+  show_svc      : Show_service.t;
 }
 
 type error = Item_service.error =
   | Repository_error of string
   | Validation_error of string
 
-type item = Item_service.item =
+type item = Data.Item.t =
   | Todo_item of Data.Todo.t
   | Note_item of Data.Note.t
 
-type relation_entry = {
+type relation_entry = Show_service.relation_entry = {
   kind        : Data.Relation_kind.t;
   niceid      : Data.Identifier.t;
   entity_type : string;
@@ -27,10 +29,60 @@ type relation_entry = {
   blocking    : bool option;
 }
 
-type show_result = {
+type show_result = Show_service.show_result = {
   item     : item;
   outgoing : relation_entry list;
   incoming : relation_entry list;
+}
+
+type sort_order = Sort_created | Sort_updated
+
+type relation_filter = {
+  target    : string;
+  kind      : string;
+  direction : Graph_service.direction;
+}
+
+type list_spec = {
+  entity_type      : string option;
+  statuses         : string list;
+  available        : bool;
+  sort             : sort_order option;
+  ascending        : bool;
+  count_only       : bool;
+  relation_filters : relation_filter list;
+  transitive       : bool;
+  blocked          : bool;
+}
+
+type list_result =
+  | Items of item list
+  | Counts of { todos : (string * int) list; notes : (string * int) list }
+
+let build_filters ~depends_on ~related_to ~uni ~bi =
+  List.map (fun tgt ->
+    { target = tgt; kind = "depends-on"; direction = Graph_service.Outgoing }
+  ) depends_on
+  @ List.map (fun tgt ->
+      { target = tgt; kind = "related-to"; direction = Graph_service.Any }
+    ) related_to
+  @ List.map (fun (k, tgt) ->
+      { target = tgt; kind = k; direction = Graph_service.Outgoing }
+    ) uni
+  @ List.map (fun (k, tgt) ->
+      { target = tgt; kind = k; direction = Graph_service.Any }
+    ) bi
+
+let default_list_spec = {
+  entity_type      = None;
+  statuses         = [];
+  available        = false;
+  sort             = None;
+  ascending        = true;
+  count_only       = false;
+  relation_filters = [];
+  transitive       = false;
+  blocked          = false;
 }
 
 let _map_relation_repo_error = Item_service.map_relation_repo_error
@@ -41,16 +93,58 @@ let init root = {
   todo_repo     = Repository.Root.todo root;
   relation_repo = Repository.Root.relation root;
   relation_svc  = Relation_service.init root;
+  graph_svc     = Graph_service.init root;
+  show_svc      = Show_service.init root;
 }
 
-let raw_id_of_item = function
-  | Todo_item todo -> Data.Identifier.raw_id (Data.Todo.niceid todo)
-  | Note_item note -> Data.Identifier.raw_id (Data.Note.niceid note)
+(* --- Item helpers --- *)
 
-let sort_items items =
-  List.sort (fun a b -> Int.compare (raw_id_of_item a) (raw_id_of_item b)) items
+let _raw_id_of_item item = Data.Identifier.raw_id (Data.Item.niceid item)
 
-(* --- Listing --- *)
+let _created_at_of_item item = Data.Item.created_at item
+let _updated_at_of_item item = Data.Item.updated_at item
+
+let _typeid_of_item = Data.Item.typeid
+
+(* --- Sorting --- *)
+
+let _sort_items spec items =
+  match spec.sort with
+  | None ->
+      let cmp a b = Int.compare (_raw_id_of_item a) (_raw_id_of_item b) in
+      let cmp = if spec.ascending then cmp else fun a b -> cmp b a in
+      List.sort cmp items
+  | Some Sort_created ->
+      let cmp a b = Data.Timestamp.compare (_created_at_of_item b) (_created_at_of_item a) in
+      let cmp = if spec.ascending then fun a b -> cmp b a else cmp in
+      List.sort cmp items
+  | Some Sort_updated ->
+      let cmp a b = Data.Timestamp.compare (_updated_at_of_item b) (_updated_at_of_item a) in
+      let cmp = if spec.ascending then fun a b -> cmp b a else cmp in
+      List.sort cmp items
+
+(* --- Counting --- *)
+
+let _status_of_item = function
+  | Todo_item t -> Data.Todo.status_to_string (Data.Todo.status t)
+  | Note_item n -> Data.Note.status_to_string (Data.Note.status n)
+
+let _count_items items =
+  let todo_counts = Hashtbl.create 4 in
+  let note_counts = Hashtbl.create 4 in
+  List.iter (fun item ->
+    let status = _status_of_item item in
+    let tbl = match item with Todo_item _ -> todo_counts | Note_item _ -> note_counts in
+    let cur = try Hashtbl.find tbl status with Not_found -> 0 in
+    Hashtbl.replace tbl status (cur + 1)
+  ) items;
+  let to_list tbl =
+    Hashtbl.fold (fun k v acc -> (k, v) :: acc) tbl []
+    |> List.sort (fun (a, _) (b, _) -> String.compare a b)
+  in
+  Counts { todos = to_list todo_counts; notes = to_list note_counts }
+
+(* --- Listing internals --- *)
 
 let _list_available t =
   let open Result.Syntax in
@@ -66,11 +160,9 @@ let _list_available t =
         else filter_unblocked acc rest
   in
   let* unblocked = filter_unblocked [] todos in
-  Ok (sort_items (List.map (fun todo -> Todo_item todo) unblocked))
+  Ok (List.map (fun todo -> Todo_item todo) unblocked)
 
-let list t ~entity_type ~statuses ?(available = false) () =
-  if available then _list_available t
-  else
+let _fetch_items t ~entity_type ~statuses =
   let open Result.Syntax in
   let try_parse_status status =
     match Data.Todo.status_of_string status with
@@ -90,11 +182,11 @@ let list t ~entity_type ~statuses ?(available = false) () =
   | Some "todo" ->
       let* todo_statuses = Result_data.sequence (List.map Parse.todo_status statuses) in
       let+ todos = fetch_todos todo_statuses in
-      todos |> List.map (fun todo -> Todo_item todo) |> sort_items
+      List.map (fun todo -> Todo_item todo) todos
   | Some "note" ->
       let* note_statuses = Result_data.sequence (List.map Parse.note_status statuses) in
       let+ notes = fetch_notes note_statuses in
-      notes |> List.map (fun note -> Note_item note) |> sort_items
+      List.map (fun note -> Note_item note) notes
   | Some other ->
       let+ _ = Parse.entity_type other in
       []
@@ -114,89 +206,119 @@ let list t ~entity_type ~statuses ?(available = false) () =
       let* todos =
         if should_query_todos then fetch_todos todo_statuses else Ok []
       in
-      let* notes =
+      let+ notes =
         if should_query_notes then fetch_notes note_statuses else Ok []
       in
-      let items =
-        (List.map (fun todo -> Todo_item todo) todos)
-        @ (List.map (fun note -> Note_item note) notes)
-      in
-      Ok (sort_items items)
+      (List.map (fun todo -> Todo_item todo) todos)
+      @ (List.map (fun note -> Note_item note) notes)
 
-(* --- Show --- *)
+(* --- Relation filtering --- *)
 
-let _typeid_of_item = function
-  | Todo_item t -> Data.Todo.id t
-  | Note_item n -> Data.Note.id n
+module TypeidSet = Data.Uuid.Typeid.Set
 
-let _entry_of_rel items rel direction =
-  let typeid = match direction with
-    | `Outgoing -> Data.Relation.target rel
-    | `Incoming -> Data.Relation.source rel
-  in
-  let blocking =
-    if Data.Relation.is_blocking rel then
-      Some true
-    else
-      None
-  in
-  let identifier = Data.Uuid.Typeid.to_string typeid in
-  match Item_service.find items ~identifier with
-  | Ok (Todo_item t) ->
-      let blocking = match blocking with
-        | Some true -> Some (Data.Todo.status t <> Data.Todo.Done)
-        | other -> other
-      in
-      Some { kind = Data.Relation.kind rel;
-             niceid = Data.Todo.niceid t;
-             entity_type = "todo";
-             title = Data.Todo.title t;
-             blocking }
-  | Ok (Note_item n) ->
-      Some { kind = Data.Relation.kind rel;
-             niceid = Data.Note.niceid n;
-             entity_type = "note";
-             title = Data.Note.title n;
-             blocking = Option.map (fun _ -> false) blocking }
-  | Error _ -> None
-
-let show t ~identifier =
+let _apply_relation_filters t spec items =
+  if spec.relation_filters = [] then Ok items
+  else
   let open Result.Syntax in
-  let* item = Item_service.find t.items ~identifier in
-  let typeid = _typeid_of_item item in
-  let* from_source =
-    RelationRepo.find_by_source t.relation_repo typeid
-    |> Result.map_error _map_relation_repo_error
+  let* allowed_sets =
+    List.map (fun (rf : relation_filter) ->
+      let* target_item = Item_service.find t.items ~identifier:rf.target in
+      let target_typeid = _typeid_of_item target_item in
+      let* kind = Parse.relation_kind rf.kind in
+      if spec.transitive then
+        let+ reachable =
+          Graph_service.reachable_from t.graph_svc ~typeid:target_typeid
+            ~kind:(Some kind) ~direction:rf.direction
+        in
+        let set = List.fold_left (fun s id -> TypeidSet.add id s) TypeidSet.empty reachable in
+        TypeidSet.add target_typeid set
+      else
+        let* rels =
+          match rf.direction with
+          | Graph_service.Outgoing ->
+              RelationRepo.find_by_source t.relation_repo target_typeid
+              |> Result.map_error _map_relation_repo_error
+          | Graph_service.Incoming ->
+              RelationRepo.find_by_target t.relation_repo target_typeid
+              |> Result.map_error _map_relation_repo_error
+          | Graph_service.Any ->
+              let* out = RelationRepo.find_by_source t.relation_repo target_typeid
+                         |> Result.map_error _map_relation_repo_error in
+              let+ inc = RelationRepo.find_by_target t.relation_repo target_typeid
+                         |> Result.map_error _map_relation_repo_error in
+              out @ inc
+        in
+        let matching = List.filter (fun rel ->
+          Data.Relation_kind.to_string (Data.Relation.kind rel)
+          = Data.Relation_kind.to_string kind
+        ) rels in
+        let ids = List.map (fun rel ->
+          match rf.direction with
+          | Graph_service.Outgoing -> Data.Relation.target rel
+          | Graph_service.Incoming -> Data.Relation.source rel
+          | Graph_service.Any ->
+              let src = Data.Relation.source rel in
+              let tgt = Data.Relation.target rel in
+              if Data.Uuid.Typeid.to_string src = Data.Uuid.Typeid.to_string target_typeid
+              then tgt else src
+        ) matching in
+        Ok (List.fold_left (fun s id -> TypeidSet.add id s) TypeidSet.empty ids)
+    ) spec.relation_filters
+    |> Result_data.sequence
   in
-  let* from_target =
-    RelationRepo.find_by_target t.relation_repo typeid
-    |> Result.map_error _map_relation_repo_error
+  let combined = match allowed_sets with
+    | [] -> TypeidSet.empty
+    | first :: rest -> List.fold_left TypeidSet.inter first rest
   in
-  let outgoing =
-    List.filter_map (fun rel ->
-      _entry_of_rel t.items rel `Outgoing
-    ) from_source
-    @ List.filter_map (fun rel ->
-        if Data.Relation.is_bidirectional rel then
-          _entry_of_rel t.items rel `Incoming
-        else None
-      ) from_target
-  in
-  let incoming =
-    List.filter_map (fun rel ->
-      if not (Data.Relation.is_bidirectional rel) then
-        _entry_of_rel t.items rel `Incoming
-      else None
-    ) from_target
-  in
-  Ok { item; outgoing; incoming }
+  Ok (List.filter (fun item ->
+    TypeidSet.mem (_typeid_of_item item) combined
+  ) items)
 
-let show_many t ~identifiers =
+(* --- Blocked filtering --- *)
+
+let _filter_blocked t items =
   let open Result.Syntax in
   let rec go acc = function
     | [] -> Ok (List.rev acc)
-    | id :: rest ->
-        let* result = show t ~identifier:id in
-        go (result :: acc) rest
+    | item :: rest ->
+        match item with
+        | Todo_item todo ->
+            let* blockers = Relation_service.find_blockers t.relation_svc todo in
+            if blockers <> [] then go (item :: acc) rest
+            else go acc rest
+        | Note_item _ -> go acc rest
   in
-  go [] identifiers
+  go [] items
+
+(* --- Main list function --- *)
+
+let _validate_spec spec =
+  if spec.available && spec.entity_type = Some "note" then
+    Error (Validation_error "--available applies only to todos, not notes")
+  else if spec.available && spec.statuses <> [] then
+    Error (Validation_error "--available cannot be combined with --status")
+  else if spec.available && spec.blocked then
+    Error (Validation_error "--available cannot be combined with --blocked")
+  else if spec.sort <> None && spec.count_only then
+    Error (Validation_error "--sort cannot be combined with --count")
+  else if spec.transitive && List.length spec.relation_filters <> 1 then
+    Error (Validation_error "--transitive requires exactly one relation filter")
+  else Ok ()
+
+let list t spec =
+  let open Result.Syntax in
+  let* () = _validate_spec spec in
+  let* items =
+    if spec.available then _list_available t
+    else _fetch_items t ~entity_type:spec.entity_type ~statuses:spec.statuses
+  in
+  let* items = _apply_relation_filters t spec items in
+  let* items = if spec.blocked then _filter_blocked t items else Ok items in
+  let items = _sort_items spec items in
+  if spec.count_only then Ok (_count_items items)
+  else Ok (Items items)
+
+(* --- Show --- *)
+
+let show t ~identifier = Show_service.show t.show_svc ~identifier
+let show_many t ~identifiers = Show_service.show_many t.show_svc ~identifiers

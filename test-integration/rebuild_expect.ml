@@ -15,8 +15,8 @@ let%expect_test "bs rebuild restores entities from JSONL" =
     [exit 0]
     Rebuilt SQLite from .kbases.jsonl
     [exit 0]
-    kb-0    note  active        My note
     kb-1    todo  open          My todo
+    kb-0    note  active        My note
     |}]
 
 let%expect_test "bs rebuild with no JSONL file" =

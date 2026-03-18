@@ -6,6 +6,7 @@ type t
 (** Errors that can arise while interacting with stored relations. *)
 type error =
   | Duplicate
+  | Not_found
   | Backend_failure of string
 
 (** [init ~db] ensures the relation table exists in [db] and returns a handle. *)
@@ -30,6 +31,26 @@ val find_by_source : t -> Data.Uuid.Typeid.t -> (Data.Relation.t list, error) re
 
 (** [find_by_target repo typeid] returns relations where [typeid] is the target. *)
 val find_by_target : t -> Data.Uuid.Typeid.t -> (Data.Relation.t list, error) result
+
+(** [delete repo ~source ~target ~kind ~bidirectional] deletes a single
+    relation by its composite key.  When [bidirectional] is [true] and the
+    [(source, target, kind)] row is not found, the reverse
+    [(target, source, kind)] is tried.
+
+    @return [Error Not_found] if no matching row exists. *)
+val delete :
+  t ->
+  source:Data.Uuid.Typeid.t ->
+  target:Data.Uuid.Typeid.t ->
+  kind:Data.Relation_kind.t ->
+  bidirectional:bool ->
+  (unit, error) result
+
+(** [delete_by_entity repo typeid] deletes every relation where [typeid]
+    appears as source or target.
+
+    @return the number of deleted rows. *)
+val delete_by_entity : t -> Data.Uuid.Typeid.t -> (int, error) result
 
 (** [delete_all repo] removes every relation from the table. *)
 val delete_all : t -> (unit, error) result

@@ -6,7 +6,7 @@ type error =
   | Repository_error of string
   | Validation_error of string
 
-type item =
+type item = Data.Item.t =
   | Todo_item of Data.Todo.t
   | Note_item of Data.Note.t
 
@@ -33,8 +33,18 @@ let map_note_repo_error = function
 let map_relation_repo_error = function
   | Relation.Duplicate ->
       Validation_error "relation already exists"
+  | Relation.Not_found ->
+      Validation_error "relation not found"
   | Relation.Backend_failure msg ->
       Repository_error msg
+
+let map_niceid_repo_error = function
+  | Repository.Niceid.Backend_failure msg -> Repository_error msg
+  | Repository.Niceid.Not_found -> Repository_error "niceid not found"
+
+let map_config_error = function
+  | Repository.Config.Backend_failure msg -> Repository_error msg
+  | Repository.Config.Not_found key -> Repository_error ("config key not found: " ^ key)
 
 let map_todo_repo_error = function
   | Todo.Backend_failure msg -> Repository_error msg

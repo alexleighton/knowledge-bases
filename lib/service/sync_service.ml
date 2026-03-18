@@ -30,9 +30,11 @@ let _map_note_error = function
 let _map_relation_error = function
   | Repository.Relation.Backend_failure msg -> Sync_failed msg
   | Repository.Relation.Duplicate -> Sync_failed "duplicate relation"
+  | Repository.Relation.Not_found -> Sync_failed "relation not found"
 
 let _map_niceid_error = function
   | Repository.Niceid.Backend_failure msg -> Sync_failed msg
+  | Repository.Niceid.Not_found -> Sync_failed "niceid not found"
 
 let init root ~jsonl_path = { root; jsonl_path }
 
@@ -108,12 +110,14 @@ let force_rebuild t =
     |> Result.map_error _map_niceid_error in
   let* () = Data.Result.sequence (List.map (fun record ->
     match record with
-    | Jsonl.Todo { id; title; content; status } ->
-        Repository.Todo.import (Root.todo t.root) ~id ~title ~content ~status ()
+    | Jsonl.Todo { id; title; content; status; created_at; updated_at } ->
+        Repository.Todo.import (Root.todo t.root) ~id ~title ~content ~status
+          ~created_at ~updated_at ()
         |> Result.map (fun _ -> ())
         |> Result.map_error _map_todo_error
-    | Jsonl.Note { id; title; content; status } ->
-        Repository.Note.import (Root.note t.root) ~id ~title ~content ~status ()
+    | Jsonl.Note { id; title; content; status; created_at; updated_at } ->
+        Repository.Note.import (Root.note t.root) ~id ~title ~content ~status
+          ~created_at ~updated_at ()
         |> Result.map (fun _ -> ())
         |> Result.map_error _map_note_error
     | Jsonl.Relation rel ->

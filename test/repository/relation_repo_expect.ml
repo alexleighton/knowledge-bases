@@ -28,6 +28,7 @@ let query_relations root =
 
 let pp_error = function
   | RelationRepo.Duplicate -> print_endline "error: duplicate"
+  | RelationRepo.Not_found -> print_endline "error: not found"
   | RelationRepo.Backend_failure msg -> Printf.printf "error: backend failure: %s\n" msg
 
 let%expect_test "create relation and verify row in DB" =
@@ -170,4 +171,89 @@ let%expect_test "same pair with different kind is allowed" =
     second kind ok
     kb-0|depends-on|kb-1|0
     kb-0|related-to|kb-1|1
+  |}]
+
+let%expect_test "delete relation then list_all is empty" =
+  with_root (fun root ->
+    let t1 = make_todo root "First" in
+    let t2 = make_todo root "Second" in
+    let src = Kbases.Data.Todo.id t1 in
+    let tgt = Kbases.Data.Todo.id t2 in
+    let kind = Relation_kind.make "depends-on" in
+    let rel = Relation.make ~source:src ~target:tgt ~kind ~bidirectional:false ~blocking:false in
+    ignore (RelationRepo.create (Root.relation root) rel);
+    (match RelationRepo.delete (Root.relation root) ~source:src ~target:tgt ~kind ~bidirectional:false with
+     | Ok () -> print_endline "delete ok"
+     | Error err -> pp_error err);
+    match RelationRepo.list_all (Root.relation root) with
+    | Ok rels -> Printf.printf "after delete count=%d\n" (List.length rels)
+    | Error err -> pp_error err);
+  [%expect {|
+    delete ok
+    after delete count=0
+  |}]
+
+let%expect_test "delete bidirectional relation from reverse endpoint" =
+  with_root (fun root ->
+    let t1 = make_todo root "First" in
+    let t2 = make_todo root "Second" in
+    let src = Kbases.Data.Todo.id t1 in
+    let tgt = Kbases.Data.Todo.id t2 in
+    let kind = Relation_kind.make "related-to" in
+    let rel = Relation.make ~source:src ~target:tgt ~kind ~bidirectional:true ~blocking:false in
+    ignore (RelationRepo.create (Root.relation root) rel);
+    (* Delete using reversed source/target — should succeed for bidirectional *)
+    (match RelationRepo.delete (Root.relation root) ~source:tgt ~target:src ~kind ~bidirectional:true with
+     | Ok () -> print_endline "reverse delete ok"
+     | Error err -> pp_error err);
+    match RelationRepo.list_all (Root.relation root) with
+    | Ok rels -> Printf.printf "after delete count=%d\n" (List.length rels)
+    | Error err -> pp_error err);
+  [%expect {|
+    reverse delete ok
+    after delete count=0
+  |}]
+
+let%expect_test "delete non-existent relation returns Not_found" =
+  with_root (fun root ->
+    let t1 = make_todo root "First" in
+    let t2 = make_todo root "Second" in
+    let src = Kbases.Data.Todo.id t1 in
+    let tgt = Kbases.Data.Todo.id t2 in
+    let kind = Relation_kind.make "depends-on" in
+    match RelationRepo.delete (Root.relation root) ~source:src ~target:tgt ~kind ~bidirectional:false with
+    | Ok () -> print_endline "unexpected success"
+    | Error err -> pp_error err);
+  [%expect {| error: not found |}]
+
+let%expect_test "delete_by_entity removes all relations involving entity" =
+  with_root (fun root ->
+    let t1 = make_todo root "First" in
+    let t2 = make_todo root "Second" in
+    let t3 = make_todo root "Third" in
+    let id1 = Kbases.Data.Todo.id t1 in
+    let id2 = Kbases.Data.Todo.id t2 in
+    let id3 = Kbases.Data.Todo.id t3 in
+    let k1 = Relation_kind.make "depends-on" in
+    let k2 = Relation_kind.make "related-to" in
+    (* t1 -> t2, t3 -> t1: both involve t1 *)
+    let r1 = Relation.make ~source:id1 ~target:id2 ~kind:k1 ~bidirectional:false ~blocking:false in
+    let r2 = Relation.make ~source:id3 ~target:id1 ~kind:k2 ~bidirectional:false ~blocking:false in
+    (* t2 -> t3: does not involve t1 *)
+    let r3 = Relation.make ~source:id2 ~target:id3 ~kind:k1 ~bidirectional:false ~blocking:false in
+    ignore (RelationRepo.create (Root.relation root) r1);
+    ignore (RelationRepo.create (Root.relation root) r2);
+    ignore (RelationRepo.create (Root.relation root) r3);
+    (match RelationRepo.delete_by_entity (Root.relation root) id1 with
+     | Ok n -> Printf.printf "deleted count=%d\n" n
+     | Error err -> pp_error err);
+    match RelationRepo.list_all (Root.relation root) with
+    | Ok rels ->
+        Printf.printf "remaining count=%d\n" (List.length rels);
+        query_relations root
+    | Error err -> pp_error err);
+  [%expect {|
+    deleted count=2
+    remaining count=1
+    kb-1|depends-on|kb-2|0
   |}]

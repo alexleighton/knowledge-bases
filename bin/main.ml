@@ -18,6 +18,10 @@ let root_man = [
   `P "resolve     Mark a todo as done.";
   `P "close       Mark a todo as done (alias for resolve).";
   `P "archive     Mark a note as archived.";
+  `P "reopen      Return a terminal item to its initial status.";
+  `P "delete      Delete items and their relations.";
+  `P "unrelate    Remove relations from an item.";
+  `P "gc          Garbage-collect old terminal items.";
   `P "claim       Claim an open todo (set status to in-progress).";
   `P "next        Claim the next available open todo.";
   `P "relate      Create relations between items.";
@@ -57,8 +61,9 @@ let root_info = Cmd.info "bs" ~doc:root_doc ~man:root_man
 let root_cmd = Cmd.group root_info [
   Cmd_init.cmd; Cmd_add.cmd; Cmd_list.cmd; Cmd_show.cmd;
   Cmd_update.cmd; Cmd_resolve.cmd; Cmd_close.cmd; Cmd_archive.cmd;
-  Cmd_claim.cmd; Cmd_next.cmd; Cmd_relate.cmd;
-  Cmd_flush.cmd; Cmd_rebuild.cmd;
+  Cmd_reopen.cmd; Cmd_delete.cmd;
+  Cmd_claim.cmd; Cmd_next.cmd; Cmd_relate.cmd; Cmd_unrelate.cmd;
+  Cmd_flush.cmd; Cmd_rebuild.cmd; Cmd_gc.cmd;
 ]
 
 let () = exit (Cmd.eval root_cmd)

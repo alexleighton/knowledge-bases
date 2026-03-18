@@ -1,8 +1,10 @@
 type entity_record =
   | Todo of { id: Data.Uuid.Typeid.t; title: Data.Title.t;
-              content: Data.Content.t; status: Data.Todo.status }
+              content: Data.Content.t; status: Data.Todo.status;
+              created_at: Data.Timestamp.t; updated_at: Data.Timestamp.t }
   | Note of { id: Data.Uuid.Typeid.t; title: Data.Title.t;
-              content: Data.Content.t; status: Data.Note.status }
+              content: Data.Content.t; status: Data.Note.status;
+              created_at: Data.Timestamp.t; updated_at: Data.Timestamp.t }
   | Relation of Data.Relation.t
 
 type header = {
@@ -23,6 +25,8 @@ let _todo_to_json todo =
     ("title", `String (Data.Title.to_string (Data.Todo.title todo)));
     ("content", `String (Data.Content.to_string (Data.Todo.content todo)));
     ("status", `String (Data.Todo.status_to_string (Data.Todo.status todo)));
+    ("created_at", `String (Data.Timestamp.to_iso8601 (Data.Todo.created_at todo)));
+    ("updated_at", `String (Data.Timestamp.to_iso8601 (Data.Todo.updated_at todo)));
   ]
 
 let _note_to_json note =
@@ -32,6 +36,8 @@ let _note_to_json note =
     ("title", `String (Data.Title.to_string (Data.Note.title note)));
     ("content", `String (Data.Content.to_string (Data.Note.content note)));
     ("status", `String (Data.Note.status_to_string (Data.Note.status note)));
+    ("created_at", `String (Data.Timestamp.to_iso8601 (Data.Note.created_at note)));
+    ("updated_at", `String (Data.Timestamp.to_iso8601 (Data.Note.updated_at note)));
   ]
 
 let _relation_to_json rel =
@@ -135,6 +141,12 @@ let _try_make f x =
   try Ok (f x)
   with Invalid_argument msg -> Error (Parse_error msg)
 
+let _parse_timestamp json key =
+  match _get_string json key with
+  | Error _ -> Ok (Data.Timestamp.make 0)
+  | Ok s ->
+    Data.Timestamp.of_iso8601 s |> Result.map_error (fun msg -> Parse_error msg)
+
 let _parse_todo_record json =
   let open Data.Result.Syntax in
   let* id_s = _get_string json "id" in
@@ -146,7 +158,9 @@ let _parse_todo_record json =
   let* content = _try_make Data.Content.make content_s in
   let* status = Data.Todo.status_of_string status_s
     |> Result.map_error (fun msg -> Parse_error msg) in
-  Ok (Todo { id; title; content; status })
+  let* created_at = _parse_timestamp json "created_at" in
+  let* updated_at = _parse_timestamp json "updated_at" in
+  Ok (Todo { id; title; content; status; created_at; updated_at })
 
 let _parse_note_record json =
   let open Data.Result.Syntax in
@@ -159,7 +173,9 @@ let _parse_note_record json =
   let* content = _try_make Data.Content.make content_s in
   let* status = Data.Note.status_of_string status_s
     |> Result.map_error (fun msg -> Parse_error msg) in
-  Ok (Note { id; title; content; status })
+  let* created_at = _parse_timestamp json "created_at" in
+  let* updated_at = _parse_timestamp json "updated_at" in
+  Ok (Note { id; title; content; status; created_at; updated_at })
 
 let _parse_relation_record json =
   let open Data.Result.Syntax in

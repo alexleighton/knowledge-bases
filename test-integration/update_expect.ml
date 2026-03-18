@@ -14,10 +14,12 @@ let%expect_test "bs update todo status" =
     [exit 0]
     todo kb-0 (<TYPEID>)
     Status: in-progress
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  Todo title
 
     Todo body
-  |}]
+    |}]
 
 let%expect_test "bs update note title" =
   Helper.with_git_root (fun dir ->
@@ -33,10 +35,12 @@ let%expect_test "bs update note title" =
     [exit 0]
     note kb-0 (<TYPEID>)
     Status: active
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  New title
 
     Note body
-  |}]
+    |}]
 
 let%expect_test "bs update content auto-stdin" =
   Helper.with_git_root (fun dir ->
@@ -52,10 +56,12 @@ let%expect_test "bs update content auto-stdin" =
     [exit 0]
     todo kb-0 (<TYPEID>)
     Status: open
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  Title
 
     New body
-  |}]
+    |}]
 
 let%expect_test "bs update content with --content flag" =
   Helper.with_git_root (fun dir ->
@@ -72,10 +78,12 @@ let%expect_test "bs update content with --content flag" =
     [exit 0]
     todo kb-0 (<TYPEID>)
     Status: open
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  Title
 
     New body from flag
-  |}]
+    |}]
 
 let%expect_test "bs update multiple fields at once" =
   Helper.with_git_root (fun dir ->
@@ -92,10 +100,12 @@ let%expect_test "bs update multiple fields at once" =
     [exit 0]
     todo kb-0 (<TYPEID>)
     Status: in-progress
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  New title
 
     New body
-  |}]
+    |}]
 
 let%expect_test "bs update with same status is a no-op" =
   Helper.with_git_root (fun dir ->
@@ -232,10 +242,12 @@ let%expect_test "bs update --status does not hang on pipe stdin with no data" =
     [exit 0]
     todo kb-0 (<TYPEID>)
     Status: in-progress
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  Title
 
     Body
-  |}]
+    |}]
 
 let%expect_test "bs update auto-rebuilds when db is missing" =
   Helper.with_git_root (fun dir ->

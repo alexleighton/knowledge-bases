@@ -5,6 +5,7 @@ module Title = Kbases.Data.Title
 module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
 module Typeid = Kbases.Data.Uuid.Typeid
+module Timestamp = Kbases.Data.Timestamp
 
 let with_db = Test_helpers.with_db
 let query_rows = Test_helpers.query_rows_raw
@@ -17,6 +18,7 @@ let unwrap_note = function
 let unwrap_niceid = function
   | Ok v -> v
   | Error (Niceid.Backend_failure msg) -> failwith ("backend failure: " ^ msg)
+  | Error Niceid.Not_found -> failwith "niceid not found"
 
 let with_note_repo f =
   with_db (fun db ->
@@ -51,7 +53,7 @@ let%expect_test "note repo create/get/update/delete happy path" =
         (Note.niceid note1)
         (Title.make "Updated")
         (Content.make "Body")
-        Note.Archived
+        Note.Archived ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0)
     in
     let updated = unwrap_note (NoteRepo.update note_repo updated) in
     Printf.printf "updated title=%s content=%s status=%s\n"
@@ -201,7 +203,7 @@ let%expect_test "note repo import with caller-provided TypeId" =
 
     let note = unwrap_note (NoteRepo.import note_repo
       ~id:tid ~title:(Title.make "Imported") ~content:(Content.make "Body")
-      ~status:Note.Archived ()) in
+      ~status:Note.Archived ~created_at:(Timestamp.make 1000) ~updated_at:(Timestamp.make 2000) ()) in
     Printf.printf "id=%s niceid=%s status=%s\n"
       (Typeid.to_string (Note.id note))
       (Identifier.to_string (Note.niceid note))
@@ -217,7 +219,8 @@ let%expect_test "note repo import defaults to Active status" =
     let tid = Typeid.of_string "note_0123456789abcdefghjkmnpqrs" in
 
     ignore (unwrap_note (NoteRepo.import note_repo
-      ~id:tid ~title:(Title.make "Default") ~content:(Content.make "Body") ()));
+      ~id:tid ~title:(Title.make "Default") ~content:(Content.make "Body")
+      ~created_at:(Timestamp.make 1000) ~updated_at:(Timestamp.make 2000) ()));
     query_rows db "SELECT niceid, status FROM note" []);
   [%expect {|
     nt-0|active

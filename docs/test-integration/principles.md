@@ -44,3 +44,21 @@ automatically.
 
 **Why:** Leaked temp directories accumulate across test runs and CI builds,
 wasting disk space and making it harder to diagnose failures.
+
+## 3. File length
+
+Keep test files under ~300 lines. When a file outgrows this threshold, split it
+by feature area.
+
+**Naming:** `<command>_<aspect>_expect.ml` — the command prefix stays the same
+and an aspect suffix is added. For example, `show_expect.ml` might split into
+`show_basic_expect.ml`, `show_relations_expect.ml`, `show_json_expect.ml`.
+Remove the original unsuffixed file so there is no ambiguity about which file is
+"primary."
+
+**Discovery:** glob `<command>_*_expect.ml` to find all test files for a
+command.
+
+**Preamble duplication:** each split file duplicates the preamble (typically just
+`module Helper = Test_helper`). Shared logic belongs in `test_helper.ml`, not
+copied between files.

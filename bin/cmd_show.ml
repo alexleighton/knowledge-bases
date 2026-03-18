@@ -11,22 +11,27 @@ module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
 module Typeid = Kbases.Data.Uuid.Typeid
 module Relation_kind = Kbases.Data.Relation_kind
+module Timestamp = Kbases.Data.Timestamp
 
 (* --- Output formatting --- *)
 
 let format_item = function
   | Service.Todo_item todo ->
-      Printf.printf "todo %s (%s)\nStatus: %s\nTitle:  %s\n\n%s\n"
+      Printf.printf "todo %s (%s)\nStatus: %s\nCreated: %s\nUpdated: %s\nTitle:  %s\n\n%s\n"
         (Identifier.to_string (Todo.niceid todo))
         (Typeid.to_string (Todo.id todo))
         (Todo.status_to_string (Todo.status todo))
+        (Timestamp.to_display (Todo.created_at todo))
+        (Timestamp.to_display (Todo.updated_at todo))
         (Title.to_string (Todo.title todo))
         (Content.to_string (Todo.content todo))
   | Service.Note_item note ->
-      Printf.printf "note %s (%s)\nStatus: %s\nTitle:  %s\n\n%s\n"
+      Printf.printf "note %s (%s)\nStatus: %s\nCreated: %s\nUpdated: %s\nTitle:  %s\n\n%s\n"
         (Identifier.to_string (Note.niceid note))
         (Typeid.to_string (Note.id note))
         (Note.status_to_string (Note.status note))
+        (Timestamp.to_display (Note.created_at note))
+        (Timestamp.to_display (Note.updated_at note))
         (Title.to_string (Note.title note))
         (Content.to_string (Note.content note))
 
@@ -75,6 +80,8 @@ let item_to_json Service.{ item; outgoing; incoming } =
           "status", `String (Todo.status_to_string (Todo.status todo));
           "title", `String (Title.to_string (Todo.title todo));
           "content", `String (Content.to_string (Todo.content todo));
+          "created_at", `String (Timestamp.to_iso8601 (Todo.created_at todo));
+          "updated_at", `String (Timestamp.to_iso8601 (Todo.updated_at todo));
         ]
     | Service.Note_item note ->
         [
@@ -84,6 +91,8 @@ let item_to_json Service.{ item; outgoing; incoming } =
           "status", `String (Note.status_to_string (Note.status note));
           "title", `String (Title.to_string (Note.title note));
           "content", `String (Content.to_string (Note.content note));
+          "created_at", `String (Timestamp.to_iso8601 (Note.created_at note));
+          "updated_at", `String (Timestamp.to_iso8601 (Note.updated_at note));
         ]
   in
   `Assoc (item_fields @ [
@@ -126,6 +135,8 @@ let cmd_man = [
   `P "  bs show kb-0 kb-1 kb-2";
   `P "Show by TypeId:";
   `P "  bs show todo_01jmq...";
+  `P "Machine-readable JSON output:";
+  `P "  bs show kb-0 --json";
 ]
 
 let cmd_info = Cmd.info "show" ~doc:"Display full details of one or more items." ~man:cmd_man

@@ -4,9 +4,11 @@
 (** A parsed entity record from a JSONL file. *)
 type entity_record =
   | Todo of { id: Data.Uuid.Typeid.t; title: Data.Title.t;
-              content: Data.Content.t; status: Data.Todo.status }
+              content: Data.Content.t; status: Data.Todo.status;
+              created_at: Data.Timestamp.t; updated_at: Data.Timestamp.t }
   | Note of { id: Data.Uuid.Typeid.t; title: Data.Title.t;
-              content: Data.Content.t; status: Data.Note.status }
+              content: Data.Content.t; status: Data.Note.status;
+              created_at: Data.Timestamp.t; updated_at: Data.Timestamp.t }
   | Relation of Data.Relation.t
 
 (** Metadata stored in the first line of a JSONL file. *)

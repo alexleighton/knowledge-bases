@@ -619,11 +619,19 @@ need new test files; changed commands (list, show) need updated snapshots.
     clutter the knowledge base.*
 
 21. **The maximum age is a persistent configuration value**, stored in the
-    knowledge base config table (e.g., via `bs gc --set-max-age 14d`). A
-    sensible default (e.g., 30 days) applies when no value is configured.
-    The config key is `gc_max_age`. *Rationale: different projects have
-    different retention needs.* (Refined to name the config key, since
-    background analysis confirmed the config table pattern.)
+    knowledge base config table (e.g., via `bs gc --set-max-age 14d`). The
+    default is 30 days. The config key is `gc_max_age`. `bs init` accepts
+    an optional `--gc-max-age` flag (e.g., `bs init --gc-max-age 14d`)
+    and writes the value — or the 30-day default if omitted — to the
+    config table. Init output includes a confirmation line
+    (e.g., `GC max age: 30d (default)` or `GC max age: 14d`). When `open_kb` reads the
+    config and finds no `gc_max_age` key (e.g., a knowledge base created
+    before this feature), it uses the 30-day default. *Rationale: different
+    projects have different retention needs. A sensible default ensures GC
+    runs out of the box without requiring explicit configuration.* (Refined
+    to name the config key, since background analysis confirmed the config
+    table pattern. Further refined to require init output and a fallback
+    default for pre-existing knowledge bases.)
 
 22. **GC uses transitive anchoring.** A terminal item is retained if any
     item reachable from it through the relation graph (in either direction)
@@ -1490,14 +1498,17 @@ deduplicated (items in the same component are only traversed once).
 let open_kb () =
   ...
   let* () = Sync_service.rebuild_if_needed sync in
-  let* () = _run_gc_if_configured root sync in
+  let* () = _run_gc root sync in
   let t = { (init root) with sync = Some sync } in
   Ok (root, t)
 ```
 
-`_run_gc_if_configured` reads `gc_max_age` from config. If absent, GC is
-skipped. If present, it calls `Gc_service.run` and flushes if anything
-was removed.
+`_run_gc` reads `gc_max_age` from config. If absent, it falls back to
+the 30-day default (requirement 21). It calls `Gc_service.run` and, if
+anything was removed, calls `Sync_service.mark_dirty` and
+`Sync_service.flush` directly (the `_with_flush` wrapper is not
+available at this point in `open_kb` — `t` has not yet been
+constructed).
 
 **`bs gc` command.** A new `Cmd_gc` module in `bin/` (~80 lines) with:
 

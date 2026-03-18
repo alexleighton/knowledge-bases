@@ -14,10 +14,12 @@ let%expect_test "bs claim open todo" =
     [exit 0]
     todo kb-0 (<TYPEID>)
     Status: in-progress
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  Fix bug
 
     Todo body
-  |}]
+    |}]
 
 let%expect_test "bs claim a note fails" =
   Helper.with_git_root (fun dir ->
@@ -116,13 +118,15 @@ let%expect_test "bs claim --show" =
     Claimed todo: kb-0
     todo kb-0 (<TYPEID>)
     Status: in-progress
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  My task
 
     Todo body
 
     Outgoing:
       related-to  kb-1  note  Design doc
-  |}]
+    |}]
 
 let%expect_test "bs claim auto-rebuilds when db is missing" =
   Helper.with_git_root (fun dir ->

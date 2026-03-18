@@ -22,7 +22,7 @@ let expect_ok result f =
 
 let%expect_test "init_kb succeeds with explicit directory and namespace" =
   with_git_root "lc-init-explicit-" (fun root ->
-    expect_ok (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb")) (fun result ->
+    expect_ok (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None) (fun result ->
       Printf.printf "db exists: %b\n" (Sys.file_exists result.db_file);
       with_root result.db_file (fun opened ->
         (match Config.get (Root.config opened) "namespace" with
@@ -41,7 +41,7 @@ let%expect_test "init_kb succeeds with explicit directory and namespace" =
 
 let%expect_test "init_kb rejects non-git root directory" =
   with_temp_dir "lc-init-not-git-" (fun dir ->
-    match Lifecycle.init_kb ~directory:(Some dir) ~namespace:(Some "kb") with
+    match Lifecycle.init_kb ~directory:(Some dir) ~namespace:(Some "kb") ~gc_max_age:None with
     | Ok _ -> print_endline "unexpected success"
     | Error (Lifecycle.Repository_error msg) ->
         Printf.printf "repo error: %s\n" msg
@@ -54,7 +54,7 @@ let%expect_test "init_kb rejects non-git root directory" =
 
 let%expect_test "init_kb rejects invalid explicit namespace" =
   with_git_root "lc-init-invalid-ns-" (fun root ->
-    match Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "TooLong") with
+    match Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "TooLong") ~gc_max_age:None with
     | Ok _ -> print_endline "unexpected success"
     | Error (Lifecycle.Repository_error msg) ->
         Printf.printf "repo error: %s\n" msg
@@ -66,8 +66,8 @@ let%expect_test "init_kb rejects invalid explicit namespace" =
 
 let%expect_test "init_kb guards against re-initialization" =
   with_git_root "lc-init-reinit-" (fun root ->
-    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb"));
-    match Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") with
+    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None);
+    match Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None with
     | Ok _ -> print_endline "unexpected success"
     | Error (Lifecycle.Repository_error msg) ->
         Printf.printf "repo error: %s\n" msg
@@ -83,7 +83,7 @@ let%expect_test "init_kb resolves repo root from cwd when directory is None" =
     let nested = Filename.concat root "nested" in
     Unix.mkdir nested 0o755;
     with_chdir nested (fun () ->
-      match Lifecycle.init_kb ~directory:None ~namespace:(Some "kb") with
+      match Lifecycle.init_kb ~directory:None ~namespace:(Some "kb") ~gc_max_age:None with
       | Error err -> pp_error err
       | Ok result ->
           Printf.printf "dir resolved: %b\n"
@@ -97,7 +97,7 @@ let%expect_test "init_kb resolves repo root from cwd when directory is None" =
 let%expect_test "init_kb without directory fails outside git repos" =
   with_temp_dir "lc-init-outside-" (fun dir ->
     with_chdir dir (fun () ->
-      match Lifecycle.init_kb ~directory:None ~namespace:(Some "kb") with
+      match Lifecycle.init_kb ~directory:None ~namespace:(Some "kb") ~gc_max_age:None with
       | Ok _ -> print_endline "unexpected success"
       | Error (Lifecycle.Repository_error msg) -> Printf.printf "repo error: %s\n" msg
       | Error (Lifecycle.Validation_error msg) -> print_endline msg));
@@ -113,7 +113,7 @@ let%expect_test "init_kb reports invalid derived namespace" =
     let nested = Filename.concat root "nested" in
     Unix.mkdir nested 0o755;
     with_chdir nested (fun () ->
-      match Lifecycle.init_kb ~directory:None ~namespace:None with
+      match Lifecycle.init_kb ~directory:None ~namespace:None ~gc_max_age:None with
       | Ok _ -> print_endline "unexpected success"
       | Error (Lifecycle.Repository_error msg) -> Printf.printf "repo error: %s\n" msg
       | Error (Lifecycle.Validation_error msg) ->
@@ -148,7 +148,7 @@ let%expect_test "open_kb fails when KB not initialised" =
 
 let%expect_test "open_kb auto-creates db when jsonl exists" =
   with_git_root "lc-open-auto-rebuild-" (fun root ->
-    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb"));
+    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None);
     let db_file = Filename.concat root ".kbases.db" in
     let jsonl_path = Filename.concat root ".kbases.jsonl" in
     (* Flush an empty JSONL so the file exists, then delete the db *)

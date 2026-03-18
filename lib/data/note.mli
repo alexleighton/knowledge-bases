@@ -35,10 +35,11 @@ val status_from_string : string -> status
     @return [Error msg] if [s] is not a recognised status string. *)
 val status_of_string : string -> (status, string) result
 
-(** [make id niceid title content status] constructs a note from already-validated inputs.
+(** [make id niceid title content status ~created_at ~updated_at] constructs a note
+    from already-validated inputs.
 
     @raise Invalid_argument if the [id] does not carry the ["note"] TypeId prefix. *)
-val make : id -> Identifier.t -> Title.t -> Content.t -> status -> t
+val make : id -> Identifier.t -> Title.t -> Content.t -> status -> created_at:Timestamp.t -> updated_at:Timestamp.t -> t
 
 (** [id t] returns the note TypeId. *)
 val id : t -> id
@@ -63,3 +64,12 @@ val with_title : t -> Title.t -> t
 
 (** [with_content t content] returns a copy of [t] with [content] replaced. *)
 val with_content : t -> Content.t -> t
+
+(** [created_at t] returns the creation timestamp. *)
+val created_at : t -> Timestamp.t
+
+(** [updated_at t] returns the last-updated timestamp. *)
+val updated_at : t -> Timestamp.t
+
+(** [with_updated_at t ts] returns a copy of [t] with [updated_at] set to [ts]. *)
+val with_updated_at : t -> Timestamp.t -> t

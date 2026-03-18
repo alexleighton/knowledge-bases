@@ -41,3 +41,10 @@ let parse s =
 
 let get_prefix t = t.prefix
 let get_suffix t = t.suffix
+
+let compare a b = String.compare (to_string a) (to_string b)
+
+module Set = Set.Make(struct
+  type nonrec t = t
+  let compare = compare
+end)

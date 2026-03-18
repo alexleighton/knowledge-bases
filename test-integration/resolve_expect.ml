@@ -14,10 +14,12 @@ let%expect_test "bs resolve open todo" =
     [exit 0]
     todo kb-0 (<TYPEID>)
     Status: done
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  Fix bug
 
     Todo body
-  |}]
+    |}]
 
 let%expect_test "bs resolve already-done todo fails" =
   Helper.with_git_root (fun dir ->

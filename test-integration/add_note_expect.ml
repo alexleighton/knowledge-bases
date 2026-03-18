@@ -189,10 +189,12 @@ let%expect_test "bs add note with --content flag" =
     [exit 0]
     note kb-0 (<TYPEID>)
     Status: active
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  Flag note
 
     Body from flag
-  |}]
+    |}]
 
 let%expect_test "bs add note errors on --content and stdin" =
   Helper.with_git_root (fun dir ->
@@ -219,6 +221,6 @@ let%expect_test "bs add note auto-rebuilds when db is missing" =
     [exit 0]
     Created note: kb-1 (<TYPEID>)
     [exit 0]
-    kb-0    note  active        First
     kb-1    note  active        Second
-  |}]
+    kb-0    note  active        First
+    |}]

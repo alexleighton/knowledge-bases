@@ -78,6 +78,41 @@ val relate_many :
   specs:relate_spec list ->
   (relate_result list, Item_service.error) result
 
+(** Specification for a single relation to remove. *)
+type unrelate_spec = {
+  target        : string;
+  kind          : string;
+  bidirectional : bool;
+}
+
+(** [build_unrelate_specs ~depends_on ~related_to ~uni ~bi] constructs an
+    {!unrelate_spec} list from the four relation categories.
+
+    Same categories as {!build_specs} but without the [blocking] parameter,
+    which is irrelevant for removal. *)
+val build_unrelate_specs :
+  depends_on:string list ->
+  related_to:string list ->
+  uni:(string * string) list ->
+  bi:(string * string) list ->
+  unrelate_spec list
+
+(** Result of a successful unrelate operation. *)
+type unrelate_result = {
+  source_niceid : Data.Identifier.t;
+  target_niceid : Data.Identifier.t;
+  kind          : Data.Relation_kind.t;
+  bidirectional : bool;
+}
+
+(** [unrelate_many t ~source ~specs] removes relations matching the given
+    specs. Validates all specs before deleting any. *)
+val unrelate_many :
+  t ->
+  source:string ->
+  specs:unrelate_spec list ->
+  (unrelate_result list, Item_service.error) result
+
 (** [find_blockers t todo] returns the niceids of unresolved todos that
     block [todo] via blocking relations.  Returns an empty list when
     [todo] is not blocked. *)

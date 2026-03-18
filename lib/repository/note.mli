@@ -18,8 +18,9 @@ val init :
   niceid_repo:Niceid.t ->
   (t, error) result
 
-(** [create repo ~title ~content ?status] stores a new note, generating identifiers
-    for it. [status] defaults to [Data.Note.Active].
+(** [create repo ~title ~content ?status ?now] stores a new note, generating identifiers
+    for it. [status] defaults to [Data.Note.Active]. [now] supplies the
+    timestamp factory; it defaults to {!Data.Timestamp.now}.
 
     @return the newly stored note on success.
     @return [Error Duplicate_niceid _] if the generated nice id already exists.
@@ -29,6 +30,7 @@ val create :
   title:Data.Title.t ->
   content:Data.Content.t ->
   ?status:Data.Note.status ->
+  ?now:(unit -> Data.Timestamp.t) ->
   unit ->
   (Data.Note.t, error) result
 
@@ -80,5 +82,7 @@ val import :
   title:Data.Title.t ->
   content:Data.Content.t ->
   ?status:Data.Note.status ->
+  created_at:Data.Timestamp.t ->
+  updated_at:Data.Timestamp.t ->
   unit ->
   (Data.Note.t, error) result

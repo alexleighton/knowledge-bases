@@ -188,8 +188,19 @@ let typeid_re = Str.regexp "[a-z][a-z_]*_[0-9a-hjkmnp-tv-z]+"
 let normalize_typeids text =
   Str.global_replace typeid_re "<TYPEID>" text
 
+let timestamp_re = Str.regexp "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9] UTC"
+
+let normalize_timestamps text =
+  Str.global_replace timestamp_re "<TIMESTAMP>" text
+
+let iso8601_re = Str.regexp "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z"
+
+let normalize_iso8601 text =
+  Str.global_replace iso8601_re "<ISO8601>" text
+
 let print_result ~dir result =
-  let norm text = text |> normalize_dir ~dir |> normalize_typeids in
+  let norm text = text |> normalize_dir ~dir |> normalize_typeids
+                       |> normalize_timestamps |> normalize_iso8601 in
   Printf.printf "[exit %d]\n" result.exit_code;
   if result.stdout <> "" then Printf.printf "%s" (norm result.stdout);
   if result.stderr <> "" then Printf.printf "STDERR: %s" (norm result.stderr)
@@ -224,6 +235,14 @@ let get_bool json key =
       | Some (`Bool b) -> b
       | _ -> false)
   | _ -> false
+
+let get_int json key =
+  match json with
+  | `Assoc pairs -> (
+      match List.assoc_opt key pairs with
+      | Some (`Int n) -> n
+      | _ -> -1)
+  | _ -> -1
 
 let get_list json key =
   match json with

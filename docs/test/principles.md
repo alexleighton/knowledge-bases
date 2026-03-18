@@ -94,7 +94,24 @@ persists extra or incorrect data. This gives each test layer a distinct role:
 unit tests verify side effects, integration tests verify end-to-end CLI
 behaviour.
 
-## 4. Clean up temporary files and directories
+## 4. File length
+
+Keep test files under ~300 lines. When a file outgrows this threshold, split it
+by feature area.
+
+**Naming:** `<module>_<aspect>_expect.ml` — the module prefix stays the same and
+an aspect suffix is added. For example, `mutation_service_expect.ml` might split
+into `mutation_service_update_expect.ml`, `mutation_service_claim_expect.ml`,
+etc. Remove the original unsuffixed file so there is no ambiguity about which
+file is "primary."
+
+**Discovery:** glob `<module>_*_expect.ml` to find all test files for a module.
+
+**Preamble duplication:** each split file duplicates the module aliases and thin
+wrapper helpers (e.g., `with_mutation_service`). Shared *logic* belongs in
+`test_helpers.ml`, not copied between files.
+
+## 5. Clean up temporary files and directories
 
 Tests that create temporary files or directories must remove them when the test
 finishes — including when the test fails or raises an exception. Use
@@ -113,3 +130,33 @@ finishes — including when the test fails or raises an exception. Use
 **Why:** Leaked temp directories accumulate across test runs and CI builds,
 wasting disk space and making it harder to diagnose failures. Deterministic
 cleanup keeps the test environment predictable.
+
+## 6. Explicit time dependencies
+
+Unit tests must never call `Unix.sleepf` or `Unix.sleep` to manufacture distinct
+timestamps. Sleeping makes the test suite slow, ties correctness to wall-clock
+granularity, and can flake on loaded CI runners.
+
+Instead, **inject the time source** so tests can control it:
+
+* Repository `create` functions accept an optional `~now` parameter (a
+  `unit -> Timestamp.t` factory) that defaults to `Timestamp.now`. Tests pass a
+  deterministic clock — for example, a ref-cell that increments on each call:
+
+  ```ocaml
+  let make_clock epoch =
+    let r = ref epoch in
+    fun () ->
+      let t = Timestamp.make !r in
+      r := !r + 1;
+      t
+  ```
+
+* When a test only needs items with *different* timestamps and does not care
+  about the values, `make_clock` is sufficient. When a test needs a *specific*
+  epoch (e.g., to exercise GC age thresholds), pass an explicit
+  `Timestamp.make` value.
+
+**Why:** A one-second sleep per test adds up quickly across hundreds of tests
+and provides no additional confidence. Injecting the clock makes ordering tests
+instant, deterministic, and independent of system load.

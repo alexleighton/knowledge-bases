@@ -6,6 +6,7 @@ type t = {
 }
 
 type error =
+  | Not_found
   | Backend_failure of string
 
 let map_sqlite_error result =
@@ -58,6 +59,18 @@ let allocate { db; namespace } typeid =
          ]
        |> map_sqlite_error
        |> Result.map (fun () -> Data.Identifier.make namespace next_id))
+
+let delete { db; _ } typeid =
+  let id = Data.Uuid.Typeid.to_string typeid in
+  match
+    Sqlite.with_stmt_cmd db
+      "DELETE FROM niceid WHERE typeid = ?;"
+      [(1, Sql.Data.TEXT id)]
+    |> map_sqlite_error
+  with
+  | Ok () when Sql.changes db > 0 -> Ok ()
+  | Ok () -> (Error Not_found : (unit, error) result)
+  | Error _ as e -> e
 
 let delete_all { db; _ } =
   Sqlite.with_stmt_cmd db "DELETE FROM niceid;" []

@@ -21,11 +21,13 @@ let show_id = Typeid.to_string
 let pp_id fmt id = Format.pp_print_string fmt (show_id id)
 
 type t = {
-  id      : id;
-  niceid  : Identifier.t;
-  title   : Title.t;
-  content : Content.t;
-  status  : status;
+  id         : id;
+  niceid     : Identifier.t;
+  title      : Title.t;
+  content    : Content.t;
+  status     : status;
+  created_at : Timestamp.t;
+  updated_at : Timestamp.t;
 }
 [@@deriving show]
 
@@ -38,20 +40,25 @@ let _validate_id typeid =
 
 let make_id () = Typeid.make _typeid_prefix
 
-let make id niceid title content status = {
-  id      = _validate_id id;
-  niceid  = niceid;
-  title   = title;
-  content = content;
-  status  = status;
+let make id niceid title content status ~created_at ~updated_at = {
+  id         = _validate_id id;
+  niceid     = niceid;
+  title      = title;
+  content    = content;
+  status     = status;
+  created_at = created_at;
+  updated_at = updated_at;
 }
 
-let id      { id;      _ } = id
-let niceid  { niceid;  _ } = niceid
-let title   { title;   _ } = title
-let content { content; _ } = content
-let status  { status;  _ } = status
+let id         { id;         _ } = id
+let niceid     { niceid;     _ } = niceid
+let title      { title;      _ } = title
+let content    { content;    _ } = content
+let status     { status;     _ } = status
+let created_at { created_at; _ } = created_at
+let updated_at { updated_at; _ } = updated_at
 
-let with_status  t status  = { t with status }
-let with_title   t title   = { t with title }
-let with_content t content = { t with content }
+let with_status     t status     = { t with status }
+let with_title      t title      = { t with title }
+let with_content    t content    = { t with content }
+let with_updated_at t updated_at = { t with updated_at }

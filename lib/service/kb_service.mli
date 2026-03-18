@@ -11,8 +11,9 @@ type error = Item_service.error =
   | Repository_error of string
   | Validation_error of string
 
-(** Unified item type returned by listing operations. *)
-type item =
+(** Unified item type returned by listing operations.
+    Re-exports {!Data.Item.t}. *)
+type item = Data.Item.t =
   | Todo_item of Data.Todo.t
   | Note_item of Data.Note.t
 
@@ -31,8 +32,9 @@ type init_result = {
   git_exclude : git_exclude_action;
 }
 
-(** A resolved relation entry for display. *)
-type relation_entry = {
+(** A resolved relation entry for display.
+    Re-exports {!Show_service.relation_entry}. *)
+type relation_entry = Show_service.relation_entry = {
   kind        : Data.Relation_kind.t;
   niceid      : Data.Identifier.t;
   entity_type : string;
@@ -40,8 +42,9 @@ type relation_entry = {
   blocking    : bool option;
 }
 
-(** Result of showing a single item, including its relations. *)
-type show_result = {
+(** Result of showing a single item, including its relations.
+    Re-exports {!Show_service.show_result}. *)
+type show_result = Show_service.show_result = {
   item     : item;
   outgoing : relation_entry list;
   incoming : relation_entry list;
@@ -102,11 +105,13 @@ val build_specs :
     Callers must close the root when done. *)
 val open_kb : unit -> (Repository.Root.t * t, error) result
 
-(** [init_kb ~directory ~namespace] initializes a knowledge base in a git
-    repository, creates [.kbases.db], and persists the effective namespace. *)
+(** [init_kb ~directory ~namespace ~gc_max_age] initializes a knowledge base in
+    a git repository, creates [.kbases.db], and persists the effective namespace.
+    When [gc_max_age] is provided, stores it in the config table. *)
 val init_kb :
   directory:string option ->
   namespace:string option ->
+  gc_max_age:string option ->
   (init_result, error) result
 
 (* --- Create --- *)
@@ -150,23 +155,44 @@ val add_todo_with_relations :
 
 (* --- Query --- *)
 
-(** [list t ~entity_type ~statuses ?available ()] returns todos and/or notes
-    filtered by type and status.
+(** Sort order for list results. *)
+type sort_order = Query_service.sort_order = Sort_created | Sort_updated
 
-    When [entity_type] is [None], both entity types are considered. When it is
-    [Some "todo"] or [Some "note"], only that type is listed. [statuses] is a
-    set of status strings; when empty, default exclusions apply (exclude done
-    todos and archived notes).
+(** Specification for a relation-based filter. *)
+type relation_filter = Query_service.relation_filter = {
+  target    : string;
+  kind      : string;
+  direction : Graph_service.direction;
+}
 
-    When [available] is [true], returns only open unblocked todos, ignoring
-    [entity_type] and [statuses]. *)
-val list :
-  t ->
-  entity_type:string option ->
-  statuses:string list ->
-  ?available:bool ->
-  unit ->
-  (item list, error) result
+(** Specification for a list query. *)
+type list_spec = Query_service.list_spec = {
+  entity_type      : string option;
+  statuses         : string list;
+  available        : bool;
+  sort             : sort_order option;
+  ascending        : bool;
+  count_only       : bool;
+  relation_filters : relation_filter list;
+  transitive       : bool;
+  blocked          : bool;
+}
+
+(** Result of a list query. *)
+type list_result = Query_service.list_result
+
+(** [build_filters ~depends_on ~related_to ~uni ~bi] constructs a
+    {!relation_filter} list from the four CLI relation categories.
+    See {!Query_service.build_filters}. *)
+val build_filters :
+  depends_on:string list ->
+  related_to:string list ->
+  uni:(string * string) list ->
+  bi:(string * string) list ->
+  relation_filter list
+
+(** [list t spec] returns items or counts based on the given spec. *)
+val list : t -> list_spec -> (list_result, error) result
 
 (** [show t ~identifier] looks up a single item by niceid or TypeId, including
     its outgoing and incoming relations.
@@ -201,12 +227,73 @@ val resolve : t -> identifier:string -> (Data.Todo.t, error) result
 (** [archive t ~identifier] sets a note's status to [Archived]. *)
 val archive : t -> identifier:string -> (Data.Note.t, error) result
 
+(** [reopen t ~identifier] returns a terminal item to its initial status:
+    Done todos become Open, Archived notes become Active. *)
+val reopen : t -> identifier:string -> (item, error) result
+
+(** Result of a successful deletion. *)
+type delete_result = Delete_service.delete_result = {
+  niceid            : Data.Identifier.t;
+  entity_type       : string;
+  relations_removed : int;
+}
+
+(** Errors specific to delete operations. *)
+type delete_error = Delete_service.delete_error =
+  | Blocked_dependency of { niceid : string; dependents : string list }
+  | Service_error of Item_service.error
+
+(** [delete t ~identifier ~force] removes an item and its relations.
+    When [force] is [false], refuses to delete items that are blocking
+    targets of non-terminal items. *)
+val delete :
+  t -> identifier:string -> force:bool -> (delete_result, delete_error) result
+
+(** [delete_many t ~identifiers ~force] removes multiple items atomically.
+    Validates all items before deleting any. *)
+val delete_many :
+  t ->
+  identifiers:string list ->
+  force:bool ->
+  (delete_result list, delete_error) result
+
 (** [next t] selects the first open, unblocked todo and transitions it to
     [In_Progress]. Returns [Ok None] when no open todos exist. *)
 val next : t -> (Data.Todo.t option, claim_error) result
 
 (** [claim t ~identifier] transitions an open, unblocked todo to [In_Progress]. *)
 val claim : t -> identifier:string -> (Data.Todo.t, claim_error) result
+
+(** Specification for a single relation to remove. *)
+type unrelate_spec = Relation_service.unrelate_spec = {
+  target        : string;
+  kind          : string;
+  bidirectional : bool;
+}
+
+(** [build_unrelate_specs ~depends_on ~related_to ~uni ~bi] constructs an
+    {!unrelate_spec} list from the four relation categories. *)
+val build_unrelate_specs :
+  depends_on:string list ->
+  related_to:string list ->
+  uni:(string * string) list ->
+  bi:(string * string) list ->
+  unrelate_spec list
+
+(** Result of a successful unrelate operation. *)
+type unrelate_result = Relation_service.unrelate_result = {
+  source_niceid : Data.Identifier.t;
+  target_niceid : Data.Identifier.t;
+  kind          : Data.Relation_kind.t;
+  bidirectional : bool;
+}
+
+(** [unrelate t ~source ~specs] removes relations matching the given specs. *)
+val unrelate :
+  t ->
+  source:string ->
+  specs:unrelate_spec list ->
+  (unrelate_result list, error) result
 
 (** [relate t ~source ~specs] creates one or more relations from [source]
     atomically. All specs are validated before any relation is inserted.
@@ -219,6 +306,42 @@ val relate :
   source:string ->
   specs:relate_spec list ->
   (relate_result list, error) result
+
+(* --- GC --- *)
+
+(** A single item eligible for garbage collection. *)
+type gc_item = Gc_service.gc_item = {
+  niceid      : Data.Identifier.t;
+  entity_type : string;
+  title       : Data.Title.t;
+  age_days    : int;
+}
+
+(** Result of a GC run. *)
+type gc_result = Gc_service.gc_result = {
+  items_removed     : int;
+  relations_removed : int;
+}
+
+(** Result of reading the configured max age. *)
+type max_age_result = Gc_service.max_age_result =
+  | Configured of string
+  | Default
+
+(** Default max age as a display string. *)
+val default_max_age_display : string
+
+(** [gc_get_max_age t] reads the gc_max_age from config. *)
+val gc_get_max_age : t -> (max_age_result, error) result
+
+(** [gc_set_max_age t age_str] validates and persists a new gc_max_age. *)
+val gc_set_max_age : t -> string -> (unit, error) result
+
+(** [gc_collect_with_config t] identifies eligible items without removing them. *)
+val gc_collect_with_config : t -> (gc_item list, error) result
+
+(** [gc_run_with_config t] removes eligible items and their relations. *)
+val gc_run_with_config : t -> (gc_result, error) result
 
 (* --- Sync --- *)
 

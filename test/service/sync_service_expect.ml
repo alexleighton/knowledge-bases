@@ -13,6 +13,7 @@ module Relation = Kbases.Data.Relation
 module Relation_kind = Kbases.Data.Relation_kind
 module Identifier = Kbases.Data.Identifier
 module Typeid = Kbases.Data.Uuid.Typeid
+module Timestamp = Kbases.Data.Timestamp
 
 let unwrap_sync = function
   | Ok v -> v
@@ -102,8 +103,8 @@ let%expect_test "force_rebuild replaces DB content from JSONL" =
     let tid = Typeid.of_string "todo_0123456789abcdefghjkmnpqrs" in
     let nid = Typeid.of_string "note_0123456789abcdefghjkmnpqrs" in
     let niceid = Identifier.make "kb" 0 in
-    let todo = Todo.make tid niceid (Title.make "From file") (Content.make "Body") Todo.Open in
-    let note = Note.make nid niceid (Title.make "A note") (Content.make "Note body") Note.Active in
+    let todo = Todo.make tid niceid (Title.make "From file") (Content.make "Body") Todo.Open ~created_at:(Timestamp.make 1710000000) ~updated_at:(Timestamp.make 1710000000) in
+    let note = Note.make nid niceid (Title.make "A note") (Content.make "Note body") Note.Active ~created_at:(Timestamp.make 1710000000) ~updated_at:(Timestamp.make 1710000000) in
     let rel = Relation.make ~source:tid ~target:nid
       ~kind:(Relation_kind.make "blocks") ~bidirectional:false ~blocking:false in
 
@@ -139,7 +140,7 @@ let%expect_test "rebuild_if_needed detects hash mismatch" =
 
     let tid = Typeid.of_string "todo_0123456789abcdefghjkmnpqrs" in
     let niceid = Identifier.make "kb" 0 in
-    let new_todo = Todo.make tid niceid (Title.make "External") (Content.make "Body") Todo.Open in
+    let new_todo = Todo.make tid niceid (Title.make "External") (Content.make "Body") Todo.Open ~created_at:(Timestamp.make 1710000000) ~updated_at:(Timestamp.make 1710000000) in
     (match Jsonl.write ~path:jsonl_path ~namespace:"kb"
       ~todos:[new_todo] ~notes:[] ~relations:[] with
       | Ok () -> () | Error _ -> failwith "write failed");

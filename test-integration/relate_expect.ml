@@ -208,10 +208,12 @@ let%expect_test "bs relate atomic failure leaves no relations" =
     [exit 0]
     todo kb-0 (<TYPEID>)
     Status: open
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
     Title:  Source
 
     Body
-  |}]
+    |}]
 
 let%expect_test "bs relate auto-rebuilds when db is missing" =
   Helper.with_git_root (fun dir ->
