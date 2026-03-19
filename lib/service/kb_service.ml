@@ -36,12 +36,30 @@ type git_exclude_action = Lifecycle.git_exclude_action =
   | Excluded
   | Already_excluded
 
+type file_action = Lifecycle.file_action =
+  | Deleted
+  | Not_found
+
 type init_result = Lifecycle.init_result = {
   directory   : string;
   namespace   : string;
   db_file     : string;
   agents_md   : agents_md_action;
   git_exclude : git_exclude_action;
+}
+
+type agents_md_uninstall_action = Lifecycle.agents_md_uninstall_action =
+  | File_deleted | Section_removed | Section_modified | Not_found
+
+type git_exclude_uninstall_action = Lifecycle.git_exclude_uninstall_action =
+  | Entry_removed | Entry_not_found
+
+type uninstall_result = Lifecycle.uninstall_result = {
+  directory   : string;
+  database    : file_action;
+  jsonl       : file_action;
+  agents_md   : agents_md_uninstall_action;
+  git_exclude : git_exclude_uninstall_action;
 }
 
 type relation_entry = Query.relation_entry = {
@@ -204,6 +222,10 @@ let open_kb () =
 
 let init_kb ~directory ~namespace ~gc_max_age =
   Lifecycle.init_kb ~directory ~namespace ~gc_max_age
+  |> Result.map_error map_lifecycle_error
+
+let uninstall_kb ~directory =
+  Lifecycle.uninstall_kb ~directory
   |> Result.map_error map_lifecycle_error
 
 (* --- Add operations --- *)

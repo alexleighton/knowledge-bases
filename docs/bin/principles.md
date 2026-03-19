@@ -148,3 +148,21 @@ Every subcommand must have:
 When adding a new command or flag, include corresponding help text updates in
 the same change. The root `bs --help` should include a lifecycle example that
 walks through init, create, query, claim, complete, and sync.
+
+## 9. Command ordering in help text
+
+Commands in the root `bs --help` COMMANDS section and in `Cmd.group` are
+ordered by domain group, not alphabetically or by addition date. Related
+commands appear adjacent to each other. The current groups, in order:
+
+1. **Lifecycle** — `init`, `uninstall`
+2. **Create** — `add note`, `add todo`
+3. **Query** — `list`, `show`
+4. **Workflow** — `update`, `claim`, `next`, `resolve`, `close`, `archive`,
+   `reopen`, `delete`
+5. **Relations** — `relate`, `unrelate`
+6. **Sync & maintenance** — `flush`, `rebuild`, `gc`
+
+When adding a new command, place it in the appropriate group rather than
+appending to the end. Keep the `Cmd.group` list in the same order as the help
+text so both are easy to cross-reference.

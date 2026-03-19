@@ -24,3 +24,11 @@ type exclude_result = Added | Already_present
     [.git/info/exclude] under [directory].  Creates [.git/info/] and the
     exclude file if they do not exist. *)
 val add_exclude : directory:string -> string -> exclude_result
+
+(** Whether the entry was removed or was not present. *)
+type remove_exclude_result = Removed | Remove_not_found
+
+(** [remove_exclude ~directory entry] removes [entry] from
+    [.git/info/exclude] under [directory].  Returns [Remove_not_found]
+    if the file does not exist or does not contain the entry. *)
+val remove_exclude : directory:string -> string -> remove_exclude_result

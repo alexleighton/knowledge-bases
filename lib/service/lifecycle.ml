@@ -40,8 +40,13 @@ type error =
   | Repository_error of string
   | Validation_error of string
 
+type file_action = Deleted | Not_found
+
 type agents_md_action = Created | Appended | Already_present
 type git_exclude_action = Excluded | Already_excluded
+type agents_md_uninstall_action =
+  | File_deleted | Section_removed | Section_modified | Not_found
+type git_exclude_uninstall_action = Entry_removed | Entry_not_found
 
 type init_result = {
   directory   : string;
@@ -49,6 +54,14 @@ type init_result = {
   db_file     : string;
   agents_md   : agents_md_action;
   git_exclude : git_exclude_action;
+}
+
+type uninstall_result = {
+  directory   : string;
+  database    : file_action;
+  jsonl       : file_action;
+  agents_md   : agents_md_uninstall_action;
+  git_exclude : git_exclude_uninstall_action;
 }
 
 (* --- Initialization helpers --- *)
@@ -91,6 +104,31 @@ let resolve_namespace ~directory = function
                   "Derived namespace \"%s\" is invalid (%s). Use -n to specify one."
                   derived reason))
 
+let map_config_error e =
+  match Item_service.map_config_error e with
+  | Item_service.Repository_error msg -> Repository_error msg
+  | Item_service.Validation_error msg -> Validation_error msg
+
+let install_database ~db_file ~namespace ~gc_max_age =
+  let open Result.Syntax in
+  let* root =
+    Root.init ~db_file ~namespace:(Some namespace)
+    |> Result.map_error (fun (Root.Backend_failure msg) ->
+           Repository_error msg)
+  in
+  Fun.protect
+    ~finally:(fun () -> Root.close root)
+    (fun () ->
+      let config = Root.config root in
+      let* () = Config.set config "namespace" namespace
+                 |> Result.map_error map_config_error in
+      let* () = match gc_max_age with
+        | Some age -> Config.set config "gc_max_age" age
+                      |> Result.map_error map_config_error
+        | None -> Ok ()
+      in
+      Ok ())
+
 let install_agents_md ~directory =
   let path = Filename.concat directory agents_md_filename in
   if Sys.file_exists path then begin
@@ -111,6 +149,35 @@ let install_git_exclude ~directory =
   match Git.add_exclude ~directory db_filename with
   | Git.Added -> Excluded
   | Git.Already_present -> Already_excluded
+
+(* --- Uninstall helpers --- *)
+
+let uninstall_file path : file_action =
+  if Sys.file_exists path then begin Sys.remove path; Deleted end
+  else Not_found
+
+let uninstall_agents_md ~directory : agents_md_uninstall_action =
+  let path = Filename.concat directory agents_md_filename in
+  if not (Sys.file_exists path) then Not_found
+  else
+    let contents = Io.read_file path in
+    if contents = agents_md_template then begin
+      Sys.remove path; File_deleted
+    end else
+      let suffix = "\n" ^ agents_md_template in
+      let slen = String.length suffix in
+      let clen = String.length contents in
+      if clen > slen && String.sub contents (clen - slen) slen = suffix then begin
+        Io.write_file ~path ~contents:(String.sub contents 0 (clen - slen));
+        Section_removed
+      end else if Data.String.contains_substring ~needle:agents_md_section_heading contents
+      then Section_modified
+      else Not_found
+
+let uninstall_git_exclude ~directory =
+  match Git.remove_exclude ~directory db_filename with
+  | Git.Removed -> Entry_removed
+  | Git.Remove_not_found -> Entry_not_found
 
 (* --- Public operations --- *)
 
@@ -156,11 +223,6 @@ let open_kb () =
           Error
             (Validation_error "No knowledge base found. Run 'bs init' first.")
 
-let _map_config_error e =
-  match Item_service.map_config_error e with
-  | Item_service.Repository_error msg -> Repository_error msg
-  | Item_service.Validation_error msg -> Validation_error msg
-
 let init_kb ~directory ~namespace ~gc_max_age =
   let open Result.Syntax in
   let* directory = resolve_directory directory in
@@ -171,22 +233,16 @@ let init_kb ~directory ~namespace ~gc_max_age =
       (Validation_error
          (Printf.sprintf "Knowledge base already initialised at %s." db_file))
   else
-    let* root =
-      Root.init ~db_file ~namespace:(Some namespace)
-      |> Result.map_error (fun (Root.Backend_failure msg) ->
-             Repository_error msg)
-    in
-    Fun.protect
-      ~finally:(fun () -> Root.close root)
-      (fun () ->
-        let config = Root.config root in
-        let* () = Config.set config "namespace" namespace
-                   |> Result.map_error _map_config_error in
-        let* () = match gc_max_age with
-          | Some age -> Config.set config "gc_max_age" age
-                        |> Result.map_error _map_config_error
-          | None -> Ok ()
-        in
-        let agents_md = install_agents_md ~directory in
-        let git_exclude = install_git_exclude ~directory in
-        Ok { directory; namespace; db_file; agents_md; git_exclude })
+    let* () = install_database ~db_file ~namespace ~gc_max_age in
+    let agents_md = install_agents_md ~directory in
+    let git_exclude = install_git_exclude ~directory in
+    Ok { directory; namespace; db_file; agents_md; git_exclude }
+
+let uninstall_kb ~directory =
+  let open Result.Syntax in
+  let* directory = resolve_directory directory in
+  let database = uninstall_file (Filename.concat directory db_filename) in
+  let jsonl = uninstall_file (Filename.concat directory jsonl_filename) in
+  let agents_md = uninstall_agents_md ~directory in
+  let git_exclude = uninstall_git_exclude ~directory in
+  Ok { directory; database; jsonl; agents_md; git_exclude }

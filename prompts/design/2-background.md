@@ -28,8 +28,10 @@ but everything the requirements touch or might touch. Trace outward
 from the obvious starting points:
 
 * **What exists today** — the relevant types, modules, signatures,
-  and their relationships. Show enough structure that the reader
-  understands the shape of the code without opening files.
+  and their relationships. Focus on the relationships and boundaries
+  between components, not on reproducing what each file contains.
+  A reader can open a file; they cannot easily see how five files
+  interact.
 * **How data flows** — for the areas the requirements affect, how
   does data move through the system? Which layers are involved?
   Follow the project's architectural layering.
@@ -54,8 +56,12 @@ Problem Statement and before the Requirements. It should cover:
 
 * **Current state** — a narrative description of how the relevant
   parts of the system work today. Use the project's own vocabulary.
-  Include type signatures or short code excerpts when they clarify
-  the structure better than prose would.
+  Include type signatures or short code excerpts only when they
+  clarify a relationship or subtlety that prose would obscure. Do
+  not reproduce function bodies, step-by-step logic, or module
+  structures that are clear from reading the source — cite the
+  location (file and function name) and describe what matters for
+  the design.
 * **Relevant architecture** — which layers, modules, and boundaries
   are involved. How the affected code fits into the broader system.
 * **Existing patterns** — conventions the codebase follows that the
@@ -80,7 +86,23 @@ things are similar, show what actually differs. When you give counts,
 make them accurate. A background section full of vague impressions is
 worse than none at all — it creates false confidence.
 
-### 5. Scope
+Ground claims with references (file, function, type name), not by
+reproducing the referenced code. A line like "`init_kb` guards
+against re-initialization by checking `Sys.file_exists db_file`
+before calling `Root.init`" is grounded. Quoting the surrounding ten
+lines of `init_kb` to show the same thing is padding.
+
+### 5. Density
+
+The background section should be the shortest text that gives a
+reader enough context to evaluate design approaches. Every paragraph
+should contain analysis — a relationship, a constraint, a subtlety,
+or an observation — not a summary of what a file contains. If a
+paragraph could be replaced by "read file X," cut it. The
+Observations subsection is where the background earns most of its
+value; the earlier subsections exist to set up those observations.
+
+### 6. Scope
 
 Stay descriptive, not prescriptive. This section documents what
 *is*, not what *should be*. Do not propose solutions, recommend

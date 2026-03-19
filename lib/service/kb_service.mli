@@ -23,6 +23,9 @@ type agents_md_action = Created | Appended | Already_present
 (** Action taken on .git/info/exclude during initialization. *)
 type git_exclude_action = Excluded | Already_excluded
 
+(** Result of a file deletion attempt. *)
+type file_action = Deleted | Not_found
+
 (** Result of knowledge-base initialization. *)
 type init_result = {
   directory   : string;
@@ -30,6 +33,22 @@ type init_result = {
   db_file     : string;
   agents_md   : agents_md_action;
   git_exclude : git_exclude_action;
+}
+
+(** Result of removing the AGENTS.md section during uninstall. *)
+type agents_md_uninstall_action =
+  | File_deleted | Section_removed | Section_modified | Not_found
+
+(** Result of removing the .git/info/exclude entry. *)
+type git_exclude_uninstall_action = Entry_removed | Entry_not_found
+
+(** Result of knowledge-base uninstallation. *)
+type uninstall_result = {
+  directory   : string;
+  database    : file_action;
+  jsonl       : file_action;
+  agents_md   : agents_md_uninstall_action;
+  git_exclude : git_exclude_uninstall_action;
 }
 
 (** A resolved relation entry for display.
@@ -113,6 +132,13 @@ val init_kb :
   namespace:string option ->
   gc_max_age:string option ->
   (init_result, error) result
+
+(** [uninstall_kb ~directory] removes all knowledge-base artifacts from the
+    given git repository. Best-effort: individual missing artifacts are reported
+    in the result rather than causing failure. *)
+val uninstall_kb :
+  directory:string option ->
+  (uninstall_result, error) result
 
 (* --- Create --- *)
 

@@ -5,6 +5,7 @@
 module Io = Control.Io
 
 type exclude_result = Added | Already_present
+type remove_exclude_result = Removed | Remove_not_found
 
 let is_git_root dir =
   let git_path = Filename.concat dir ".git" in
@@ -56,3 +57,17 @@ let add_exclude ~directory entry =
     Io.write_file ~path:exclude_path ~contents:new_contents;
     Added
   end
+
+let remove_exclude ~directory entry =
+  let info_dir = Filename.concat (Filename.concat directory ".git") "info" in
+  let exclude_path = Filename.concat info_dir "exclude" in
+  if not (Sys.file_exists exclude_path) then Remove_not_found
+  else
+    let contents = Io.read_file exclude_path in
+    let lines = String.split_on_char '\n' contents in
+    let filtered = List.filter (fun line -> line <> entry) lines in
+    if List.length filtered = List.length lines then Remove_not_found
+    else begin
+      Io.write_file ~path:exclude_path ~contents:(String.concat "\n" filtered);
+      Removed
+    end

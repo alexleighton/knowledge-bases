@@ -2,6 +2,7 @@ module Root = Kbases.Repository.Root
 module Config = Kbases.Repository.Config
 module Jsonl = Kbases.Repository.Jsonl
 module Lifecycle = Kbases.Service.Lifecycle
+module Io = Kbases.Control.Io
 
 let with_git_root = Test_helpers.with_git_root
 let with_temp_dir = Test_helpers.with_temp_dir
