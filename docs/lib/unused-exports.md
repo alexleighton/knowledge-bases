@@ -1,6 +1,6 @@
 # Suppressing unused-export warnings
 
-The `find-unused.py` script detects exported symbols with no call-site in the
+The `check-unused.py` script detects exported symbols with no call-site in the
 codebase. When a symbol is intentionally exported but cannot be traced by the
 script — e.g., a value consumed via functor application — annotate the
 definition line with `(* @unused-ok — <reason> *)` to suppress the warning.

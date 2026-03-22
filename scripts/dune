@@ -1,4 +1,14 @@
 (rule
- (alias find-unused)
+ (alias check-unused)
  (deps (alias_rec ../ocaml-index))
- (action (run ./find-unused.py)))
+ (action (run ./check-unused.py)))
+
+(rule
+ (alias check-test-naming)
+ (deps (source_tree ../lib) (source_tree ../test))
+ (action (run ./check-test-naming.py)))
+
+(rule
+ (alias check-integration-test-naming)
+ (deps (source_tree ../bin) (source_tree ../test-integration))
+ (action (run ./check-integration-test-naming.py)))

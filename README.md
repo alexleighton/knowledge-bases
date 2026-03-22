@@ -20,7 +20,7 @@ MVP Featureset to be built:
 
 * [opam](https://opam.ocaml.org/doc/Install.html) — OCaml package manager
 * [shellcheck](https://www.shellcheck.net/) — shell script linter
-* [uv](https://docs.astral.sh/uv/) — Python script runner (used by `scripts/find-unused.py`)
+* [uv](https://docs.astral.sh/uv/) — Python script runner (used by `scripts/check-unused.py`)
 
 **Environment Setup:**
 

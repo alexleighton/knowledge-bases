@@ -15,8 +15,13 @@
 
 ; runcheck: top-level check alias.  Composes all project-wide checks.
 ; Exits non-zero if any check fails.  Currently runs:
-;   - find-unused: detects exported values with no external references
+;   - check-unused: detects exported values with no external references
+;   - check-test-naming: verifies unit test filenames match source modules
+;   - check-integration-test-naming: verifies integration test filenames match CLI commands
 (rule
  (alias runcheck)
- (deps (alias_rec find-unused))
+ (deps
+  (alias_rec check-unused)
+  (alias_rec check-test-naming)
+  (alias_rec check-integration-test-naming))
  (action (progn)))

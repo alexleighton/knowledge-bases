@@ -19,9 +19,9 @@ Prerequisites:
     dune build @ocaml-index
 
 Usage:
-    ./scripts/find-unused.py                  # scan all lib/ and bin/
-    ./scripts/find-unused.py lib/data/char.ml # scan a single file
-    ./scripts/find-unused.py -v               # verbose logging
+    ./scripts/check-unused.py                  # scan all lib/ and bin/
+    ./scripts/check-unused.py lib/data/char.ml # scan a single file
+    ./scripts/check-unused.py -v               # verbose logging
 
 Suppression:
     Add (* @unused-ok *) on the definition line in the .ml file
@@ -332,7 +332,7 @@ def find_unused(proc, root, target_files):
     index works best from implementation files.
     """
     files = find_ml_files(root, target_files)
-    print(f"Scanning {len(files)} file(s)...", file=sys.stderr)
+    log(f"scanning {len(files)} file(s)...")
     unused = []
     msg_id = 1
 
@@ -404,7 +404,7 @@ def find_unused(proc, root, target_files):
 
         close_file(proc, ml_uri)
 
-    return unused
+    return unused, len(files)
 
 
 # ---------------------------------------------------------------------------
@@ -437,19 +437,21 @@ def main():
         root = Path(root_str[:root_str.index(build_marker)])
     root_uri = root.as_uri()
 
+    name = "check-unused.py"
     proc = start_server(root_uri, root)
     try:
-        results = find_unused(proc, root, args.files)
+        results, file_count = find_unused(proc, root, args.files)
     finally:
         stop_server(proc)
 
     results.sort(key=lambda r: (r["file"], r["line"]))
     if results:
-        print(f"Error: {len(results)} unused exported value(s):",
-              file=sys.stderr)
+        print(f"{name}: FAIL", file=sys.stderr)
         for r in results:
-            print(f"  {r['file']}:{r['line']}\t{r['name']}")
+            print(f"  {r['file']}:{r['line']}\t{r['name']}", file=sys.stderr)
         sys.exit(1)
+    else:
+        print(f"{name}: ok ({file_count} files)", file=sys.stderr)
 
 
 if __name__ == "__main__":
