@@ -6,17 +6,17 @@ module Common = Cmdline_common
 module Service = Kbases.Service.Kb_service
 
 let agents_md_msg = function
-  | Service.Created -> "created"
-  | Service.Appended -> "appended to existing file"
-  | Service.Already_present -> "section already present"
+  | Service.Lifecycle.Created -> "created"
+  | Service.Lifecycle.Appended -> "appended to existing file"
+  | Service.Lifecycle.Already_present -> "section already present"
 
 let git_exclude_msg = function
-  | Service.Excluded -> "added to .git/info/exclude"
-  | Service.Already_excluded -> "already in .git/info/exclude"
+  | Service.Lifecycle.Excluded -> "added to .git/info/exclude"
+  | Service.Lifecycle.Already_excluded -> "already in .git/info/exclude"
 
 let run directory namespace gc_max_age json =
   match Service.init_kb ~directory ~namespace ~gc_max_age with
-  | Ok ({ Service.directory; namespace; db_file; agents_md; git_exclude } : Service.init_result) ->
+  | Ok ({ Service.Lifecycle.directory; namespace; db_file; agents_md; git_exclude }) ->
       let gc_age_str = match gc_max_age with Some s -> s | None -> "30d" in
       let gc_label = match gc_max_age with
         | Some _ -> gc_age_str

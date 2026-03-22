@@ -19,22 +19,24 @@ let run source depends_on related_to uni bi json =
         if json then
           Common.print_json (`Assoc [
             "ok", `Bool true;
-            "removed", `List (List.map (fun (r : Service.unrelate_result) ->
-              let dir = if r.Service.bidirectional then "bidirectional"
+            "removed", `List (List.map (fun (r : Service.Relation.unrelate_result) ->
+              let open Service.Relation in
+              let dir = if r.bidirectional then "bidirectional"
                         else "unidirectional" in
               `Assoc [
-                "source", `String (Identifier.to_string r.Service.source_niceid);
-                "kind", `String (Relation_kind.to_string r.Service.kind);
-                "target", `String (Identifier.to_string r.Service.target_niceid);
+                "source", `String (Identifier.to_string r.source_niceid);
+                "kind", `String (Relation_kind.to_string r.kind);
+                "target", `String (Identifier.to_string r.target_niceid);
                 "directionality", `String dir;
               ]) results);
           ])
         else
-          List.iter (fun (r : Service.unrelate_result) ->
+          List.iter (fun (r : Service.Relation.unrelate_result) ->
+            let open Service.Relation in
             Printf.printf "Unrelated: %s %s %s (removed)\n"
-              (Identifier.to_string r.Service.source_niceid)
-              (Relation_kind.to_string r.Service.kind)
-              (Identifier.to_string r.Service.target_niceid))
+              (Identifier.to_string r.source_niceid)
+              (Relation_kind.to_string r.kind)
+              (Identifier.to_string r.target_niceid))
             results
     | Error err -> Common.exit_with_error ~json (Common.service_error_msg err))
 

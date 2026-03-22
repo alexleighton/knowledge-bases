@@ -7,13 +7,13 @@ module Service = Kbases.Service.Kb_service
 module Identifier = Kbases.Data.Identifier
 
 let delete_error_msg = function
-  | Service.Blocked_dependency { niceid; dependents } ->
+  | Service.Delete.Blocked_dependency { niceid; dependents } ->
       Printf.sprintf "cannot delete %s: blocked by %s" niceid
         (String.concat ", " dependents)
-  | Service.Service_error err -> Common.service_error_msg err
+  | Service.Delete.Service_error err -> Common.service_error_msg err
 
-let result_to_json (r : Service.delete_result) =
-  let open Service in
+let result_to_json (r : Service.Delete.delete_result) =
+  let open Service.Delete in
   `Assoc [
     "type", `String r.entity_type;
     "niceid", `String (Identifier.to_string r.niceid);
@@ -38,9 +38,10 @@ let run first_identifier rest_identifiers force json =
             "deleted", `List (List.map result_to_json results);
           ])
         else
-          List.iter (fun (r : Service.delete_result) ->
+          List.iter (fun (r : Service.Delete.delete_result) ->
+            let open Service.Delete in
             Printf.printf "Deleted %s: %s\n"
-              r.Service.entity_type (Identifier.to_string r.Service.niceid)
+              r.entity_type (Identifier.to_string r.niceid)
           ) results
     | Error err -> Common.exit_with_error ~json (delete_error_msg err))
 

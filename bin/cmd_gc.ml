@@ -7,17 +7,18 @@ module Service = Kbases.Service.Kb_service
 module Identifier = Kbases.Data.Identifier
 module Title = Kbases.Data.Title
 
-let gc_item_to_json (i : Service.gc_item) =
+let gc_item_to_json (i : Service.Gc.gc_item) =
+  let open Service.Gc in
   `Assoc [
-    "niceid", `String (Identifier.to_string i.Service.niceid);
-    "type", `String i.Service.entity_type;
-    "title", `String (Title.to_string i.Service.title);
-    "age_days", `Int i.Service.age_days;
+    "niceid", `String (Identifier.to_string i.niceid);
+    "type", `String i.entity_type;
+    "title", `String (Title.to_string i.title);
+    "age_days", `Int i.age_days;
   ]
 
 let format_max_age = function
-  | Service.Configured s -> s
-  | Service.Default -> Service.default_max_age_display ^ " (default)"
+  | Service.Gc.Configured s -> s
+  | Service.Gc.Default -> Service.Gc.default_max_age_display ^ " (default)"
 
 let run dry_run set_max_age show_max_age json =
   let ctx = App_context.init () in
@@ -57,29 +58,29 @@ let run dry_run set_max_age show_max_age json =
                 print_endline "Nothing to collect."
               else begin
                 Printf.printf "Would remove %d item(s):\n" (List.length items);
-                List.iter (fun (i : Service.gc_item) ->
+                List.iter (fun (i : Service.Gc.gc_item) ->
+                  let open Service.Gc in
                   Printf.printf "  %s %s %S (%dd old)\n"
-                    i.Service.entity_type
-                    (Identifier.to_string i.Service.niceid)
-                    (Title.to_string i.Service.title)
-                    i.Service.age_days
+                    i.entity_type (Identifier.to_string i.niceid)
+                    (Title.to_string i.title) i.age_days
                 ) items
               end
           | Error err -> Common.exit_with_error ~json (Common.service_error_msg err)
         else
           match Service.gc_run_with_config service with
           | Ok result ->
-              if result.Service.items_removed > 0 then
+              let open Service.Gc in
+              if result.items_removed > 0 then
                 (match Service.flush service with Ok () -> () | Error _ -> ());
               if json then
                 Common.print_json (`Assoc [
                   "ok", `Bool true;
-                  "items_removed", `Int result.Service.items_removed;
-                  "relations_removed", `Int result.Service.relations_removed;
+                  "items_removed", `Int result.items_removed;
+                  "relations_removed", `Int result.relations_removed;
                 ])
               else
                 Printf.printf "GC: removed %d item(s), %d relation(s).\n"
-                  result.Service.items_removed result.Service.relations_removed
+                  result.items_removed result.relations_removed
           | Error err -> Common.exit_with_error ~json (Common.service_error_msg err))
 
 let dry_run_flag =

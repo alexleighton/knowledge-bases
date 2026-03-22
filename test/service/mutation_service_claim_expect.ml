@@ -30,9 +30,7 @@ let pp_claim_error = function
       Printf.printf "nothing available: %d stuck\n" stuck_count
   | MutationService.Service_error err -> pp_error err
 
-let make_blocking_rel ~source ~target =
-  Relation.make ~source:(Todo.id source) ~target:(Todo.id target)
-    ~kind:(Relation_kind.make "depends-on") ~bidirectional:false ~blocking:true
+let make_blocking_rel = Test_helpers.make_blocking_rel
 
 (* -- Claim tests -- *)
 
@@ -103,13 +101,15 @@ let%expect_test "claim todo with depends-on note succeeds" =
       ~kind:(Relation_kind.make "depends-on") ~bidirectional:false ~blocking:true in
     ignore (RelationRepo.create (Root.relation root) rel);
     let niceid_str = Identifier.to_string (Todo.niceid todo) in
-    match MutationService.claim service ~identifier:niceid_str with
-    | Ok t ->
-        Printf.printf "Claimed: %s status=%s\n" (Identifier.to_string (Todo.niceid t))
-          (Todo.status_to_string (Todo.status t))
-    | Error err -> pp_claim_error err);
+    (match MutationService.claim service ~identifier:niceid_str with
+     | Ok t ->
+         Printf.printf "Claimed: %s status=%s\n" (Identifier.to_string (Todo.niceid t))
+           (Todo.status_to_string (Todo.status t))
+     | Error err -> pp_claim_error err);
+    query_rows root "SELECT niceid, status FROM todo" []);
   [%expect {|
     Claimed: kb-0 status=in-progress
+    kb-0|in-progress
   |}]
 
 let%expect_test "claim todo with done dependency succeeds" =
@@ -122,13 +122,15 @@ let%expect_test "claim todo with done dependency succeeds" =
     let rel = make_blocking_rel ~source:todo ~target:dep in
     ignore (RelationRepo.create (Root.relation root) rel);
     let niceid_str = Identifier.to_string (Todo.niceid todo) in
-    match MutationService.claim service ~identifier:niceid_str with
-    | Ok t ->
-        Printf.printf "Claimed: %s status=%s\n" (Identifier.to_string (Todo.niceid t))
-          (Todo.status_to_string (Todo.status t))
-    | Error err -> pp_claim_error err);
+    (match MutationService.claim service ~identifier:niceid_str with
+     | Ok t ->
+         Printf.printf "Claimed: %s status=%s\n" (Identifier.to_string (Todo.niceid t))
+           (Todo.status_to_string (Todo.status t))
+     | Error err -> pp_claim_error err);
+    query_rows root "SELECT niceid, status FROM todo WHERE niceid = 'kb-0'" []);
   [%expect {|
     Claimed: kb-0 status=in-progress
+    kb-0|in-progress
   |}]
 
 (* -- Next tests -- *)
@@ -216,9 +218,12 @@ let%expect_test "next ignores in-progress todos" =
          Printf.printf "Next: %s title=%s\n" (Identifier.to_string (Todo.niceid t))
            (Title.to_string (Todo.title t))
      | Ok None -> print_endline "none"
-     | Error err -> pp_claim_error err));
+     | Error err -> pp_claim_error err);
+    query_rows root "SELECT niceid, status FROM todo ORDER BY niceid" []);
   [%expect {|
     Next: kb-1 title=Open task
+    kb-0|in-progress
+    kb-1|in-progress
   |}]
 
 let%expect_test "next with depends-on note does not block" =
@@ -230,12 +235,14 @@ let%expect_test "next with depends-on note does not block" =
     let rel = Relation.make ~source:(Todo.id todo) ~target:(Note.id note)
       ~kind:(Relation_kind.make "depends-on") ~bidirectional:false ~blocking:true in
     ignore (RelationRepo.create (Root.relation root) rel);
-    match MutationService.next service with
-    | Ok (Some t) ->
-        Printf.printf "Next: %s status=%s\n" (Identifier.to_string (Todo.niceid t))
-          (Todo.status_to_string (Todo.status t))
-    | Ok None -> print_endline "none"
-    | Error err -> pp_claim_error err);
+    (match MutationService.next service with
+     | Ok (Some t) ->
+         Printf.printf "Next: %s status=%s\n" (Identifier.to_string (Todo.niceid t))
+           (Todo.status_to_string (Todo.status t))
+     | Ok None -> print_endline "none"
+     | Error err -> pp_claim_error err);
+    query_rows root "SELECT niceid, status FROM todo" []);
   [%expect {|
     Next: kb-0 status=in-progress
+    kb-0|in-progress
   |}]

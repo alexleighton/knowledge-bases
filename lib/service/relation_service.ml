@@ -27,11 +27,6 @@ let init root = {
   relation_repo = Repository.Root.relation root;
 }
 
-let typeid_of_item = Data.Item.typeid
-let niceid_of_item = Data.Item.niceid
-let entity_type_of_item = Data.Item.entity_type
-let title_of_item = Data.Item.title
-
 let build_specs ~depends_on ~related_to ~uni ~bi ~blocking =
   List.map (fun tgt ->
     { target = tgt; kind = "depends-on"; bidirectional = false;
@@ -73,8 +68,8 @@ let find_blockers t todo =
 let relate_many t ~source ~specs =
   let open Result.Syntax in
   let* source_item = Item_service.find t.items ~identifier:source in
-  let source_typeid = typeid_of_item source_item in
-  let source_niceid = niceid_of_item source_item in
+  let source_typeid = Data.Item.typeid source_item in
+  let source_niceid = Data.Item.niceid source_item in
   (* Validate phase: resolve all targets and parse all kinds before inserting *)
   let* resolved =
     List.map (fun spec ->
@@ -86,7 +81,7 @@ let relate_many t ~source ~specs =
   in
   (* Create phase: insert all relations *)
   List.map (fun (target_item, kind, bidirectional, blocking) ->
-    let target_typeid = typeid_of_item target_item in
+    let target_typeid = Data.Item.typeid target_item in
     let rel = Data.Relation.make ~source:source_typeid ~target:target_typeid
                 ~kind ~bidirectional ~blocking in
     let+ relation =
@@ -96,9 +91,9 @@ let relate_many t ~source ~specs =
     {
       relation;
       source_niceid;
-      target_niceid = niceid_of_item target_item;
-      target_type = entity_type_of_item target_item;
-      target_title = title_of_item target_item;
+      target_niceid = Data.Item.niceid target_item;
+      target_type = Data.Item.entity_type target_item;
+      target_title = Data.Item.title target_item;
     }
   ) resolved
   |> Data.Result.sequence
@@ -139,8 +134,8 @@ type unrelate_result = {
 let unrelate_many t ~source ~specs =
   let open Result.Syntax in
   let* source_item = Item_service.find t.items ~identifier:source in
-  let source_typeid = typeid_of_item source_item in
-  let source_niceid = niceid_of_item source_item in
+  let source_typeid = Data.Item.typeid source_item in
+  let source_niceid = Data.Item.niceid source_item in
   let* resolved =
     List.map (fun (spec : unrelate_spec) ->
       let* target_item = Item_service.find t.items ~identifier:spec.target in
@@ -150,7 +145,7 @@ let unrelate_many t ~source ~specs =
     |> Data.Result.sequence
   in
   List.map (fun (target_item, kind, bidirectional) ->
-    let target_typeid = typeid_of_item target_item in
+    let target_typeid = Data.Item.typeid target_item in
     let+ () =
       RelationRepo.delete t.relation_repo ~source:source_typeid
         ~target:target_typeid ~kind ~bidirectional
@@ -158,7 +153,7 @@ let unrelate_many t ~source ~specs =
     in
     {
       source_niceid;
-      target_niceid = niceid_of_item target_item;
+      target_niceid = Data.Item.niceid target_item;
       kind;
       bidirectional;
     }

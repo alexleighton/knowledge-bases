@@ -44,8 +44,6 @@ let init root = {
   config        = Repository.Root.config root;
 }
 
-let _map_config_error e = Item_service.map_config_error e
-
 type max_age_result =
   | Configured of string
   | Default
@@ -56,7 +54,7 @@ let get_max_age t =
   match Config.get t.config "gc_max_age" with
   | Ok s -> Ok (Configured s)
   | Error (Config.Not_found _) -> Ok Default
-  | Error (Config.Backend_failure _ as e) -> Error (_map_config_error e)
+  | Error (Config.Backend_failure _ as e) -> Error (Item_service.map_config_error e)
 
 let set_max_age t age_str =
   match parse_age age_str with
@@ -65,17 +63,12 @@ let set_max_age t age_str =
         (Printf.sprintf "invalid age format: %S (expected e.g. 14d)" age_str))
   | Some _ ->
       Config.set t.config "gc_max_age" age_str
-      |> Result.map_error _map_config_error
+      |> Result.map_error Item_service.map_config_error
 
 let _resolve_max_age t =
   match Config.get t.config "gc_max_age" with
   | Ok s -> (match parse_age s with Some v -> v | None -> default_max_age_seconds)
   | Error _ -> default_max_age_seconds
-
-let _map_todo_err e = Item_service.map_todo_repo_error e
-let _map_note_err e = Item_service.map_note_repo_error e
-let _map_rel_err e = Item_service.map_relation_repo_error e
-let _map_niceid_err e = Item_service.map_niceid_repo_error e
 
 (* An item is terminal if it's Done (todo) or Archived (note) *)
 type candidate = {
@@ -91,11 +84,11 @@ let _list_terminal_candidates t ~max_age_seconds ~now =
   let cutoff = now - max_age_seconds in
   let* done_todos =
     TodoRepo.list t.todo_repo ~statuses:[Data.Todo.Done]
-    |> Result.map_error _map_todo_err
+    |> Result.map_error Item_service.map_todo_repo_error
   in
   let* archived_notes =
     NoteRepo.list t.note_repo ~statuses:[Data.Note.Archived]
-    |> Result.map_error _map_note_err
+    |> Result.map_error Item_service.map_note_repo_error
   in
   let todo_candidates = List.filter_map (fun todo ->
     let updated = Data.Todo.updated_at todo in
@@ -168,10 +161,10 @@ let collect t ~max_age_seconds ~now =
   ) filtered
 
 let _map_cascade_err = function
-  | `Todo e -> _map_todo_err e
-  | `Note e -> _map_note_err e
-  | `Rel e -> _map_rel_err e
-  | `Niceid e -> _map_niceid_err e
+  | `Todo e -> Item_service.map_todo_repo_error e
+  | `Note e -> Item_service.map_note_repo_error e
+  | `Rel e -> Item_service.map_relation_repo_error e
+  | `Niceid e -> Item_service.map_niceid_repo_error e
 
 let _delete_candidate t cand =
   Delete_service.cascade_delete

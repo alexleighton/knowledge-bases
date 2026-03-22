@@ -83,14 +83,14 @@ let%expect_test "claim via Kb_service" =
            (Todo.status_to_string (Todo.status t))
      | Error err ->
          let msg = match err with
-           | Service.Not_a_todo id -> "not a todo: " ^ id
-           | Service.Not_open { niceid; status } ->
+           | Service.Mutation.Not_a_todo id -> "not a todo: " ^ id
+           | Service.Mutation.Not_open { niceid; status } ->
                Printf.sprintf "not open: %s (%s)" niceid status
-           | Service.Blocked { niceid; blocked_by } ->
+           | Service.Mutation.Blocked { niceid; blocked_by } ->
                Printf.sprintf "blocked: %s by [%s]" niceid (String.concat "; " blocked_by)
-           | Service.Nothing_available { stuck_count } ->
+           | Service.Mutation.Nothing_available { stuck_count } ->
                Printf.sprintf "nothing available: %d stuck" stuck_count
-           | Service.Service_error _ -> "service error"
+           | Service.Mutation.Service_error _ -> "service error"
          in
          Printf.printf "claim error: %s\n" msg);
     query_rows root "SELECT niceid, status FROM todo" []);
@@ -123,7 +123,7 @@ let pp_add_result { Service.niceid; entity_type; relations; typeid = _ } =
     (Identifier.to_string niceid)
     entity_type
     (List.length relations);
-  List.iter (fun (re : Service.relation_entry) ->
+  List.iter (fun (re : Service.Query.relation_entry) ->
     Printf.printf "  rel: %s %s (%s)\n"
       (Relation_kind.to_string re.kind)
       (Identifier.to_string re.niceid)
@@ -134,7 +134,7 @@ let%expect_test "add_note_with_relations creates note and relation" =
   with_service (fun root service ->
     let todo = unwrap_todo_repo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "Target") ~content:(Content.make "Body") ()) in
-    let specs = [Service.{
+    let specs = [Service.Relation.{
       target = Identifier.to_string (Todo.niceid todo);
       kind = "depends-on"; bidirectional = false; blocking = false }] in
     (match Service.add_note_with_relations service
@@ -155,7 +155,7 @@ let%expect_test "add_todo_with_relations creates todo and relation" =
   with_service (fun root service ->
     let todo = unwrap_todo_repo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "Target") ~content:(Content.make "Body") ()) in
-    let specs = [Service.{
+    let specs = [Service.Relation.{
       target = Identifier.to_string (Todo.niceid todo);
       kind = "related-to"; bidirectional = true; blocking = false }] in
     (match Service.add_todo_with_relations service
@@ -174,7 +174,7 @@ let%expect_test "add_todo_with_relations creates todo and relation" =
 
 let%expect_test "add_note_with_relations with invalid target rolls back note" =
   with_service (fun root service ->
-    let specs = [Service.{
+    let specs = [Service.Relation.{
       target = "kb-999"; kind = "depends-on"; bidirectional = false; blocking = false }] in
     (match Service.add_note_with_relations service
              ~title:(Title.make "My Note") ~content:(Content.make "Body")
@@ -192,9 +192,9 @@ let%expect_test "add_note_with_relations with invalid second spec rolls back bot
     let todo = unwrap_todo_repo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "Valid Target") ~content:(Content.make "Body") ()) in
     let specs = [
-      Service.{ target = Identifier.to_string (Todo.niceid todo);
+      Service.Relation.{ target = Identifier.to_string (Todo.niceid todo);
                 kind = "depends-on"; bidirectional = false; blocking = false };
-      Service.{ target = "kb-999"; kind = "depends-on"; bidirectional = false; blocking = false };
+      Service.Relation.{ target = "kb-999"; kind = "depends-on"; bidirectional = false; blocking = false };
     ] in
     (match Service.add_note_with_relations service
              ~title:(Title.make "My Note") ~content:(Content.make "Body")

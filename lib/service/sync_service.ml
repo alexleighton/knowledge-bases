@@ -9,32 +9,17 @@ type t = {
 
 type error = Sync_failed of string
 
-let _map_config_error = function
-  | Config.Backend_failure msg -> Sync_failed msg
-  | Config.Not_found key -> Sync_failed ("config key not found: " ^ key)
+let _sync_of_item_error = function
+  | Item_service.Repository_error msg -> Sync_failed msg
+  | Item_service.Validation_error msg -> Sync_failed msg
+
+let _map_repo_error mapper e = _sync_of_item_error (mapper e)
+
+let _map_config_error e = _map_repo_error Item_service.map_config_error e
 
 let _map_jsonl_error = function
   | Jsonl.Io_error msg -> Sync_failed ("JSONL I/O error: " ^ msg)
   | Jsonl.Parse_error msg -> Sync_failed ("JSONL parse error: " ^ msg)
-
-let _map_todo_error = function
-  | Repository.Todo.Backend_failure msg -> Sync_failed msg
-  | Repository.Todo.Not_found _ -> Sync_failed "todo not found"
-  | Repository.Todo.Duplicate_niceid _ -> Sync_failed "duplicate niceid"
-
-let _map_note_error = function
-  | Repository.Note.Backend_failure msg -> Sync_failed msg
-  | Repository.Note.Not_found _ -> Sync_failed "note not found"
-  | Repository.Note.Duplicate_niceid _ -> Sync_failed "duplicate niceid"
-
-let _map_relation_error = function
-  | Repository.Relation.Backend_failure msg -> Sync_failed msg
-  | Repository.Relation.Duplicate -> Sync_failed "duplicate relation"
-  | Repository.Relation.Not_found -> Sync_failed "relation not found"
-
-let _map_niceid_error = function
-  | Repository.Niceid.Backend_failure msg -> Sync_failed msg
-  | Repository.Niceid.Not_found -> Sync_failed "niceid not found"
 
 let init root ~jsonl_path = { root; jsonl_path }
 
@@ -73,13 +58,13 @@ let flush t =
   else
     let* todos =
       Repository.Todo.list_all (Root.todo t.root)
-      |> Result.map_error _map_todo_error in
+      |> Result.map_error (_map_repo_error Item_service.map_todo_repo_error) in
     let* notes =
       Repository.Note.list_all (Root.note t.root)
-      |> Result.map_error _map_note_error in
+      |> Result.map_error (_map_repo_error Item_service.map_note_repo_error) in
     let* relations =
       Repository.Relation.list_all (Root.relation t.root)
-      |> Result.map_error _map_relation_error in
+      |> Result.map_error (_map_repo_error Item_service.map_relation_repo_error) in
     let* namespace = _get_namespace t in
     let* () =
       Jsonl.write ~path:t.jsonl_path ~namespace ~todos ~notes ~relations
@@ -98,32 +83,32 @@ let force_rebuild t =
   in
   let* () =
     Repository.Todo.delete_all (Root.todo t.root)
-    |> Result.map_error _map_todo_error in
+    |> Result.map_error (_map_repo_error Item_service.map_todo_repo_error) in
   let* () =
     Repository.Note.delete_all (Root.note t.root)
-    |> Result.map_error _map_note_error in
+    |> Result.map_error (_map_repo_error Item_service.map_note_repo_error) in
   let* () =
     Repository.Relation.delete_all (Root.relation t.root)
-    |> Result.map_error _map_relation_error in
+    |> Result.map_error (_map_repo_error Item_service.map_relation_repo_error) in
   let* () =
     Repository.Niceid.delete_all (Root.niceid t.root)
-    |> Result.map_error _map_niceid_error in
+    |> Result.map_error (_map_repo_error Item_service.map_niceid_repo_error) in
   let* () = Data.Result.sequence (List.map (fun record ->
     match record with
     | Jsonl.Todo { id; title; content; status; created_at; updated_at } ->
         Repository.Todo.import (Root.todo t.root) ~id ~title ~content ~status
           ~created_at ~updated_at ()
         |> Result.map (fun _ -> ())
-        |> Result.map_error _map_todo_error
+        |> Result.map_error (_map_repo_error Item_service.map_todo_repo_error)
     | Jsonl.Note { id; title; content; status; created_at; updated_at } ->
         Repository.Note.import (Root.note t.root) ~id ~title ~content ~status
           ~created_at ~updated_at ()
         |> Result.map (fun _ -> ())
-        |> Result.map_error _map_note_error
+        |> Result.map_error (_map_repo_error Item_service.map_note_repo_error)
     | Jsonl.Relation rel ->
         Repository.Relation.create (Root.relation t.root) rel
         |> Result.map (fun _ -> ())
-        |> Result.map_error _map_relation_error
+        |> Result.map_error (_map_repo_error Item_service.map_relation_repo_error)
   ) sorted_records) |> Result.map (fun _ -> ()) in
   let* file_hash = _hash_file t.jsonl_path in
   let* () = _set_config t "content_hash" file_hash in

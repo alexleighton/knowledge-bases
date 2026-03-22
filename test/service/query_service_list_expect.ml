@@ -116,9 +116,7 @@ let%expect_test "list rejects invalid entity type" =
     validation error: invalid entity type "banana"
   |}]
 
-let make_blocking_rel ~source ~target =
-  Relation.make ~source:(Todo.id source) ~target:(Todo.id target)
-    ~kind:(Relation_kind.make "depends-on") ~bidirectional:false ~blocking:true
+let make_blocking_rel = Test_helpers.make_blocking_rel
 
 let%expect_test "list available returns only open unblocked todos" =
   with_query_service (fun root service ->

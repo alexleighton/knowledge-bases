@@ -228,6 +228,19 @@ let%expect_test "timestamp accessors return expected values" =
     updated_at: 1710003600
   |}]
 
+let%expect_test "satisfies Entity.S module type" =
+  let _check : (module Kbases.Data.Entity.S) = (module Note) in
+  print_endline "ok";
+  [%expect {| ok |}]
+
+let%expect_test "entity_name is note" =
+  Printf.printf "%s\n" Note.entity_name;
+  [%expect {| note |}]
+
+let%expect_test "default_excluded_status is Archived" =
+  Printf.printf "%s\n" (Note.status_to_string Note.default_excluded_status);
+  [%expect {| archived |}]
+
 let%expect_test "with_updated_at returns copy with new value" =
   let identifier = Id.from_string "test-11" in
   let tid = Typeid.of_string "note_01h455vb4pex5vsknk084sn02r" in

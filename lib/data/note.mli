@@ -3,6 +3,9 @@
     A note bundles a stable TypeId along with a secondary [Identifier.t],
     referred to as a "nice id", plus a title and content. *)
 
+(** Entity name: ["note"]. *)
+val entity_name : string
+
 (** Unique TypeId for notes. *)
 type id = Uuid.Typeid.t
 
@@ -55,6 +58,12 @@ val content : t -> Content.t
 
 (** [status t] returns the status of the note. *)
 val status : t -> status
+
+(** The default status for newly created notes ([Active]). *)
+val default_status : status
+
+(** The status excluded by default from listings ([Archived]). *)
+val default_excluded_status : status
 
 (** [with_status t status] returns a copy of [t] with [status] replaced. *)
 val with_status : t -> status -> t

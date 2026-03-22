@@ -13,33 +13,33 @@ module Typeid = Kbases.Data.Uuid.Typeid
 (* --- Error handling --- *)
 
 let claim_error_msg = function
-  | Service.Not_a_todo id ->
+  | Service.Mutation.Not_a_todo id ->
       Printf.sprintf "%s is not a todo" id
-  | Service.Not_open { niceid; status } ->
+  | Service.Mutation.Not_open { niceid; status } ->
       Printf.sprintf "%s is not open (status: %s)" niceid status
-  | Service.Blocked { niceid; blocked_by } ->
+  | Service.Mutation.Blocked { niceid; blocked_by } ->
       Printf.sprintf "%s is blocked by %s" niceid (String.concat ", " blocked_by)
-  | Service.Nothing_available _ ->
+  | Service.Mutation.Nothing_available _ ->
       "no available todos"
-  | Service.Service_error (ItemService.Repository_error msg)
-  | Service.Service_error (ItemService.Validation_error msg) -> msg
+  | Service.Mutation.Service_error (ItemService.Repository_error msg)
+  | Service.Mutation.Service_error (ItemService.Validation_error msg) -> msg
 
 let claim_error_json = function
-  | Service.Not_a_todo id ->
+  | Service.Mutation.Not_a_todo id ->
       `Assoc ["ok", `Bool false; "reason", `String "not_a_todo";
               "identifier", `String id]
-  | Service.Not_open { niceid; status } ->
+  | Service.Mutation.Not_open { niceid; status } ->
       `Assoc ["ok", `Bool false; "reason", `String "not_open";
               "niceid", `String niceid; "status", `String status]
-  | Service.Blocked { niceid; blocked_by } ->
+  | Service.Mutation.Blocked { niceid; blocked_by } ->
       `Assoc ["ok", `Bool false; "reason", `String "blocked";
               "niceid", `String niceid;
               "blocked_by", `List (List.map (fun s -> `String s) blocked_by)]
-  | Service.Nothing_available { stuck_count } ->
+  | Service.Mutation.Nothing_available { stuck_count } ->
       `Assoc ["ok", `Bool false; "reason", `String "nothing_available";
               "stuck_count", `Int stuck_count]
-  | Service.Service_error (ItemService.Repository_error msg)
-  | Service.Service_error (ItemService.Validation_error msg) ->
+  | Service.Mutation.Service_error (ItemService.Repository_error msg)
+  | Service.Mutation.Service_error (ItemService.Validation_error msg) ->
       `Assoc ["ok", `Bool false; "reason", `String "error";
               "message", `String msg]
 

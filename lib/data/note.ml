@@ -4,6 +4,8 @@ module Typeid = Uuid.Typeid
 
 let _typeid_prefix = "note"
 
+let entity_name = "note"
+
 type id = Typeid.t
 
 type status = Active | Archived [@@deriving show]
@@ -59,6 +61,9 @@ let content    { content;    _ } = content
 let status     { status;     _ } = status
 let created_at { created_at; _ } = created_at
 let updated_at { updated_at; _ } = updated_at
+
+let default_status = Active (* @unused-ok — consumed via Entity_repo functor *)
+let default_excluded_status = Archived (* @unused-ok — consumed via Entity_repo functor *)
 
 let with_status     t status     = { t with status }
 let with_title      t title      = { t with title }

@@ -24,6 +24,7 @@ when documentation is insufficient.
 
 All documentation related to coding principles and practices, project
 conventions, etc can be discovered via the index: `docs/index.md`.
+Do not use the auto memory system; project context is managed here instead.
 
 ## Knowledge Base
 
@@ -31,7 +32,7 @@ This repository uses `bs` to track todos and notes. Use it to
 externalize work you've identified, decisions, and research.
 
 ```
-# Create items (content from --content or stdin)
+# Create items (content from stdin)
 echo "Description" | bs add todo "Title"
 echo "Research findings" | bs add note "Title"
 

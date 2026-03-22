@@ -5,6 +5,9 @@
     [Open], [In_Progress], or [Done].
 *)
 
+(** Entity name: ["todo"]. *)
+val entity_name : string
+
 (** Unique TypeId for todos. *)
 type id = Uuid.Typeid.t
 
@@ -57,6 +60,12 @@ val content : t -> Content.t
 
 (** [status t] returns the status of the todo. *)
 val status : t -> status
+
+(** The default status for newly created todos ([Open]). *)
+val default_status : status
+
+(** The status excluded by default from listings ([Done]). *)
+val default_excluded_status : status
 
 (** [with_status t status] returns a copy of [t] with [status] replaced. *)
 val with_status : t -> status -> t

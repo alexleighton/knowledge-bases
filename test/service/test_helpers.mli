@@ -26,3 +26,6 @@ val query_rows :
   (int * Sqlite3.Data.t) list ->
   unit
 val query_count : Kbases.Repository.Root.t -> string -> unit
+val make_blocking_rel :
+  source:Kbases.Data.Todo.t -> target:Kbases.Data.Todo.t -> Kbases.Data.Relation.t
+val query_relations : Kbases.Repository.Root.t -> unit

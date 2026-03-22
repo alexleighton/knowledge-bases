@@ -23,15 +23,10 @@ let init root = {
   relation_svc = Relation_service.init root;
 }
 
-let _todo_changed old todo =
-  Data.Todo.status old <> Data.Todo.status todo
-  || Data.Todo.title old <> Data.Todo.title todo
-  || Data.Todo.content old <> Data.Todo.content todo
-
-let _note_changed old note =
-  Data.Note.status old <> Data.Note.status note
-  || Data.Note.title old <> Data.Note.title note
-  || Data.Note.content old <> Data.Note.content note
+let _entity_changed (type a s) (module E : Data.Entity.S with type t = a and type status = s) old curr =
+  E.status old <> E.status curr
+  || E.title old <> E.title curr
+  || E.content old <> E.content curr
 
 let update t ~identifier ?status ?title ?content () =
   let open Item_service in
@@ -49,7 +44,7 @@ let update t ~identifier ?status ?title ?content () =
           in
           let todo = match title with None -> todo | Some t -> Data.Todo.with_title todo t in
           let todo = match content with None -> todo | Some c -> Data.Todo.with_content todo c in
-          if not (_todo_changed old todo) then
+          if not (_entity_changed (module Data.Todo) old todo) then
             Error (Validation_error "nothing to update")
           else
             let todo = Data.Todo.with_updated_at todo (Data.Timestamp.now ()) in
@@ -63,27 +58,39 @@ let update t ~identifier ?status ?title ?content () =
           in
           let note = match title with None -> note | Some t -> Data.Note.with_title note t in
           let note = match content with None -> note | Some c -> Data.Note.with_content note c in
-          if not (_note_changed old note) then
+          if not (_entity_changed (module Data.Note) old note) then
             Error (Validation_error "nothing to update")
           else
             let note = Data.Note.with_updated_at note (Data.Timestamp.now ()) in
             let+ note = NoteRepo.update t.note_repo note |> Result.map_error map_note_repo_error in
             Note_item note
 
-let resolve t ~identifier =
+let _transition_to t ~identifier ~entity_type ~target_status ~verb =
   let open Item_service in
   let open Result.Syntax in
   let* item = find t.items ~identifier in
+  let actual_type = Data.Item.entity_type item in
+  if actual_type <> entity_type then
+    let niceid_str = Data.Identifier.to_string (Data.Item.niceid item) in
+    Error (Validation_error
+      (Printf.sprintf "%s applies only to %ss, but %s is a %s"
+         verb entity_type niceid_str actual_type))
+  else
+    update t ~identifier ~status:target_status ()
+
+let resolve t ~identifier =
+  let open Result.Syntax in
+  let+ item = _transition_to t ~identifier ~entity_type:"todo"
+                ~target_status:"done" ~verb:"resolve" in
   match item with
-  | Note_item note ->
-      let niceid_str = Data.Identifier.to_string (Data.Note.niceid note) in
-      Error (Validation_error
-        (Printf.sprintf "resolve applies only to todos, but %s is a note" niceid_str))
-  | Todo_item _ ->
-      let+ item = update t ~identifier ~status:"done" () in
-      match item with
-      | Todo_item todo -> todo
-      | Note_item _ -> assert false
+  | Item_service.Todo_item todo -> todo
+  | Item_service.Note_item _ -> assert false
+
+let _start_todo t todo =
+  let todo = Data.Todo.with_status todo Data.Todo.In_Progress in
+  let todo = Data.Todo.with_updated_at todo (Data.Timestamp.now ()) in
+  TodoRepo.update t.todo_repo todo
+  |> Result.map_error (fun e -> Service_error (Item_service.map_todo_repo_error e))
 
 let next t =
   let open Result.Syntax in
@@ -98,10 +105,7 @@ let next t =
                         |> Result.map_error (fun e -> Service_error e) in
         match blockers with
         | [] ->
-            let todo = Data.Todo.with_status todo Data.Todo.In_Progress in
-            let todo = Data.Todo.with_updated_at todo (Data.Timestamp.now ()) in
-            let+ todo = TodoRepo.update t.todo_repo todo
-                        |> Result.map_error (fun e -> Service_error (Item_service.map_todo_repo_error e)) in
+            let+ todo = _start_todo t todo in
             Some todo
         | _ -> find_available (stuck_count + 1) rest
   in
@@ -120,30 +124,19 @@ let claim t ~identifier =
           let* blockers = Relation_service.find_blockers t.relation_svc todo
                           |> Result.map_error (fun e -> Service_error e) in
           (match blockers with
-           | [] ->
-               let todo = Data.Todo.with_status todo Data.Todo.In_Progress in
-               let todo = Data.Todo.with_updated_at todo (Data.Timestamp.now ()) in
-               TodoRepo.update t.todo_repo todo
-               |> Result.map_error (fun e -> Service_error (Item_service.map_todo_repo_error e))
+           | [] -> _start_todo t todo
            | _ -> Error (Blocked { niceid = niceid_str; blocked_by = blockers }))
       | Data.Todo.In_Progress | Data.Todo.Done as s ->
           Error (Not_open { niceid = niceid_str;
                             status = Data.Todo.status_to_string s })
 
 let archive t ~identifier =
-  let open Item_service in
   let open Result.Syntax in
-  let* item = find t.items ~identifier in
+  let+ item = _transition_to t ~identifier ~entity_type:"note"
+                ~target_status:"archived" ~verb:"archive" in
   match item with
-  | Todo_item todo ->
-      let niceid_str = Data.Identifier.to_string (Data.Todo.niceid todo) in
-      Error (Validation_error
-        (Printf.sprintf "archive applies only to notes, but %s is a todo" niceid_str))
-  | Note_item _ ->
-      let+ item = update t ~identifier ~status:"archived" () in
-      match item with
-      | Note_item note -> note
-      | Todo_item _ -> assert false
+  | Item_service.Note_item note -> note
+  | Item_service.Todo_item _ -> assert false
 
 let reopen t ~identifier =
   let open Item_service in

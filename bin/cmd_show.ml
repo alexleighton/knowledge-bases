@@ -35,13 +35,14 @@ let format_item = function
         (Title.to_string (Note.title note))
         (Content.to_string (Note.content note))
 
-let format_relation_entry (entry : Service.relation_entry) =
+let format_relation_entry (entry : Service.Query.relation_entry) =
+  let open Service.Query in
   Printf.printf "  %s  %s  %s  %s%s\n"
-    (Relation_kind.to_string entry.Service.kind)
-    (Identifier.to_string entry.Service.niceid)
-    entry.Service.entity_type
-    (Title.to_string entry.Service.title)
-    (match entry.Service.blocking with Some true -> "  [blocking]" | _ -> "")
+    (Relation_kind.to_string entry.kind)
+    (Identifier.to_string entry.niceid)
+    entry.entity_type
+    (Title.to_string entry.title)
+    (match entry.blocking with Some true -> "  [blocking]" | _ -> "")
 
 let format_relations ~outgoing ~incoming =
   if outgoing <> [] then begin
@@ -53,24 +54,25 @@ let format_relations ~outgoing ~incoming =
     List.iter format_relation_entry incoming
   end
 
-let format_show_result Service.{ item; outgoing; incoming } =
+let format_show_result Service.Query.{ item; outgoing; incoming } =
   format_item item;
   format_relations ~outgoing ~incoming
 
-let relation_entry_to_json (entry : Service.relation_entry) =
+let relation_entry_to_json (entry : Service.Query.relation_entry) =
+  let open Service.Query in
   let base = [
-    "kind", `String (Relation_kind.to_string entry.Service.kind);
-    "niceid", `String (Identifier.to_string entry.Service.niceid);
-    "type", `String entry.Service.entity_type;
-    "title", `String (Title.to_string entry.Service.title);
+    "kind", `String (Relation_kind.to_string entry.kind);
+    "niceid", `String (Identifier.to_string entry.niceid);
+    "type", `String entry.entity_type;
+    "title", `String (Title.to_string entry.title);
   ] in
-  let fields = match entry.Service.blocking with
+  let fields = match entry.blocking with
     | Some b -> base @ ["blocking", `Bool b]
     | None -> base
   in
   `Assoc fields
 
-let item_to_json Service.{ item; outgoing; incoming } =
+let item_to_json Service.Query.{ item; outgoing; incoming } =
   let item_fields = match item with
     | Service.Todo_item todo ->
         [

@@ -88,3 +88,22 @@ let query_count root table =
     (Printf.sprintf "SELECT count(*) FROM %s" table)
     []
     (fun stmt -> Printf.sprintf "%s=%s" table (Sqlite3.column_text stmt 0))
+
+module Relation = Kbases.Data.Relation
+module Relation_kind = Kbases.Data.Relation_kind
+module Todo = Kbases.Data.Todo
+
+let make_blocking_rel ~source ~target =
+  Relation.make ~source:(Todo.id source) ~target:(Todo.id target)
+    ~kind:(Relation_kind.make "depends-on") ~bidirectional:false ~blocking:true
+
+let query_relations root =
+  query_rows root
+    {|SELECT s.niceid, r.kind, t.niceid, r.bidirectional
+      FROM relation r
+      JOIN (SELECT id, niceid FROM todo UNION ALL SELECT id, niceid FROM note) s
+        ON s.id = r.source
+      JOIN (SELECT id, niceid FROM todo UNION ALL SELECT id, niceid FROM note) t
+        ON t.id = r.target
+      ORDER BY s.niceid, r.kind|}
+    []

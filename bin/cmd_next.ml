@@ -19,16 +19,16 @@ let run show json =
           ])
         else
           print_endline "No open unblocked todos"
-    | Error (Service.Nothing_available { stuck_count }) ->
+    | Error (Service.Mutation.Nothing_available { stuck_count }) ->
         if json then begin
           Common.print_json (Cmd_claim.claim_error_json
-            (Service.Nothing_available { stuck_count }));
+            (Service.Mutation.Nothing_available { stuck_count }));
           exit 123
         end else
           Common.exit_with ~code:123
             (Printf.sprintf "no available todos (%d open todo(s) blocked)" stuck_count)
-    | Error ((Service.Not_a_todo _ | Service.Not_open _
-            | Service.Blocked _ | Service.Service_error _) as err) ->
+    | Error ((Service.Mutation.Not_a_todo _ | Service.Mutation.Not_open _
+            | Service.Mutation.Blocked _ | Service.Mutation.Service_error _) as err) ->
         Cmd_claim.exit_claim_error ~json err)
 
 let show_flag =

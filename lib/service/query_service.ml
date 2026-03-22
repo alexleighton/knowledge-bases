@@ -97,29 +97,22 @@ let init root = {
   show_svc      = Show_service.init root;
 }
 
-(* --- Item helpers --- *)
-
-let _raw_id_of_item item = Data.Identifier.raw_id (Data.Item.niceid item)
-
-let _created_at_of_item item = Data.Item.created_at item
-let _updated_at_of_item item = Data.Item.updated_at item
-
-let _typeid_of_item = Data.Item.typeid
-
 (* --- Sorting --- *)
 
 let _sort_items spec items =
   match spec.sort with
   | None ->
-      let cmp a b = Int.compare (_raw_id_of_item a) (_raw_id_of_item b) in
+      let cmp a b = Int.compare
+        (Data.Identifier.raw_id (Data.Item.niceid a))
+        (Data.Identifier.raw_id (Data.Item.niceid b)) in
       let cmp = if spec.ascending then cmp else fun a b -> cmp b a in
       List.sort cmp items
   | Some Sort_created ->
-      let cmp a b = Data.Timestamp.compare (_created_at_of_item b) (_created_at_of_item a) in
+      let cmp a b = Data.Timestamp.compare (Data.Item.created_at b) (Data.Item.created_at a) in
       let cmp = if spec.ascending then fun a b -> cmp b a else cmp in
       List.sort cmp items
   | Some Sort_updated ->
-      let cmp a b = Data.Timestamp.compare (_updated_at_of_item b) (_updated_at_of_item a) in
+      let cmp a b = Data.Timestamp.compare (Data.Item.updated_at b) (Data.Item.updated_at a) in
       let cmp = if spec.ascending then fun a b -> cmp b a else cmp in
       List.sort cmp items
 
@@ -223,7 +216,7 @@ let _apply_relation_filters t spec items =
   let* allowed_sets =
     List.map (fun (rf : relation_filter) ->
       let* target_item = Item_service.find t.items ~identifier:rf.target in
-      let target_typeid = _typeid_of_item target_item in
+      let target_typeid = Data.Item.typeid target_item in
       let* kind = Parse.relation_kind rf.kind in
       if spec.transitive then
         let+ reachable =
@@ -271,7 +264,7 @@ let _apply_relation_filters t spec items =
     | first :: rest -> List.fold_left TypeidSet.inter first rest
   in
   Ok (List.filter (fun item ->
-    TypeidSet.mem (_typeid_of_item item) combined
+    TypeidSet.mem (Data.Item.typeid item) combined
   ) items)
 
 (* --- Blocked filtering --- *)

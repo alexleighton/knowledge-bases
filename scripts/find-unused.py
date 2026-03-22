@@ -23,6 +23,10 @@ Usage:
     ./scripts/find-unused.py lib/data/char.ml # scan a single file
     ./scripts/find-unused.py -v               # verbose logging
 
+Suppression:
+    Add (* @unused-ok *) on the definition line in the .ml file
+    to suppress a false positive (e.g. values consumed via functor).
+
 Output format (tab-separated):
     file	line	symbol_name
 """
@@ -238,12 +242,20 @@ def exported_values(result):
     (kind 26), modules (kind 2), and constructors/fields (kind 22)
     are skipped — the reference index cannot reliably track their
     usage.
+
+    Symbols with a ``containerName`` are also skipped — these are
+    nested inside a module type or sub-module (e.g. ``val`` inside
+    ``module type S = sig … end``) and are not real top-level
+    exports of the compilation unit.
     """
     if not result:
         return []
     values = []
     for sym in result:
         if sym.get("kind") != SK_VALUE:
+            continue
+        if sym.get("containerName"):
+            log(f"  {sym['name']}: inside {sym['containerName']}, skipping")
             continue
         if "location" in sym:
             start = sym["location"]["range"]["start"]
@@ -377,6 +389,13 @@ def find_unused(proc, root, target_files):
             log(f"    {len(refs or [])} total, {len(external)} external")
 
             if not external:
+                # Allow suppression via (* @unused-ok *) comment on the
+                # definition line — useful for values consumed through
+                # functor application, which the reference index cannot
+                # trace.
+                if "@unused-ok" in ml_lines[line]:
+                    log(f"    suppressed via @unused-ok")
+                    continue
                 unused.append({
                     "file": str(rel),
                     "line": line + 1,

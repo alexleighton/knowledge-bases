@@ -4,6 +4,8 @@ module Typeid = Uuid.Typeid
 
 let _typeid_prefix = "todo"
 
+let entity_name = "todo"
+
 type status = Open | In_Progress | Done [@@deriving show]
 
 let status_to_string = function Open -> "open" | In_Progress -> "in-progress" | Done -> "done"
@@ -57,6 +59,9 @@ let content    { content;    _ } = content
 let status     { status;     _ } = status
 let created_at { created_at; _ } = created_at
 let updated_at { updated_at; _ } = updated_at
+
+let default_status = Open (* @unused-ok — consumed via Entity_repo functor *)
+let default_excluded_status = Done (* @unused-ok — consumed via Entity_repo functor *)
 
 let with_status     t status     = { t with status }
 let with_title      t title      = { t with title }

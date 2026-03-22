@@ -41,6 +41,7 @@ Examples:
 | `String`     | Extended string helpers (shadows Stdlib)          |
 | `Identifier` | Human-friendly `<namespace>-<raw_id>` identifiers |
 | `Namespace`  | Acronym generation from human names               |
+| `Entity`     | Shared module type (`S`) for entity domain types  |
 | `Note`       | The core "note" domain type                       |
 | `Todo`       | Self-contained todo entity with workflow status   |
 | `Uuid.*`     | UUIDv7 generation, TypeId, Crockford Base32       |
@@ -111,8 +112,9 @@ Examples:
 | `Sqlite` | Thin helpers over `Sqlite3` (exec, bind, step)          |
 | `Config` | Key-value configuration store                           |
 | `Jsonl`  | JSONL file format — serialization, parsing, file I/O    |
+| `Entity_repo`| Generic CRUD functor for entity repositories        |
 | `Niceid` | Sequential nice-id allocator (per namespace)            |
-| `Note`   | Note CRUD (create, get, update, delete)                 |
+| `Note`   | Note CRUD — `Entity_repo.Make(Data.Note)`               |
 | `Root`   | Opens the DB, initialises all repos, provides accessors |
 
 **JSONL and git automerge.** The `.kbases.jsonl` file is designed to
@@ -139,9 +141,10 @@ the data definition lives in `Data`, and the storage surface lives in
 **Put new code here when** you need to read or write persistent state.
 Typical steps for a new entity:
 
-1. Define the domain type in `Data` (with `.ml` and `.mli`).
-2. Create a repository module in `Repository` that handles the
-   entity's table schema, CRUD, and its own error type.
+1. Define the domain type in `Data` (with `.ml` and `.mli`),
+   satisfying `Data.Entity.S`.
+2. Apply `Entity_repo.Make` in a new `Repository` module
+   (e.g., `include Entity_repo.Make(Data.Foo)`).
 3. Wire the new repository into `Root.init` so it is initialised with
    the shared connection.
 

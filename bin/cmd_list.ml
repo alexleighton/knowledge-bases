@@ -70,14 +70,14 @@ let counts_to_json todos notes =
 let run entity_type statuses json available sort_str asc count
     depends_on related_to uni bi blocked transitive =
   let sort = match sort_str with
-    | Some "created" -> Some Service.Sort_created
-    | Some "updated" -> Some Service.Sort_updated
+    | Some "created" -> Some Service.Query.Sort_created
+    | Some "updated" -> Some Service.Query.Sort_updated
     | _ -> None
   in
   let relation_filters =
     Service.build_filters ~depends_on ~related_to ~uni ~bi
   in
-  let spec = Service.{
+  let spec = Service.Query.{
     entity_type;
     statuses;
     available;

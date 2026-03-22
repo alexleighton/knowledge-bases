@@ -10,16 +10,7 @@ module Relation_kind = Kbases.Data.Relation_kind
 let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
 let query_rows = Test_helpers.query_rows
 
-let query_relations root =
-  query_rows root
-    {|SELECT s.niceid, r.kind, t.niceid, r.bidirectional
-      FROM relation r
-      JOIN (SELECT id, niceid FROM todo UNION ALL SELECT id, niceid FROM note) s
-        ON s.id = r.source
-      JOIN (SELECT id, niceid FROM todo UNION ALL SELECT id, niceid FROM note) t
-        ON t.id = r.target
-      ORDER BY s.niceid, r.kind|}
-    []
+let query_relations = Test_helpers.query_relations
 
 let with_relation_service f =
   Test_helpers.with_service RelationService.init f

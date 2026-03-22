@@ -29,10 +29,7 @@ let init root = {
   niceid_repo   = Repository.Root.niceid root;
 }
 
-let _map_todo_err e = Service_error (Item_service.map_todo_repo_error e)
-let _map_note_err e = Service_error (Item_service.map_note_repo_error e)
-let _map_rel_err e = Service_error (Item_service.map_relation_repo_error e)
-let _map_niceid_err e = Service_error (Item_service.map_niceid_repo_error e)
+let _to_service_error map e = Service_error (map e)
 
 let cascade_delete ~todo_repo ~note_repo ~relation_repo ~niceid_repo
     ~map_err ~typeid ~niceid ~entity_type =
@@ -54,15 +51,11 @@ let cascade_delete ~todo_repo ~note_repo ~relation_repo ~niceid_repo
   in
   relations_removed
 
-let _typeid_of_item = Data.Item.typeid
-let _niceid_of_item = Data.Item.niceid
-let _entity_type_of_item = Data.Item.entity_type
-
 let _find_blocking_dependents t typeid =
   let open Result.Syntax in
   let* incoming =
     RelationRepo.find_by_target t.relation_repo typeid
-    |> Result.map_error _map_rel_err
+    |> Result.map_error (_to_service_error Item_service.map_relation_repo_error)
   in
   let blocking = List.filter Data.Relation.is_blocking incoming in
   let+ dependents =
@@ -81,16 +74,16 @@ let _find_blocking_dependents t typeid =
   dependents
 
 let _map_cascade_err = function
-  | `Todo e -> _map_todo_err e
-  | `Note e -> _map_note_err e
-  | `Rel e -> _map_rel_err e
-  | `Niceid e -> _map_niceid_err e
+  | `Todo e -> _to_service_error Item_service.map_todo_repo_error e
+  | `Note e -> _to_service_error Item_service.map_note_repo_error e
+  | `Rel e -> _to_service_error Item_service.map_relation_repo_error e
+  | `Niceid e -> _to_service_error Item_service.map_niceid_repo_error e
 
 let _delete_item t item =
   let open Result.Syntax in
-  let typeid = _typeid_of_item item in
-  let niceid = _niceid_of_item item in
-  let entity_type = _entity_type_of_item item in
+  let typeid = Data.Item.typeid item in
+  let niceid = Data.Item.niceid item in
+  let entity_type = Data.Item.entity_type item in
   let+ relations_removed =
     cascade_delete
       ~todo_repo:t.todo_repo ~note_repo:t.note_repo
@@ -105,8 +98,8 @@ let delete t ~identifier ~force =
     Item_service.find t.items ~identifier
     |> Result.map_error (fun e -> Service_error e)
   in
-  let typeid = _typeid_of_item item in
-  let niceid_str = Data.Identifier.to_string (_niceid_of_item item) in
+  let typeid = Data.Item.typeid item in
+  let niceid_str = Data.Identifier.to_string (Data.Item.niceid item) in
   let* () =
     if force then Ok ()
     else
@@ -126,8 +119,8 @@ let delete_many t ~identifiers ~force =
         Item_service.find t.items ~identifier
         |> Result.map_error (fun e -> Service_error e)
       in
-      let typeid = _typeid_of_item item in
-      let niceid_str = Data.Identifier.to_string (_niceid_of_item item) in
+      let typeid = Data.Item.typeid item in
+      let niceid_str = Data.Identifier.to_string (Data.Item.niceid item) in
       let* () =
         if force then Ok ()
         else

@@ -20,7 +20,7 @@ let run source depends_on related_to uni bi blocking json =
         if json then
           Common.print_json (`Assoc [
             "ok", `Bool true;
-            "relations", `List (List.map (fun { Service.relation = rel;
+            "relations", `List (List.map (fun { Service.Relation.relation = rel;
                                                source_niceid; target_niceid; _ } ->
               let dir = if Relation.is_bidirectional rel then "bidirectional"
                         else "unidirectional" in
@@ -32,7 +32,7 @@ let run source depends_on related_to uni bi blocking json =
               ]) results);
           ])
         else
-          List.iter (fun { Service.relation = rel; source_niceid;
+          List.iter (fun { Service.Relation.relation = rel; source_niceid;
                            target_niceid; _ } ->
             let dir = if Relation.is_bidirectional rel then "bidirectional"
                       else "unidirectional" in

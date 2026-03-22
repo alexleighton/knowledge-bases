@@ -18,27 +18,26 @@ type error =
 
 (* --- Serialization --- *)
 
-let _todo_to_json todo =
+let _entity_to_json ~entity_type ~id ~title ~content ~status ~created_at ~updated_at =
   `Assoc [
-    ("type", `String "todo");
-    ("id", `String (Data.Uuid.Typeid.to_string (Data.Todo.id todo)));
-    ("title", `String (Data.Title.to_string (Data.Todo.title todo)));
-    ("content", `String (Data.Content.to_string (Data.Todo.content todo)));
-    ("status", `String (Data.Todo.status_to_string (Data.Todo.status todo)));
-    ("created_at", `String (Data.Timestamp.to_iso8601 (Data.Todo.created_at todo)));
-    ("updated_at", `String (Data.Timestamp.to_iso8601 (Data.Todo.updated_at todo)));
+    ("type", `String entity_type);
+    ("id", `String (Data.Uuid.Typeid.to_string id));
+    ("title", `String (Data.Title.to_string title));
+    ("content", `String (Data.Content.to_string content));
+    ("status", `String status);
+    ("created_at", `String (Data.Timestamp.to_iso8601 created_at));
+    ("updated_at", `String (Data.Timestamp.to_iso8601 updated_at));
   ]
 
-let _note_to_json note =
-  `Assoc [
-    ("type", `String "note");
-    ("id", `String (Data.Uuid.Typeid.to_string (Data.Note.id note)));
-    ("title", `String (Data.Title.to_string (Data.Note.title note)));
-    ("content", `String (Data.Content.to_string (Data.Note.content note)));
-    ("status", `String (Data.Note.status_to_string (Data.Note.status note)));
-    ("created_at", `String (Data.Timestamp.to_iso8601 (Data.Note.created_at note)));
-    ("updated_at", `String (Data.Timestamp.to_iso8601 (Data.Note.updated_at note)));
-  ]
+let _typed_entity_to_json (type a s) (module E : Data.Entity.S with type t = a and type status = s) entity =
+  _entity_to_json ~entity_type:E.entity_name
+    ~id:(E.id entity) ~title:(E.title entity)
+    ~content:(E.content entity)
+    ~status:(E.status_to_string (E.status entity))
+    ~created_at:(E.created_at entity) ~updated_at:(E.updated_at entity)
+
+let _todo_to_json = _typed_entity_to_json (module Data.Todo)
+let _note_to_json = _typed_entity_to_json (module Data.Note)
 
 let _relation_to_json rel =
   `Assoc [
@@ -56,11 +55,11 @@ let _relation_sort_key rel =
   Data.Uuid.Typeid.to_string (Data.Relation.target rel) ^ ":" ^
   Data.Relation_kind.to_string (Data.Relation.kind rel)
 
-let _sort_key_todo todo =
-  Data.Uuid.Typeid.to_string (Data.Todo.id todo)
+let _sort_key_entity (type a s) (module E : Data.Entity.S with type t = a and type status = s) entity =
+  Data.Uuid.Typeid.to_string (E.id entity)
 
-let _sort_key_note note =
-  Data.Uuid.Typeid.to_string (Data.Note.id note)
+let _sort_key_todo = _sort_key_entity (module Data.Todo)
+let _sort_key_note = _sort_key_entity (module Data.Note)
 
 let record_sort_key = function
   | Todo { id; _ } -> Data.Uuid.Typeid.to_string id
@@ -147,7 +146,7 @@ let _parse_timestamp json key =
   | Ok s ->
     Data.Timestamp.of_iso8601 s |> Result.map_error (fun msg -> Parse_error msg)
 
-let _parse_todo_record json =
+let _parse_entity_fields json =
   let open Data.Result.Syntax in
   let* id_s = _get_string json "id" in
   let* id = _parse_typeid id_s in
@@ -156,26 +155,28 @@ let _parse_todo_record json =
   let* status_s = _get_string json "status" in
   let* title = _try_make Data.Title.make title_s in
   let* content = _try_make Data.Content.make content_s in
-  let* status = Data.Todo.status_of_string status_s
-    |> Result.map_error (fun msg -> Parse_error msg) in
   let* created_at = _parse_timestamp json "created_at" in
   let* updated_at = _parse_timestamp json "updated_at" in
-  Ok (Todo { id; title; content; status; created_at; updated_at })
+  Ok (id, title, content, status_s, created_at, updated_at)
 
-let _parse_note_record json =
+let _parse_typed_record ~status_of_string ~wrap json =
   let open Data.Result.Syntax in
-  let* id_s = _get_string json "id" in
-  let* id = _parse_typeid id_s in
-  let* title_s = _get_string json "title" in
-  let* content_s = _get_string json "content" in
-  let* status_s = _get_string json "status" in
-  let* title = _try_make Data.Title.make title_s in
-  let* content = _try_make Data.Content.make content_s in
-  let* status = Data.Note.status_of_string status_s
+  let* (id, title, content, status_s, created_at, updated_at) = _parse_entity_fields json in
+  let* status = status_of_string status_s
     |> Result.map_error (fun msg -> Parse_error msg) in
-  let* created_at = _parse_timestamp json "created_at" in
-  let* updated_at = _parse_timestamp json "updated_at" in
-  Ok (Note { id; title; content; status; created_at; updated_at })
+  Ok (wrap ~id ~title ~content ~status ~created_at ~updated_at)
+
+let _parse_todo_record =
+  _parse_typed_record
+    ~status_of_string:Data.Todo.status_of_string
+    ~wrap:(fun ~id ~title ~content ~status ~created_at ~updated_at ->
+      Todo { id; title; content; status; created_at; updated_at })
+
+let _parse_note_record =
+  _parse_typed_record
+    ~status_of_string:Data.Note.status_of_string
+    ~wrap:(fun ~id ~title ~content ~status ~created_at ~updated_at ->
+      Note { id; title; content; status; created_at; updated_at })
 
 let _parse_relation_record json =
   let open Data.Result.Syntax in

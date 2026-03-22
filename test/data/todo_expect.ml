@@ -190,6 +190,19 @@ let%expect_test "timestamp accessors return expected values" =
     updated_at: 1710003600
   |}]
 
+let%expect_test "satisfies Entity.S module type" =
+  let _check : (module Kbases.Data.Entity.S) = (module Todo) in
+  print_endline "ok";
+  [%expect {| ok |}]
+
+let%expect_test "entity_name is todo" =
+  Printf.printf "%s\n" Todo.entity_name;
+  [%expect {| todo |}]
+
+let%expect_test "default_excluded_status is Done" =
+  Printf.printf "%s\n" (Todo.status_to_string Todo.default_excluded_status);
+  [%expect {| done |}]
+
 let%expect_test "with_updated_at returns copy with new value" =
   let identifier = Id.from_string "task-11" in
   let tid = Typeid.of_string "todo_01h455vb4pex5vsknk084sn02r" in

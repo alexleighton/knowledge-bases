@@ -6,18 +6,18 @@ module Common = Cmdline_common
 module Service = Kbases.Service.Kb_service
 
 let file_action_msg = function
-  | Service.Deleted -> "deleted"
-  | Service.Not_found -> "not found"
+  | Service.Lifecycle.Deleted -> "deleted"
+  | Service.Lifecycle.Not_found -> "not found"
 
 let agents_md_action_msg = function
-  | Service.File_deleted -> "deleted"
-  | Service.Section_removed -> "section removed"
-  | Service.Section_modified -> "section modified (manual removal required)"
-  | Service.Not_found -> "not found"
+  | Service.Lifecycle.File_deleted -> "deleted"
+  | Service.Lifecycle.Section_removed -> "section removed"
+  | Service.Lifecycle.Section_modified -> "section modified (manual removal required)"
+  | Service.Lifecycle.Not_found -> "not found"
 
 let git_exclude_action_msg = function
-  | Service.Entry_removed -> "entry removed"
-  | Service.Entry_not_found -> "entry not found"
+  | Service.Lifecycle.Entry_removed -> "entry removed"
+  | Service.Lifecycle.Entry_not_found -> "entry not found"
 
 let run directory yes json =
   if not yes then
@@ -25,7 +25,7 @@ let run directory yes json =
       "Uninstall is destructive and not intended for agent use. Pass --yes to confirm."
   else
     match Service.uninstall_kb ~directory with
-    | Ok { Service.directory; database; jsonl; agents_md; git_exclude } ->
+    | Ok { Service.Lifecycle.directory; database; jsonl; agents_md; git_exclude } ->
         if json then
           Common.print_json (`Assoc [
             "ok", `Bool true;
