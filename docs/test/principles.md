@@ -40,6 +40,11 @@ Test files should live under a directory structure that mirrors `lib/`. A test
 exercising code from `lib/service/` belongs in `test/service/`, not at the top
 level of `test/`.
 
+Each test file must exercise the module named in its filename —
+`show_service_expect.ml` tests `Show_service`, not some other module that
+happens to delegate to it. If module A delegates to module B, the tests for B
+live in `b_*_expect.ml` files, not hidden inside `a_*_expect.ml`.
+
 Each subdirectory needs its own `dune` file declaring a library so that dune
 discovers and runs the tests. Follow the existing pattern:
 
@@ -55,8 +60,10 @@ discovers and runs the tests. Follow the existing pattern:
 ```
 
 **Why:** Keeping the test layout parallel to the source layout makes it easy to
-locate the tests for any given module. It also keeps dune libraries focused and
-avoids a single catch-all test library that grows without bound.
+locate the tests for any given module — glob `<module>_*_expect.ml`. This only
+works when filenames are honest about what they actually exercise. It also keeps
+dune libraries focused and avoids a single catch-all test library that grows
+without bound.
 
 ## 3. Assert on state, not just return values
 

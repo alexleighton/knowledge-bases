@@ -1,7 +1,7 @@
 module Root = Kbases.Repository.Root
 module NoteRepo = Kbases.Repository.Note
 module TodoRepo = Kbases.Repository.Todo
-module QueryService = Kbases.Service.Query_service
+module ShowService = Kbases.Service.Show_service
 module Note = Kbases.Data.Note
 module Todo = Kbases.Data.Todo
 module Title = Kbases.Data.Title
@@ -12,8 +12,8 @@ module Typeid = Kbases.Data.Uuid.Typeid
 let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
 let unwrap_note_repo = Test_helpers.unwrap_note_repo
 
-let with_query_service f =
-  Test_helpers.with_service QueryService.init f
+let with_show_service f =
+  Test_helpers.with_service ShowService.init f
 
 let pp_error = Test_helpers.pp_item_error
 
@@ -22,14 +22,14 @@ let mask_typeid s =
   String.sub s 0 (underscore_pos + 1) ^ "<ID>"
 
 let print_item = function
-  | QueryService.Todo_item todo ->
+  | ShowService.Todo_item todo ->
       Printf.printf "todo %s (%s)\nStatus: %s\nTitle:  %s\n\n%s\n"
         (Identifier.to_string (Todo.niceid todo))
         (mask_typeid (Typeid.to_string (Todo.id todo)))
         (Todo.status_to_string (Todo.status todo))
         (Title.to_string (Todo.title todo))
         (Content.to_string (Todo.content todo))
-  | QueryService.Note_item note ->
+  | ShowService.Note_item note ->
       Printf.printf "note %s (%s)\nStatus: %s\nTitle:  %s\n\n%s\n"
         (Identifier.to_string (Note.niceid note))
         (mask_typeid (Typeid.to_string (Note.id note)))
@@ -38,12 +38,12 @@ let print_item = function
         (Content.to_string (Note.content note))
 
 let%expect_test "show todo by niceid" =
-  with_query_service (fun root service ->
+  with_show_service (fun root service ->
     let todo = unwrap_todo_repo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "Fix the bug") ~content:(Content.make "Details here") ()) in
     let niceid_str = Identifier.to_string (Todo.niceid todo) in
-    match QueryService.show service ~identifier:niceid_str with
-    | Ok QueryService.{ item; _ } -> print_item item
+    match ShowService.show service ~identifier:niceid_str with
+    | Ok ShowService.{ item; _ } -> print_item item
     | Error err -> pp_error err);
   [%expect {|
     todo kb-0 (todo_<ID>)
@@ -54,12 +54,12 @@ let%expect_test "show todo by niceid" =
   |}]
 
 let%expect_test "show note by niceid" =
-  with_query_service (fun root service ->
+  with_show_service (fun root service ->
     let note = unwrap_note_repo (NoteRepo.create (Root.note root)
       ~title:(Title.make "Research notes") ~content:(Content.make "Findings") ()) in
     let niceid_str = Identifier.to_string (Note.niceid note) in
-    match QueryService.show service ~identifier:niceid_str with
-    | Ok QueryService.{ item; _ } -> print_item item
+    match ShowService.show service ~identifier:niceid_str with
+    | Ok ShowService.{ item; _ } -> print_item item
     | Error err -> pp_error err);
   [%expect {|
     note kb-0 (note_<ID>)
@@ -70,12 +70,12 @@ let%expect_test "show note by niceid" =
   |}]
 
 let%expect_test "show todo by typeid" =
-  with_query_service (fun root service ->
+  with_show_service (fun root service ->
     let todo = unwrap_todo_repo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "Fix the bug") ~content:(Content.make "Details here") ()) in
     let typeid_str = Typeid.to_string (Todo.id todo) in
-    match QueryService.show service ~identifier:typeid_str with
-    | Ok QueryService.{ item; _ } -> print_item item
+    match ShowService.show service ~identifier:typeid_str with
+    | Ok ShowService.{ item; _ } -> print_item item
     | Error err -> pp_error err);
   [%expect {|
     todo kb-0 (todo_<ID>)
@@ -86,12 +86,12 @@ let%expect_test "show todo by typeid" =
   |}]
 
 let%expect_test "show note by typeid" =
-  with_query_service (fun root service ->
+  with_show_service (fun root service ->
     let note = unwrap_note_repo (NoteRepo.create (Root.note root)
       ~title:(Title.make "Research notes") ~content:(Content.make "Findings") ()) in
     let typeid_str = Typeid.to_string (Note.id note) in
-    match QueryService.show service ~identifier:typeid_str with
-    | Ok QueryService.{ item; _ } -> print_item item
+    match ShowService.show service ~identifier:typeid_str with
+    | Ok ShowService.{ item; _ } -> print_item item
     | Error err -> pp_error err);
   [%expect {|
     note kb-0 (note_<ID>)
@@ -102,8 +102,8 @@ let%expect_test "show note by typeid" =
   |}]
 
 let%expect_test "show niceid not found" =
-  with_query_service (fun _root service ->
-    match QueryService.show service ~identifier:"kb-999" with
+  with_show_service (fun _root service ->
+    match ShowService.show service ~identifier:"kb-999" with
     | Ok _ -> print_endline "unexpected success"
     | Error err -> pp_error err);
   [%expect {|
@@ -111,8 +111,8 @@ let%expect_test "show niceid not found" =
   |}]
 
 let%expect_test "show typeid not found" =
-  with_query_service (fun _root service ->
-    match QueryService.show service ~identifier:"todo_00000000000000000000000000" with
+  with_show_service (fun _root service ->
+    match ShowService.show service ~identifier:"todo_00000000000000000000000000" with
     | Ok _ -> print_endline "unexpected success"
     | Error err -> pp_error err);
   [%expect {|
@@ -120,8 +120,8 @@ let%expect_test "show typeid not found" =
   |}]
 
 let%expect_test "show unrecognised input" =
-  with_query_service (fun _root service ->
-    match QueryService.show service ~identifier:"garbage" with
+  with_show_service (fun _root service ->
+    match ShowService.show service ~identifier:"garbage" with
     | Ok _ -> print_endline "unexpected success"
     | Error err -> pp_error err);
   [%expect {|
@@ -129,8 +129,8 @@ let%expect_test "show unrecognised input" =
   |}]
 
 let%expect_test "show unknown typeid prefix" =
-  with_query_service (fun _root service ->
-    match QueryService.show service ~identifier:"banana_00000000000000000000000000" with
+  with_show_service (fun _root service ->
+    match ShowService.show service ~identifier:"banana_00000000000000000000000000" with
     | Ok _ -> print_endline "unexpected success"
     | Error err -> pp_error err);
   [%expect {|

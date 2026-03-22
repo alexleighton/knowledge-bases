@@ -35,8 +35,8 @@ let format_item = function
         (Title.to_string (Note.title note))
         (Content.to_string (Note.content note))
 
-let format_relation_entry (entry : Service.Query.relation_entry) =
-  let open Service.Query in
+let format_relation_entry (entry : Service.Show.relation_entry) =
+  let open Service.Show in
   Printf.printf "  %s  %s  %s  %s%s\n"
     (Relation_kind.to_string entry.kind)
     (Identifier.to_string entry.niceid)
@@ -54,12 +54,12 @@ let format_relations ~outgoing ~incoming =
     List.iter format_relation_entry incoming
   end
 
-let format_show_result Service.Query.{ item; outgoing; incoming } =
+let format_show_result Service.Show.{ item; outgoing; incoming } =
   format_item item;
   format_relations ~outgoing ~incoming
 
-let relation_entry_to_json (entry : Service.Query.relation_entry) =
-  let open Service.Query in
+let relation_entry_to_json (entry : Service.Show.relation_entry) =
+  let open Service.Show in
   let base = [
     "kind", `String (Relation_kind.to_string entry.kind);
     "niceid", `String (Identifier.to_string entry.niceid);
@@ -72,7 +72,7 @@ let relation_entry_to_json (entry : Service.Query.relation_entry) =
   in
   `Assoc fields
 
-let item_to_json Service.Query.{ item; outgoing; incoming } =
+let item_to_json Service.Show.{ item; outgoing; incoming } =
   let item_fields = match item with
     | Service.Todo_item todo ->
         [

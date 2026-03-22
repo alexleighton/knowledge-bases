@@ -7,6 +7,7 @@
 
 module Lifecycle = Lifecycle
 module Query = Query_service
+module Show = Show_service
 module Mutation = Mutation_service
 module Relation = Relation_service
 module Delete = Delete_service
@@ -31,7 +32,7 @@ type add_with_relations_result = {
   niceid      : Data.Identifier.t;
   typeid      : Data.Uuid.Typeid.t;
   entity_type : string;
-  relations   : Query.relation_entry list;
+  relations   : Show.relation_entry list;
 }
 
 (* --- Lifecycle --- *)
@@ -117,12 +118,12 @@ val list : t -> Query.list_spec -> (Query.list_result, error) result
 
 (** [show t ~identifier] looks up a single item by niceid or TypeId, including
     its outgoing and incoming relations. *)
-val show : t -> identifier:string -> (Query.show_result, error) result
+val show : t -> identifier:string -> (Show.show_result, error) result
 
 (** [show_many t ~identifiers] looks up multiple items by niceid or TypeId,
     including their relations. Fails on the first unresolvable identifier.
     Returns results in input order. *)
-val show_many : t -> identifiers:string list -> (Query.show_result list, error) result
+val show_many : t -> identifiers:string list -> (Show.show_result list, error) result
 
 (* --- Modify --- *)
 

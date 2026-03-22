@@ -10,7 +10,6 @@ type t = {
   relation_repo : RelationRepo.t;
   relation_svc  : Relation_service.t;
   graph_svc     : Graph_service.t;
-  show_svc      : Show_service.t;
 }
 
 type error = Item_service.error =
@@ -20,20 +19,6 @@ type error = Item_service.error =
 type item = Data.Item.t =
   | Todo_item of Data.Todo.t
   | Note_item of Data.Note.t
-
-type relation_entry = Show_service.relation_entry = {
-  kind        : Data.Relation_kind.t;
-  niceid      : Data.Identifier.t;
-  entity_type : string;
-  title       : Data.Title.t;
-  blocking    : bool option;
-}
-
-type show_result = Show_service.show_result = {
-  item     : item;
-  outgoing : relation_entry list;
-  incoming : relation_entry list;
-}
 
 type sort_order = Sort_created | Sort_updated
 
@@ -94,7 +79,6 @@ let init root = {
   relation_repo = Repository.Root.relation root;
   relation_svc  = Relation_service.init root;
   graph_svc     = Graph_service.init root;
-  show_svc      = Show_service.init root;
 }
 
 (* --- Sorting --- *)
@@ -310,8 +294,3 @@ let list t spec =
   let items = _sort_items spec items in
   if spec.count_only then Ok (_count_items items)
   else Ok (Items items)
-
-(* --- Show --- *)
-
-let show t ~identifier = Show_service.show t.show_svc ~identifier
-let show_many t ~identifiers = Show_service.show_many t.show_svc ~identifiers

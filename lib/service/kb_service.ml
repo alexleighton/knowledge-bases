@@ -1,5 +1,6 @@
 module Lifecycle = Lifecycle
 module Query = Query_service
+module Show = Show_service
 module Mutation = Mutation_service
 module Relation = Relation_service
 module Delete = Delete_service
@@ -8,8 +9,9 @@ module Gc = Gc_service
 type t = {
   note_repo    : Repository.Note.t;
   todo_repo    : Repository.Todo.t;
-  query        : Query.t;
-  mutation     : Mutation.t;
+  query_svc    : Query.t;
+  show_svc     : Show.t;
+  mutation_svc : Mutation.t;
   relation_svc : Relation.t;
   delete_svc   : Delete.t;
   gc_svc       : Gc.t;
@@ -29,7 +31,7 @@ type add_with_relations_result = {
   niceid      : Data.Identifier.t;
   typeid      : Data.Uuid.Typeid.t;
   entity_type : string;
-  relations   : Query.relation_entry list;
+  relations   : Show.relation_entry list;
 }
 
 (* --- Error mapping --- *)
@@ -66,9 +68,9 @@ let _with_flush_map t ~map_err f =
 let _with_flush t f =
   _with_flush_map t ~map_err:map_sync_error f
 
-let _relation_entry_of_relate_result (r : Relation.relate_result) : Query.relation_entry =
+let _relation_entry_of_relate_result (r : Relation.relate_result) : Show.relation_entry =
   let open Relation in
-  { Query.kind = Data.Relation.kind r.relation;
+  { Show.kind = Data.Relation.kind r.relation;
     niceid      = r.target_niceid;
     entity_type = r.target_type;
     title       = r.target_title;
@@ -83,8 +85,9 @@ let build_filters = Query.build_filters
 let init root = {
   note_repo = Repository.Root.note root;
   todo_repo = Repository.Root.todo root;
-  query    = Query.init root;
-  mutation = Mutation.init root;
+  query_svc    = Query.init root;
+  show_svc     = Show.init root;
+  mutation_svc = Mutation.init root;
   relation_svc = Relation.init root;
   delete_svc = Delete.init root;
   gc_svc   = Gc.init root;
@@ -175,45 +178,45 @@ let add_todo_with_relations t ~title ~content ~specs ?status () =
 (* --- Query operations --- *)
 
 let list t spec =
-  Query.list t.query spec
+  Query.list t.query_svc spec
 
 let show t ~identifier =
-  Query.show t.query ~identifier
+  Show.show t.show_svc ~identifier
 
 let show_many t ~identifiers =
-  Query.show_many t.query ~identifiers
+  Show.show_many t.show_svc ~identifiers
 
 (* --- Mutation operations --- *)
 
 let update t ~identifier ?status ?title ?content () =
   _with_flush t (fun () ->
-    Mutation.update t.mutation ~identifier ?status ?title ?content ())
+    Mutation.update t.mutation_svc ~identifier ?status ?title ?content ())
 
 let resolve_many t ~identifiers =
   _with_flush t (fun () ->
     Repository.Sqlite.with_transaction t.db
       ~on_begin_error:(fun msg -> Repository_error msg)
-      (fun () -> Mutation.resolve_many t.mutation ~identifiers))
+      (fun () -> Mutation.resolve_many t.mutation_svc ~identifiers))
 
 let archive_many t ~identifiers =
   _with_flush t (fun () ->
     Repository.Sqlite.with_transaction t.db
       ~on_begin_error:(fun msg -> Repository_error msg)
-      (fun () -> Mutation.archive_many t.mutation ~identifiers))
+      (fun () -> Mutation.archive_many t.mutation_svc ~identifiers))
 
 let reopen_many t ~identifiers =
   _with_flush t (fun () ->
     Repository.Sqlite.with_transaction t.db
       ~on_begin_error:(fun msg -> Repository_error msg)
-      (fun () -> Mutation.reopen_many t.mutation ~identifiers))
+      (fun () -> Mutation.reopen_many t.mutation_svc ~identifiers))
 
 let next t =
   _with_flush_map t ~map_err:_map_sync_to_claim_error (fun () ->
-    Mutation.next t.mutation)
+    Mutation.next t.mutation_svc)
 
 let claim t ~identifier =
   _with_flush_map t ~map_err:_map_sync_to_claim_error (fun () ->
-    Mutation.claim t.mutation ~identifier)
+    Mutation.claim t.mutation_svc ~identifier)
 
 let _map_sync_to_delete_error e =
   Delete.Service_error (map_sync_error e)

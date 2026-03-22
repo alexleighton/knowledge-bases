@@ -169,7 +169,7 @@ let pp_add_result { Service.niceid; entity_type; relations; typeid = _ } =
     (Identifier.to_string niceid)
     entity_type
     (List.length relations);
-  List.iter (fun (re : Service.Query.relation_entry) ->
+  List.iter (fun (re : Service.Show.relation_entry) ->
     Printf.printf "  rel: %s %s (%s)\n"
       (Relation_kind.to_string re.kind)
       (Identifier.to_string re.niceid)

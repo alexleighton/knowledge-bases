@@ -15,24 +15,6 @@ type item = Data.Item.t =
   | Todo_item of Data.Todo.t
   | Note_item of Data.Note.t
 
-(** A resolved relation entry for display.
-    Re-exports {!Show_service.relation_entry}. *)
-type relation_entry = Show_service.relation_entry = {
-  kind        : Data.Relation_kind.t;
-  niceid      : Data.Identifier.t;
-  entity_type : string;
-  title       : Data.Title.t;
-  blocking    : bool option;
-}
-
-(** Result of showing a single item, including its relations.
-    Re-exports {!Show_service.show_result}. *)
-type show_result = Show_service.show_result = {
-  item     : item;
-  outgoing : relation_entry list;
-  incoming : relation_entry list;
-}
-
 (** Sort order for list results. *)
 type sort_order = Sort_created | Sort_updated
 
@@ -84,12 +66,3 @@ val init : Repository.Root.t -> t
     - [sort] and [count_only] cannot both be set.
     - [transitive] requires exactly one relation filter. *)
 val list : t -> list_spec -> (list_result, error) result
-
-(** [show t ~identifier] looks up a single item by niceid or TypeId, including
-    its outgoing and incoming relations. *)
-val show : t -> identifier:string -> (show_result, error) result
-
-(** [show_many t ~identifiers] looks up multiple items by niceid or TypeId,
-    including their relations. Resolves all identifiers in order, failing on
-    the first error. Returns results in input order. *)
-val show_many : t -> identifiers:string list -> (show_result list, error) result
