@@ -7,22 +7,34 @@ module Service = Kbases.Service.Kb_service
 module Todo = Kbases.Data.Todo
 module Identifier = Kbases.Data.Identifier
 
-let run identifier json =
+let result_to_json todo =
+  let niceid = Identifier.to_string (Todo.niceid todo) in
+  `Assoc [
+    "type", `String "todo";
+    "niceid", `String niceid;
+  ]
+
+let run first_identifier rest_identifiers json =
+  let identifiers = first_identifier :: rest_identifiers in
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
-    match Service.resolve (App_context.service ctx) ~identifier with
-    | Ok todo ->
-        let niceid = Identifier.to_string (Todo.niceid todo) in
+    let result =
+      Service.resolve_many (App_context.service ctx) ~identifiers
+    in
+    match result with
+    | Ok todos ->
         if json then
           Common.print_json (`Assoc [
-            "ok", `Bool true; "action", `String "resolved";
-            "type", `String "todo"; "niceid", `String niceid;
+            "ok", `Bool true;
+            "resolved", `List (List.map result_to_json todos);
           ])
         else
-          Printf.printf "Resolved todo: %s\n" niceid
+          List.iter (fun todo ->
+            Printf.printf "Resolved todo: %s\n"
+              (Identifier.to_string (Todo.niceid todo))) todos
     | Error err -> Common.exit_with_error ~json (Common.service_error_msg err))
 
-let identifier_arg =
+let first_identifier_arg =
   let doc = "Niceid (e.g. kb-0) or TypeId of the todo to resolve." in
   Arg.(required & pos 0 (some string) None & info [] ~docv:"IDENTIFIER" ~doc)
 
@@ -30,10 +42,15 @@ let cmd_man = [
   `S "EXAMPLES";
   `P "Mark a todo as done:";
   `P "  bs resolve kb-0";
+  `P "Resolve multiple todos:";
+  `P "  bs resolve kb-0 kb-1 kb-2";
+  `P "JSON output:";
+  `P "  bs resolve kb-0 --json";
 ]
 
 let cmd_info = Cmd.info "resolve" ~doc:"Mark a todo as done." ~man:cmd_man
 
 let cmd =
-  let term = Term.(const run $ identifier_arg $ Common.json_flag) in
+  let term = Term.(const run $ first_identifier_arg $ Common.rest_identifiers_arg
+                   $ Common.json_flag) in
   Cmd.v cmd_info term

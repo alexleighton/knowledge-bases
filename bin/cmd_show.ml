@@ -126,9 +126,6 @@ let first_identifier_arg =
   let doc = "Niceid (e.g. kb-0) or TypeId (e.g. todo_01abc...) of the item to show." in
   Arg.(required & pos 0 (some string) None & info [] ~docv:"IDENTIFIER" ~doc)
 
-let rest_identifiers_arg =
-  Arg.(value & pos_right 0 string [] & info [] ~docv:"IDENTIFIER")
-
 let cmd_man = [
   `S "EXAMPLES";
   `P "Show a single item:";
@@ -144,5 +141,5 @@ let cmd_man = [
 let cmd_info = Cmd.info "show" ~doc:"Display full details of one or more items." ~man:cmd_man
 
 let cmd =
-  let term = Term.(const run $ first_identifier_arg $ rest_identifiers_arg $ Common.json_flag) in
+  let term = Term.(const run $ first_identifier_arg $ Common.rest_identifiers_arg $ Common.json_flag) in
   Cmd.v cmd_info term

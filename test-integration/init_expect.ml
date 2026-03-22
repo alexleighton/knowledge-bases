@@ -105,7 +105,7 @@ let%expect_test "bs init creates AGENTS.md with expected content" =
     Printf.printf "AGENTS.md exists: %b\n" (Sys.file_exists agents_md_path);
     let contents = Helper.read_file agents_md_path in
     Printf.printf "has section heading: %b\n"
-      (contains_substring ~needle:"## Knowledge Base" contents);
+      (contains_substring ~needle:"Knowledge Base" contents);
     Printf.printf "has add todo example: %b\n"
       (contains_substring ~needle:"bs add todo" contents);
     Printf.printf "has --help pointer: %b\n"
@@ -129,7 +129,7 @@ let%expect_test "bs init appends to existing AGENTS.md" =
     Printf.printf "has original content: %b\n"
       (contains_substring ~needle:"Existing agent instructions." contents);
     Printf.printf "has kbases section: %b\n"
-      (contains_substring ~needle:"## Knowledge Base" contents));
+      (contains_substring ~needle:"Knowledge Base" contents));
   [%expect {|
     [exit 0]
     Initialised knowledge base:
@@ -147,7 +147,7 @@ let%expect_test "bs init is idempotent when AGENTS.md section already present" =
   Helper.with_git_root (fun dir ->
     let agents_md_path = Filename.concat dir "AGENTS.md" in
     let oc = open_out agents_md_path in
-    output_string oc "# Project\n\n## Knowledge Base\n\nExisting section.\n";
+    output_string oc "# Project\n\n## ※ Knowledge Base\n\nExisting section.\n";
     close_out oc;
     let result = Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"] in
     Helper.print_result ~dir result;
@@ -161,7 +161,7 @@ let%expect_test "bs init is idempotent when AGENTS.md section already present" =
       !count
     in
     Printf.printf "heading count: %d\n"
-      (count_occurrences "## Knowledge Base" contents));
+      (count_occurrences "Knowledge Base" contents));
   [%expect {|
     [exit 0]
     Initialised knowledge base:

@@ -41,20 +41,9 @@ val cascade_delete :
 (** [init root] initializes the delete service. *)
 val init : Repository.Root.t -> t
 
-(** [delete t ~identifier ~force] removes the item identified by [identifier]
-    and all of its relations.
-
-    When [force] is [false], checks that no non-terminal item has a blocking
-    relation targeting the item being deleted. Returns [Blocked_dependency]
-    if such items exist.
-
-    When [force] is [true], skips the blocking check. *)
-val delete :
-  t -> identifier:string -> force:bool -> (delete_result, delete_error) result
-
-(** [delete_many t ~identifiers ~force] validates all items first, then
-    deletes them. If any item fails the blocking check, the entire batch
-    fails before any deletion. *)
+(** [delete_many t ~identifiers ~force] removes one or more items atomically.
+    Validates all items first — if any item fails the blocking check, the
+    entire batch fails before any deletion. *)
 val delete_many :
   t ->
   identifiers:string list ->

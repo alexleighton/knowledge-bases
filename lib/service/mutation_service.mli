@@ -67,3 +67,21 @@ val archive :
     @return [Validation_error] if the item is not in a terminal state. *)
 val reopen :
   t -> identifier:string -> (Item_service.item, Item_service.error) result
+
+(** [resolve_many t ~identifiers] resolves multiple todos. Short-circuits
+    on the first error; the caller must provide a transaction boundary for
+    atomicity (see {!Kb_service}). Returns results in input order. *)
+val resolve_many :
+  t -> identifiers:string list -> (Data.Todo.t list, Item_service.error) result
+
+(** [archive_many t ~identifiers] archives multiple notes. Short-circuits
+    on the first error; the caller must provide a transaction boundary for
+    atomicity (see {!Kb_service}). Returns results in input order. *)
+val archive_many :
+  t -> identifiers:string list -> (Data.Note.t list, Item_service.error) result
+
+(** [reopen_many t ~identifiers] reopens multiple terminal items. Short-circuits
+    on the first error; the caller must provide a transaction boundary for
+    atomicity (see {!Kb_service}). Returns results in input order. *)
+val reopen_many :
+  t -> identifiers:string list -> (Item_service.item list, Item_service.error) result

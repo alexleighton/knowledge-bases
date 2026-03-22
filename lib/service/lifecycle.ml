@@ -7,9 +7,10 @@ module Namespace = Data.Namespace
 let db_filename = ".kbases.db"
 let jsonl_filename = ".kbases.jsonl"
 let agents_md_filename = "AGENTS.md"
-let agents_md_section_heading = "## Knowledge Base"
+let agents_md_section_heading = "## ※ Knowledge Base"
+let agents_md_marker = "※"
 
-let agents_md_template = {|## Knowledge Base
+let agents_md_template = {|## ※ Knowledge Base
 
 This repository uses `bs` to track todos and notes. Use it to
 externalize work you've identified, decisions, and research.
@@ -29,11 +30,15 @@ bs next --show
 bs claim kb-0
 
 # Complete and archive
-bs resolve kb-0
-bs archive kb-5
+bs resolve kb-0 kb-1
+bs archive kb-5 kb-6
+
+# Link items after creation
+bs relate kb-2 --depends-on kb-3 --related-to kb-4
 ```
 
 Run `bs --help` for the full command reference.
+※
 |}
 
 type error =
@@ -129,11 +134,14 @@ let install_database ~db_file ~namespace ~gc_max_age =
       in
       Ok ())
 
+let _has_kb_heading contents =
+  Data.String.contains_substring ~needle:agents_md_section_heading contents
+
 let install_agents_md ~directory =
   let path = Filename.concat directory agents_md_filename in
   if Sys.file_exists path then begin
     let existing = Io.read_file path in
-    if Data.String.contains_substring ~needle:agents_md_section_heading existing then
+    if _has_kb_heading existing then
       Already_present
     else begin
       let new_contents = existing ^ "\n" ^ agents_md_template in
@@ -156,23 +164,49 @@ let uninstall_file path : file_action =
   if Sys.file_exists path then begin Sys.remove path; Deleted end
   else Not_found
 
+let _find_marker_section contents =
+  let lines = String.split_on_char '\n' contents in
+  let heading_prefix = agents_md_section_heading in
+  let rec find_heading i = function
+    | [] -> None
+    | line :: rest ->
+        if String.starts_with ~prefix:heading_prefix (String.trim line) then
+          find_footer i (i + 1) rest
+        else
+          find_heading (i + 1) rest
+  and find_footer start i = function
+    | [] -> None
+    | line :: rest ->
+        if String.trim line = agents_md_marker then
+          Some (start, i)
+        else
+          find_footer start (i + 1) rest
+  in
+  find_heading 0 lines
+
+let _remove_lines contents ~start ~stop =
+  let lines = String.split_on_char '\n' contents in
+  let kept = List.filteri (fun i _ -> i < start || i > stop) lines in
+  let result = String.concat "\n" kept in
+  String.trim result
+
 let uninstall_agents_md ~directory : agents_md_uninstall_action =
   let path = Filename.concat directory agents_md_filename in
   if not (Sys.file_exists path) then Not_found
   else
     let contents = Io.read_file path in
-    if contents = agents_md_template then begin
-      Sys.remove path; File_deleted
-    end else
-      let suffix = "\n" ^ agents_md_template in
-      let slen = String.length suffix in
-      let clen = String.length contents in
-      if clen > slen && String.sub contents (clen - slen) slen = suffix then begin
-        Io.write_file ~path ~contents:(String.sub contents 0 (clen - slen));
-        Section_removed
-      end else if Data.String.contains_substring ~needle:agents_md_section_heading contents
-      then Section_modified
-      else Not_found
+    match _find_marker_section contents with
+    | Some (start, stop) ->
+        let remaining = _remove_lines contents ~start ~stop in
+        if remaining = "" then begin
+          Sys.remove path; File_deleted
+        end else begin
+          Io.write_file ~path ~contents:(remaining ^ "\n");
+          Section_removed
+        end
+    | None ->
+        if _has_kb_heading contents then Section_modified
+        else Not_found
 
 let uninstall_git_exclude ~directory =
   match Git.remove_exclude ~directory db_filename with

@@ -59,13 +59,15 @@ let%expect_test "bs close --json" =
     Printf.printf "[exit %d]\n" result.exit_code;
     let json = Helper.parse_json result.stdout in
     Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
-    Printf.printf "action: %s\n" (Helper.get_string json "action");
-    Printf.printf "type: %s\n" (Helper.get_string json "type");
-    Printf.printf "niceid: %s\n" (Helper.get_string json "niceid"));
+    let resolved = Helper.get_list json "resolved" in
+    Printf.printf "count: %d\n" (List.length resolved);
+    let item = List.hd resolved in
+    Printf.printf "type: %s\n" (Helper.get_string item "type");
+    Printf.printf "niceid: %s\n" (Helper.get_string item "niceid"));
   [%expect {|
     [exit 0]
     ok: true
-    action: resolved
+    count: 1
     type: todo
     niceid: kb-0
   |}]
@@ -80,4 +82,19 @@ let%expect_test "bs close auto-rebuilds when db is missing" =
   [%expect {|
     [exit 0]
     Resolved todo: kb-0
+  |}]
+
+(* -- Multi-ID tests -- *)
+
+let%expect_test "bs close multiple todos" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"A" ["add"; "todo"; "First"]);
+    ignore (Helper.run_bs ~dir ~stdin:"B" ["add"; "todo"; "Second"]);
+    let result = Helper.run_bs ~dir ["close"; "kb-0"; "kb-1"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 0]
+    Resolved todo: kb-0
+    Resolved todo: kb-1
   |}]

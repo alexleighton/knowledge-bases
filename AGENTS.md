@@ -46,8 +46,8 @@ bs next --show
 bs claim kb-0
 
 # Complete and archive
-bs resolve kb-0
-bs archive kb-5
+bs resolve kb-0 kb-1
+bs archive kb-5 kb-6
 ```
 
 Run `bs --help` for the full command reference.

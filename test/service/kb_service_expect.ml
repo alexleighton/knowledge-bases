@@ -1,5 +1,6 @@
 module Root = Kbases.Repository.Root
 module TodoRepo = Kbases.Repository.Todo
+module NoteRepo = Kbases.Repository.Note
 module Service = Kbases.Service.Kb_service
 module Note = Kbases.Data.Note
 module Todo = Kbases.Data.Todo
@@ -50,24 +51,69 @@ let%expect_test "open_kb succeeds and returns functional service" =
   |}]
 
 let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
+let unwrap_note_repo = Test_helpers.unwrap_note_repo
 
 let with_service f =
   Test_helpers.with_service Service.init f
 
-let%expect_test "resolve via Kb_service" =
+let%expect_test "resolve_many via Kb_service" =
   with_service (fun root service ->
     let todo = unwrap_todo_repo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "Fix bug") ~content:(Content.make "Details") ()) in
     let niceid_str = Identifier.to_string (Todo.niceid todo) in
-    (match Service.resolve service ~identifier:niceid_str with
-     | Ok t ->
+    (match Service.resolve_many service ~identifiers:[niceid_str] with
+     | Ok [t] ->
          Printf.printf "Resolved: %s status=%s\n"
            (Identifier.to_string (Todo.niceid t))
            (Todo.status_to_string (Todo.status t))
+     | Ok _ -> print_endline "unexpected list length"
      | Error err -> pp_error err);
     query_rows root "SELECT niceid, status FROM todo" []);
   [%expect {|
     Resolved: kb-0 status=done
+    kb-0|done
+  |}]
+
+let%expect_test "resolve_many rolls back on error" =
+  with_service (fun root service ->
+    let todo = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Good") ~content:(Content.make "A") ()) in
+    let niceid_str = Identifier.to_string (Todo.niceid todo) in
+    (match Service.resolve_many service ~identifiers:[niceid_str; "kb-999"] with
+     | Ok _ -> print_endline "unexpected success"
+     | Error err -> pp_error err);
+    query_rows root "SELECT niceid, status FROM todo" []);
+  [%expect {|
+    validation error: item not found: kb-999
+    kb-0|open
+  |}]
+
+let%expect_test "archive_many rolls back on error" =
+  with_service (fun root service ->
+    let note = unwrap_note_repo (NoteRepo.create (Root.note root)
+      ~title:(Title.make "Good") ~content:(Content.make "A") ()) in
+    let niceid_str = Identifier.to_string (Note.niceid note) in
+    (match Service.archive_many service ~identifiers:[niceid_str; "kb-999"] with
+     | Ok _ -> print_endline "unexpected success"
+     | Error err -> pp_error err);
+    query_rows root "SELECT niceid, status FROM note" []);
+  [%expect {|
+    validation error: item not found: kb-999
+    kb-0|active
+  |}]
+
+let%expect_test "reopen_many rolls back on error" =
+  with_service (fun root service ->
+    let todo = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Done") ~content:(Content.make "A") ()) in
+    let niceid_str = Identifier.to_string (Todo.niceid todo) in
+    ignore (Service.resolve_many service ~identifiers:[niceid_str]);
+    (match Service.reopen_many service ~identifiers:[niceid_str; "kb-999"] with
+     | Ok _ -> print_endline "unexpected success"
+     | Error err -> pp_error err);
+    query_rows root "SELECT niceid, status FROM todo" []);
+  [%expect {|
+    validation error: item not found: kb-999
     kb-0|done
   |}]
 

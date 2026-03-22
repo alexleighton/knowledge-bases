@@ -144,10 +144,10 @@ let%expect_test "uninstall_agents_md removes appended section" =
     contents: "# Other\n\nSome content.\n"
   |}]
 
-let%expect_test "uninstall_agents_md reports Section_modified when heading present but body edited" =
+let%expect_test "uninstall_agents_md reports Section_modified when marker heading present but body edited" =
   with_temp_dir "lc-unagents-modified-" (fun dir ->
     let path = Filename.concat dir "AGENTS.md" in
-    Io.write_file ~path ~contents:"## Knowledge Base\n\nCustom content here.\n";
+    Io.write_file ~path ~contents:"## ※ Knowledge Base\n\nCustom content here.\n";
     let result = Lifecycle.uninstall_agents_md ~directory:dir in
     Printf.printf "result: %s\n" (pp_agents_md_uninstall result);
     Printf.printf "file exists: %b\n" (Sys.file_exists path));
@@ -168,6 +168,31 @@ let%expect_test "uninstall_agents_md roundtrip: init then uninstall deletes file
     file exists before: true
     result: File_deleted
     file exists after: false
+  |}]
+
+let%expect_test "uninstall_agents_md removes marker section with edited content" =
+  with_temp_dir "lc-unagents-marker-edited-" (fun dir ->
+    let path = Filename.concat dir "AGENTS.md" in
+    Io.write_file ~path ~contents:"# Project\n\n## ※ Knowledge Base\n\nCustomized.\n※\n";
+    let result = Lifecycle.uninstall_agents_md ~directory:dir in
+    Printf.printf "result: %s\n" (pp_agents_md_uninstall result);
+    let contents = Io.read_file path in
+    Printf.printf "contents: %S\n" contents);
+  [%expect {|
+    result: Section_removed
+    contents: "# Project\n"
+  |}]
+
+let%expect_test "uninstall_agents_md deletes file when only marker section" =
+  with_temp_dir "lc-unagents-marker-only-" (fun dir ->
+    let path = Filename.concat dir "AGENTS.md" in
+    Io.write_file ~path ~contents:"## ※ Knowledge Base\n\nContent.\n※\n";
+    let result = Lifecycle.uninstall_agents_md ~directory:dir in
+    Printf.printf "result: %s\n" (pp_agents_md_uninstall result);
+    Printf.printf "file exists: %b\n" (Sys.file_exists path));
+  [%expect {|
+    result: File_deleted
+    file exists: false
   |}]
 
 (* --- uninstall_kb --- *)

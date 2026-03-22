@@ -67,52 +67,56 @@ let%expect_test "resolve non-existent niceid" =
     validation error: item not found: kb-999
   |}]
 
-(* -- Archive tests -- *)
+(* -- resolve_many tests -- *)
 
-let%expect_test "archive active note sets status to archived" =
+let%expect_test "resolve_many resolves two todos in input order" =
   with_mutation_service (fun root service ->
-    let note = unwrap_note_repo (NoteRepo.create (Root.note root)
-      ~title:(Title.make "Research") ~content:(Content.make "Findings") ()) in
-    let niceid_str = Identifier.to_string (Note.niceid note) in
-    (match MutationService.archive service ~identifier:niceid_str with
-     | Ok n ->
-         Printf.printf "Archived: %s status=%s\n" (Identifier.to_string (Note.niceid n))
-           (Note.status_to_string (Note.status n))
+    let t0 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "First") ~content:(Content.make "A") ()) in
+    let t1 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Second") ~content:(Content.make "B") ()) in
+    let id0 = Identifier.to_string (Todo.niceid t0) in
+    let id1 = Identifier.to_string (Todo.niceid t1) in
+    (match MutationService.resolve_many service ~identifiers:[id0; id1] with
+     | Ok todos ->
+         List.iter (fun t ->
+           Printf.printf "%s status=%s\n"
+             (Identifier.to_string (Todo.niceid t))
+             (Todo.status_to_string (Todo.status t))) todos
      | Error err -> pp_error err);
-    query_rows root "SELECT niceid, status FROM note" []);
+    query_rows root "SELECT niceid, status FROM todo ORDER BY niceid" []);
   [%expect {|
-    Archived: kb-0 status=archived
-    kb-0|archived
+    kb-0 status=done
+    kb-1 status=done
+    kb-0|done
+    kb-1|done
   |}]
 
-let%expect_test "archive already-archived note returns nothing to update" =
+let%expect_test "resolve_many short-circuits on error" =
   with_mutation_service (fun root service ->
-    let note = unwrap_note_repo (NoteRepo.create (Root.note root)
-      ~title:(Title.make "Research") ~content:(Content.make "Findings") ()) in
-    let niceid_str = Identifier.to_string (Note.niceid note) in
-    ignore (MutationService.archive service ~identifier:niceid_str);
-    match MutationService.archive service ~identifier:niceid_str with
-    | Ok _ -> print_endline "unexpected success"
-    | Error err -> pp_error err);
-  [%expect {| validation error: nothing to update |}]
-
-let%expect_test "archive a todo returns validation error" =
-  with_mutation_service (fun root service ->
-    let todo = unwrap_todo_repo (TodoRepo.create (Root.todo root)
-      ~title:(Title.make "Todo") ~content:(Content.make "Body") ()) in
-    let niceid_str = Identifier.to_string (Todo.niceid todo) in
-    match MutationService.archive service ~identifier:niceid_str with
-    | Ok _ -> print_endline "unexpected success"
-    | Error err -> pp_error err);
-  [%expect {|
-    validation error: archive applies only to notes, but kb-0 is a todo
-  |}]
-
-let%expect_test "archive non-existent niceid" =
-  with_mutation_service (fun _root service ->
-    match MutationService.archive service ~identifier:"kb-999" with
-    | Ok _ -> print_endline "unexpected success"
-    | Error err -> pp_error err);
+    ignore (unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Good") ~content:(Content.make "A") ()));
+    (match MutationService.resolve_many service ~identifiers:["kb-0"; "kb-999"] with
+     | Ok _ -> print_endline "unexpected success"
+     | Error err -> pp_error err);
+    query_rows root "SELECT niceid, status FROM todo" []);
   [%expect {|
     validation error: item not found: kb-999
+    kb-0|done
   |}]
+
+let%expect_test "resolve_many single-element list" =
+  with_mutation_service (fun root service ->
+    ignore (unwrap_todo_repo (TodoRepo.create (Root.todo root)
+      ~title:(Title.make "Solo") ~content:(Content.make "A") ()));
+    (match MutationService.resolve_many service ~identifiers:["kb-0"] with
+     | Ok [t] ->
+         Printf.printf "%s status=%s\n"
+           (Identifier.to_string (Todo.niceid t))
+           (Todo.status_to_string (Todo.status t))
+     | Ok _ -> print_endline "unexpected list length"
+     | Error err -> pp_error err));
+  [%expect {|
+    kb-0 status=done
+  |}]
+

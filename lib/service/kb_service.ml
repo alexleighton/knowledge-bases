@@ -189,17 +189,23 @@ let update t ~identifier ?status ?title ?content () =
   _with_flush t (fun () ->
     Mutation.update t.mutation ~identifier ?status ?title ?content ())
 
-let resolve t ~identifier =
+let resolve_many t ~identifiers =
   _with_flush t (fun () ->
-    Mutation.resolve t.mutation ~identifier)
+    Repository.Sqlite.with_transaction t.db
+      ~on_begin_error:(fun msg -> Repository_error msg)
+      (fun () -> Mutation.resolve_many t.mutation ~identifiers))
 
-let archive t ~identifier =
+let archive_many t ~identifiers =
   _with_flush t (fun () ->
-    Mutation.archive t.mutation ~identifier)
+    Repository.Sqlite.with_transaction t.db
+      ~on_begin_error:(fun msg -> Repository_error msg)
+      (fun () -> Mutation.archive_many t.mutation ~identifiers))
 
-let reopen t ~identifier =
+let reopen_many t ~identifiers =
   _with_flush t (fun () ->
-    Mutation.reopen t.mutation ~identifier)
+    Repository.Sqlite.with_transaction t.db
+      ~on_begin_error:(fun msg -> Repository_error msg)
+      (fun () -> Mutation.reopen_many t.mutation ~identifiers))
 
 let next t =
   _with_flush_map t ~map_err:_map_sync_to_claim_error (fun () ->
@@ -211,13 +217,6 @@ let claim t ~identifier =
 
 let _map_sync_to_delete_error e =
   Delete.Service_error (map_sync_error e)
-
-let delete t ~identifier ~force =
-  _with_flush_map t ~map_err:_map_sync_to_delete_error (fun () ->
-    Repository.Sqlite.with_transaction t.db
-      ~on_begin_error:(fun msg -> Delete.Service_error (Repository_error msg))
-      (fun () ->
-        Delete.delete t.delete_svc ~identifier ~force))
 
 let delete_many t ~identifiers ~force =
   _with_flush_map t ~map_err:_map_sync_to_delete_error (fun () ->

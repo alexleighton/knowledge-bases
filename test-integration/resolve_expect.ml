@@ -71,13 +71,15 @@ let%expect_test "bs resolve --json" =
     Printf.printf "[exit %d]\n" result.exit_code;
     let json = Helper.parse_json result.stdout in
     Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
-    Printf.printf "action: %s\n" (Helper.get_string json "action");
-    Printf.printf "type: %s\n" (Helper.get_string json "type");
-    Printf.printf "niceid: %s\n" (Helper.get_string json "niceid"));
+    let resolved = Helper.get_list json "resolved" in
+    Printf.printf "count: %d\n" (List.length resolved);
+    let item = List.hd resolved in
+    Printf.printf "type: %s\n" (Helper.get_string item "type");
+    Printf.printf "niceid: %s\n" (Helper.get_string item "niceid"));
   [%expect {|
     [exit 0]
     ok: true
-    action: resolved
+    count: 1
     type: todo
     niceid: kb-0
   |}]
@@ -128,3 +130,80 @@ let%expect_test "bs resolve auto-rebuilds when db is missing" =
     [exit 0]
     Resolved todo: kb-0
   |}]
+
+(* -- Multi-ID tests -- *)
+
+let%expect_test "bs resolve multiple todos" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"A" ["add"; "todo"; "First"]);
+    ignore (Helper.run_bs ~dir ~stdin:"B" ["add"; "todo"; "Second"]);
+    let result = Helper.run_bs ~dir ["resolve"; "kb-0"; "kb-1"] in
+    Helper.print_result ~dir result;
+    let show = Helper.run_bs ~dir ["show"; "kb-0"; "kb-1"] in
+    Helper.print_result ~dir show);
+  [%expect {|
+    [exit 0]
+    Resolved todo: kb-0
+    Resolved todo: kb-1
+    [exit 0]
+    todo kb-0 (<TYPEID>)
+    Status: done
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
+    Title:  First
+
+    A
+    ---
+    todo kb-1 (<TYPEID>)
+    Status: done
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
+    Title:  Second
+
+    B
+    |}]
+
+let%expect_test "bs resolve multiple --json" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"A" ["add"; "todo"; "First"]);
+    ignore (Helper.run_bs ~dir ~stdin:"B" ["add"; "todo"; "Second"]);
+    let result = Helper.run_bs ~dir ["resolve"; "kb-0"; "kb-1"; "--json"] in
+    Printf.printf "[exit %d]\n" result.exit_code;
+    let json = Helper.parse_json result.stdout in
+    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
+    let resolved = Helper.get_list json "resolved" in
+    Printf.printf "count: %d\n" (List.length resolved);
+    List.iter (fun item ->
+      Printf.printf "%s %s\n"
+        (Helper.get_string item "type")
+        (Helper.get_string item "niceid")) resolved);
+  [%expect {|
+    [exit 0]
+    ok: true
+    count: 2
+    todo kb-0
+    todo kb-1
+  |}]
+
+let%expect_test "bs resolve multi-ID atomic failure" =
+  Helper.with_git_root (fun dir ->
+    Helper.init_kb dir;
+    ignore (Helper.run_bs ~dir ~stdin:"A" ["add"; "todo"; "Good"]);
+    let result = Helper.run_bs ~dir ["resolve"; "kb-0"; "kb-999"] in
+    Helper.print_result ~dir result;
+    let show = Helper.run_bs ~dir ["show"; "kb-0"] in
+    Helper.print_result ~dir show);
+  [%expect {|
+    [exit 1]
+    STDERR: Error: item not found: kb-999
+    [exit 0]
+    todo kb-0 (<TYPEID>)
+    Status: open
+    Created: <TIMESTAMP>
+    Updated: <TIMESTAMP>
+    Title:  Good
+
+    A
+    |}]

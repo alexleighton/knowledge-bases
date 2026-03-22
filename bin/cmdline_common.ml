@@ -40,6 +40,9 @@ let json_flag =
   let doc = "Output result as JSON." in
   Cmdliner.Arg.(value & flag & info [ "json" ] ~doc)
 
+let rest_identifiers_arg =
+  Cmdliner.Arg.(value & pos_right 0 string [] & info [] ~docv:"IDENTIFIER")
+
 let depends_on_opt =
   let doc = "Create a unidirectional depends-on relation to $(i,TARGET). \
              Shows as outgoing on the source and incoming on the target. Repeatable." in

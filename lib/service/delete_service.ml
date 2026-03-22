@@ -92,36 +92,18 @@ let _delete_item t item =
   in
   { niceid; entity_type; relations_removed }
 
-let delete t ~identifier ~force =
-  let open Result.Syntax in
-  let* item =
-    Item_service.find t.items ~identifier
-    |> Result.map_error (fun e -> Service_error e)
-  in
-  let typeid = Data.Item.typeid item in
-  let niceid_str = Data.Identifier.to_string (Data.Item.niceid item) in
-  let* () =
-    if force then Ok ()
-    else
-      let* dependents = _find_blocking_dependents t typeid in
-      if dependents <> [] then
-        Error (Blocked_dependency { niceid = niceid_str; dependents })
-      else Ok ()
-  in
-  _delete_item t item
-
 let delete_many t ~identifiers ~force =
   let open Result.Syntax in
   (* Phase 1: resolve all items and check blocking *)
   let* resolved =
-    List.map (fun identifier ->
+    Data.Result.traverse (fun identifier ->
       let* item =
         Item_service.find t.items ~identifier
         |> Result.map_error (fun e -> Service_error e)
       in
       let typeid = Data.Item.typeid item in
       let niceid_str = Data.Identifier.to_string (Data.Item.niceid item) in
-      let* () =
+      let+ () =
         if force then Ok ()
         else
           let* dependents = _find_blocking_dependents t typeid in
@@ -129,10 +111,8 @@ let delete_many t ~identifiers ~force =
             Error (Blocked_dependency { niceid = niceid_str; dependents })
           else Ok ()
       in
-      Ok item
+      item
     ) identifiers
-    |> Data.Result.sequence
   in
   (* Phase 2: delete all *)
-  List.map (fun item -> _delete_item t item) resolved
-  |> Data.Result.sequence
+  Data.Result.traverse (fun item -> _delete_item t item) resolved

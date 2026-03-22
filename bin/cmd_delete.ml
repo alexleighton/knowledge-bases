@@ -25,10 +25,7 @@ let run first_identifier rest_identifiers force json =
   let ctx = App_context.init () in
   Fun.protect ~finally:(fun () -> App_context.close ctx) (fun () ->
     let result =
-      match identifiers with
-      | [id] -> Service.delete (App_context.service ctx) ~identifier:id ~force
-                |> Result.map (fun r -> [r])
-      | _ -> Service.delete_many (App_context.service ctx) ~identifiers ~force
+      Service.delete_many (App_context.service ctx) ~identifiers ~force
     in
     match result with
     | Ok results ->
@@ -48,9 +45,6 @@ let run first_identifier rest_identifiers force json =
 let first_identifier_arg =
   let doc = "Niceid (e.g. kb-0) or TypeId of the item to delete." in
   Arg.(required & pos 0 (some string) None & info [] ~docv:"IDENTIFIER" ~doc)
-
-let rest_identifiers_arg =
-  Arg.(value & pos_right 0 string [] & info [] ~docv:"IDENTIFIER")
 
 let force_flag =
   let doc = "Force deletion even if other items have blocking dependencies on this item." in
@@ -73,6 +67,6 @@ let cmd_info = Cmd.info "delete"
   ~man:cmd_man
 
 let cmd =
-  let term = Term.(const run $ first_identifier_arg $ rest_identifiers_arg
+  let term = Term.(const run $ first_identifier_arg $ Common.rest_identifiers_arg
                    $ force_flag $ Common.json_flag) in
   Cmd.v cmd_info term

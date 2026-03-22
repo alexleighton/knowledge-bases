@@ -138,15 +138,14 @@ val update :
   unit ->
   (item, error) result
 
-(** [resolve t ~identifier] sets a todo's status to [Done]. *)
-val resolve : t -> identifier:string -> (Data.Todo.t, error) result
+(** [resolve_many t ~identifiers] resolves multiple todos atomically. *)
+val resolve_many : t -> identifiers:string list -> (Data.Todo.t list, error) result
 
-(** [archive t ~identifier] sets a note's status to [Archived]. *)
-val archive : t -> identifier:string -> (Data.Note.t, error) result
+(** [archive_many t ~identifiers] archives multiple notes atomically. *)
+val archive_many : t -> identifiers:string list -> (Data.Note.t list, error) result
 
-(** [reopen t ~identifier] returns a terminal item to its initial status:
-    Done todos become Open, Archived notes become Active. *)
-val reopen : t -> identifier:string -> (item, error) result
+(** [reopen_many t ~identifiers] reopens multiple terminal items atomically. *)
+val reopen_many : t -> identifiers:string list -> (item list, error) result
 
 (** [next t] selects the first open, unblocked todo and transitions it to
     [In_Progress]. Returns [Ok None] when no open todos exist. *)
@@ -193,13 +192,7 @@ val unrelate :
 
 (* --- Delete --- *)
 
-(** [delete t ~identifier ~force] removes an item and its relations.
-    When [force] is [false], refuses to delete items that are blocking
-    targets of non-terminal items. *)
-val delete :
-  t -> identifier:string -> force:bool -> (Delete.delete_result, Delete.delete_error) result
-
-(** [delete_many t ~identifiers ~force] removes multiple items atomically.
+(** [delete_many t ~identifiers ~force] removes one or more items atomically.
     Validates all items before deleting any. *)
 val delete_many :
   t ->

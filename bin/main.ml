@@ -48,9 +48,9 @@ let root_man = [
   `P "  bs update kb-0 --title \"Revised title\"";
   `P "  bs update kb-0 --content \"Revised plan\"";
   `P "Complete and archive:";
-  `P "  bs resolve kb-0";
+  `P "  bs resolve kb-0 kb-1";
   `P "  bs close kb-0";
-  `P "  bs archive kb-1";
+  `P "  bs archive kb-5 kb-6";
   `P "Link items after creation:";
   `P "  bs relate kb-2 --related-to kb-3";
   `P "Sync for git:";

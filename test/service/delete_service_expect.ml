@@ -24,15 +24,16 @@ let pp_error = function
       Printf.printf "blocked: %s by [%s]\n" niceid (String.concat "; " dependents)
   | DeleteService.Service_error err -> Test_helpers.pp_item_error err
 
-let%expect_test "delete item removes it from list and show" =
+let%expect_test "delete_many single item removes it from list and show" =
   with_delete_service (fun root service ->
     let todo = unwrap_todo_repo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "Task") ~content:(Content.make "Body") ()) in
     let niceid_str = Identifier.to_string (Todo.niceid todo) in
-    (match DeleteService.delete service ~identifier:niceid_str ~force:false with
-     | Ok r ->
+    (match DeleteService.delete_many service ~identifiers:[niceid_str] ~force:false with
+     | Ok [r] ->
          Printf.printf "deleted %s: %s rels=%d\n"
            r.entity_type (Identifier.to_string r.niceid) r.relations_removed
+     | Ok _ -> print_endline "unexpected result count"
      | Error err -> pp_error err);
     query_count root "todo");
   [%expect {|
@@ -40,7 +41,7 @@ let%expect_test "delete item removes it from list and show" =
     todo=0
   |}]
 
-let%expect_test "delete item with relations removes relations" =
+let%expect_test "delete_many item with relations removes relations" =
   with_delete_service (fun root service ->
     let t0 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "Source") ~content:(Content.make "Body") ()) in
@@ -50,10 +51,11 @@ let%expect_test "delete item with relations removes relations" =
       ~kind:(Relation_kind.make "related-to") ~bidirectional:true ~blocking:false in
     ignore (RelationRepo.create (Root.relation root) rel);
     let niceid_str = Identifier.to_string (Todo.niceid t0) in
-    (match DeleteService.delete service ~identifier:niceid_str ~force:false with
-     | Ok r ->
+    (match DeleteService.delete_many service ~identifiers:[niceid_str] ~force:false with
+     | Ok [r] ->
          Printf.printf "deleted %s: %s rels=%d\n"
            r.entity_type (Identifier.to_string r.niceid) r.relations_removed
+     | Ok _ -> print_endline "unexpected result count"
      | Error err -> pp_error err);
     query_count root "todo";
     query_count root "relation");
@@ -63,7 +65,7 @@ let%expect_test "delete item with relations removes relations" =
     relation=0
   |}]
 
-let%expect_test "delete blocked item returns error" =
+let%expect_test "delete_many single blocked item returns error" =
   with_delete_service (fun root service ->
     let t0 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "Blocker") ~content:(Content.make "Body") ()) in
@@ -73,14 +75,16 @@ let%expect_test "delete blocked item returns error" =
       ~kind:(Relation_kind.make "depends-on") ~bidirectional:false ~blocking:true in
     ignore (RelationRepo.create (Root.relation root) rel);
     let niceid_str = Identifier.to_string (Todo.niceid t0) in
-    match DeleteService.delete service ~identifier:niceid_str ~force:false with
-    | Ok _ -> print_endline "unexpected success"
-    | Error err -> pp_error err);
+    (match DeleteService.delete_many service ~identifiers:[niceid_str] ~force:false with
+     | Ok _ -> print_endline "unexpected success"
+     | Error err -> pp_error err);
+    query_count root "todo");
   [%expect {|
     blocked: kb-0 by [kb-1]
+    todo=2
   |}]
 
-let%expect_test "delete with force ignores blocking check" =
+let%expect_test "delete_many with force ignores blocking check" =
   with_delete_service (fun root service ->
     let t0 = unwrap_todo_repo (TodoRepo.create (Root.todo root)
       ~title:(Title.make "Blocker") ~content:(Content.make "Body") ()) in
@@ -90,10 +94,11 @@ let%expect_test "delete with force ignores blocking check" =
       ~kind:(Relation_kind.make "depends-on") ~bidirectional:false ~blocking:true in
     ignore (RelationRepo.create (Root.relation root) rel);
     let niceid_str = Identifier.to_string (Todo.niceid t0) in
-    (match DeleteService.delete service ~identifier:niceid_str ~force:true with
-     | Ok r ->
+    (match DeleteService.delete_many service ~identifiers:[niceid_str] ~force:true with
+     | Ok [r] ->
          Printf.printf "deleted %s: %s rels=%d\n"
            r.entity_type (Identifier.to_string r.niceid) r.relations_removed
+     | Ok _ -> print_endline "unexpected result count"
      | Error err -> pp_error err);
     query_count root "todo";
     query_count root "relation");
@@ -124,24 +129,25 @@ let%expect_test "delete_many batch, one blocked fails all" =
     todo=3
   |}]
 
-let%expect_test "delete non-existent item returns error" =
+let%expect_test "delete_many non-existent item returns error" =
   with_delete_service (fun _root service ->
-    match DeleteService.delete service ~identifier:"kb-999" ~force:false with
+    match DeleteService.delete_many service ~identifiers:["kb-999"] ~force:false with
     | Ok _ -> print_endline "unexpected success"
     | Error err -> pp_error err);
   [%expect {|
     validation error: item not found: kb-999
   |}]
 
-let%expect_test "delete note removes it" =
+let%expect_test "delete_many note removes it" =
   with_delete_service (fun root service ->
     let note = unwrap_note_repo (NoteRepo.create (Root.note root)
       ~title:(Title.make "Research") ~content:(Content.make "Findings") ()) in
     let niceid_str = Identifier.to_string (Note.niceid note) in
-    (match DeleteService.delete service ~identifier:niceid_str ~force:false with
-     | Ok r ->
+    (match DeleteService.delete_many service ~identifiers:[niceid_str] ~force:false with
+     | Ok [r] ->
          Printf.printf "deleted %s: %s\n"
            r.entity_type (Identifier.to_string r.niceid)
+     | Ok _ -> print_endline "unexpected result count"
      | Error err -> pp_error err);
     query_count root "note");
   [%expect {|

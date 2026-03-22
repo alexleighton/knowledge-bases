@@ -118,7 +118,7 @@ let%expect_test "bs uninstall --yes warns when AGENTS.md section was modified" =
   Helper.with_git_root (fun dir ->
     Helper.init_kb dir;
     let agents_path = Filename.concat dir "AGENTS.md" in
-    let custom_content = "## Knowledge Base\n\nCustomized instructions.\n" in
+    let custom_content = "## ※ Knowledge Base\n\nCustomized instructions.\n" in
     let oc = open_out agents_path in
     output_string oc custom_content;
     close_out oc;

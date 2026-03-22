@@ -159,3 +159,12 @@ let reopen t ~identifier =
            Error (Validation_error
              (Printf.sprintf "%s is not in a terminal state (status: %s)"
                 identifier (Data.Note.status_to_string (Data.Note.status note)))))
+
+let resolve_many t ~identifiers =
+  Data.Result.traverse (fun id -> resolve t ~identifier:id) identifiers
+
+let archive_many t ~identifiers =
+  Data.Result.traverse (fun id -> archive t ~identifier:id) identifiers
+
+let reopen_many t ~identifiers =
+  Data.Result.traverse (fun id -> reopen t ~identifier:id) identifiers
