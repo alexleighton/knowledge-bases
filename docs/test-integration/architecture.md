@@ -21,7 +21,7 @@ path:
 test-integration/<command>_expect.ml
 ```
 
-For nested subcommands, join the path segments with underscores:
+For nested subcommands, join the path segments with underscores (not exhaustive):
 
 | Command       | Test file              |
 |---------------|------------------------|
@@ -58,7 +58,8 @@ to see full coverage for any given command in one place.
 
 ## Shared test helper
 
-`test_helper.ml` provides the infrastructure all integration tests share:
+`test_helper.ml` provides the infrastructure all integration tests share
+(not exhaustive):
 
 | Function        | Purpose                                                      |
 |-----------------|--------------------------------------------------------------|

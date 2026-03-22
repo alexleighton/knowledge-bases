@@ -10,6 +10,11 @@ The documentation lives in `docs/`, indexed by `docs/index.md`. The
 index is the entry point: every document under `docs/` must appear in
 it, and every entry in the index must point to a file that exists.
 
+**Exception:** `docs/designs/` contains historical design documents
+that capture the reasoning behind past decisions. They are not kept up
+to date and should not be checked for staleness or individually
+indexed. The index covers them with a single wildcard entry.
+
 ## Process
 
 ### 1. Verify the index is complete and accurate

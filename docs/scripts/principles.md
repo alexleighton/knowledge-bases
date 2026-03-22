@@ -20,5 +20,5 @@ mandatory keeps scripts correct across shells and platforms.
 
 `find-unused.py` supports a `(* @unused-ok — <reason> *)` comment on the
 definition line to suppress false positives. The annotation must include a
-reason explaining why the symbol appears unused. See `docs/lib/principles.md`
-§6 for details.
+reason explaining why the symbol appears unused. See
+[unused-exports](../lib/unused-exports.md) for details.

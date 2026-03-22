@@ -94,18 +94,7 @@ understand. A file approaching this limit is often a sign that the concept it
 represents is too complex and should be broken into smaller, composable
 modules.
 
-## 6. Suppressing unused-export warnings
-
-The `find-unused.py` script detects exported symbols with no call-site in the
-codebase. When a symbol is intentionally exported but cannot be traced by the
-script — e.g., a value consumed via functor application — annotate the
-definition line with `(* @unused-ok — <reason> *)` to suppress the warning.
-The reason must explain **why** the symbol appears unused (e.g., which functor
-consumes it, which external caller needs it). A bare `(* @unused-ok *)` without
-a reason is not sufficient — the reader needs to understand why the suppression
-is safe without chasing down the usage themselves.
-
-## 7. Explicit entropy initialization
+## 6. Explicit entropy initialization
 
 Code that depends on randomness for correctness — unique IDs, tokens, nonces —
 must explicitly initialize its entropy source. OCaml's `Random` module produces

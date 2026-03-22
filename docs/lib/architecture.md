@@ -33,7 +33,7 @@ exposes a smart constructor that validates invariants (raising
 `Invalid_argument` on failure), and provides accessors and formatters.
 Design Data modules according to [Correct Construction](correct-construction.md).
 
-Examples:
+Examples (not exhaustive):
 
 | Module       | Purpose                                           |
 |--------------|---------------------------------------------------|
@@ -70,7 +70,7 @@ Modules here answer the question: *"Does this deal with how computation
 is structured, how errors propagate, or how the program communicates
 with an external system (other than the database)?"*
 
-Examples:
+Examples (not exhaustive):
 
 | Module      | Purpose                                          |
 |-------------|--------------------------------------------------|
@@ -105,7 +105,7 @@ Key conventions:
    handles.  Higher layers never create repositories directly; they go
    through `Root`.
 
-Examples:
+Examples (not exhaustive):
 
 | Module   | Purpose                                                 |
 |----------|---------------------------------------------------------|
@@ -169,7 +169,7 @@ Conventions:
    service modules that each own a slice of the domain.  Split
    along natural boundaries rather than creating a god service.
 
-Examples:
+Examples (not exhaustive):
 
 | Module      | Purpose                                          |
 |-------------|--------------------------------------------------|
