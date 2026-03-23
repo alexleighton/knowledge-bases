@@ -48,7 +48,8 @@ together, the workflow tests should exercise every CLI command at least once.
 When adding a new command, extend an existing workflow or add a new one so the
 command appears in a lifelike context, not only in its isolated command file.
 When the workflow tests outgrow ~300 lines, split by theme (e.g.,
-`workflow_lifecycle_expect.ml`, `workflow_persistence_expect.ml`).
+`workflow_planning_expect.ml`, `workflow_progression_expect.ml`,
+`workflow_persistence_expect.ml`).
 
 **Per-command feature tests belong in the command file.** When a feature applies
 to many commands (e.g., `--json` output), each command's test for that feature
@@ -58,8 +59,14 @@ to see full coverage for any given command in one place.
 
 ## Shared test helper
 
-`test_helper.ml` provides the infrastructure all integration tests share
-(not exhaustive):
+`test_helper.ml` provides the infrastructure all integration tests share.
+Filesystem and database helpers that are common to both `test/` and
+`test-integration/` live in `test-common/` (see
+`docs/test-common/architecture.md`); `test_helper.ml` delegates to them
+and adds integration-specific concerns (subprocess execution, output
+normalisation).
+
+Functions provided by `test_helper.ml` (not exhaustive):
 
 | Function        | Purpose                                                      |
 |-----------------|--------------------------------------------------------------|
@@ -95,6 +102,6 @@ tests run:
  (name kbases_integration_tests)
  (inline_tests
   (deps %{bin:bs}))
- (libraries kbases unix str)
+ (libraries kbases kbases_tests_common unix str)
  (preprocess (pps ppx_inline_test ppx_expect)))
 ```

@@ -62,8 +62,7 @@ let _sort_key_todo = _sort_key_entity (module Data.Todo)
 let _sort_key_note = _sort_key_entity (module Data.Note)
 
 let record_sort_key = function
-  | Todo { id; _ } -> Data.Uuid.Typeid.to_string id
-  | Note { id; _ } -> Data.Uuid.Typeid.to_string id
+  | Todo { id; _ } | Note { id; _ } -> Data.Uuid.Typeid.to_string id
   | Relation rel -> _relation_sort_key rel
 
 let _header_to_json ~namespace =
@@ -141,10 +140,9 @@ let _try_make f x =
   with Invalid_argument msg -> Error (Parse_error msg)
 
 let _parse_timestamp json key =
-  match _get_string json key with
-  | Error _ -> Ok (Data.Timestamp.make 0)
-  | Ok s ->
-    Data.Timestamp.of_iso8601 s |> Result.map_error (fun msg -> Parse_error msg)
+  let open Data.Result.Syntax in
+  let* s = _get_string json key in
+  Data.Timestamp.of_iso8601 s |> Result.map_error (fun msg -> Parse_error msg)
 
 let _parse_entity_fields json =
   let open Data.Result.Syntax in

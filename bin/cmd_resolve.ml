@@ -8,11 +8,7 @@ module Todo = Kbases.Data.Todo
 module Identifier = Kbases.Data.Identifier
 
 let result_to_json todo =
-  let niceid = Identifier.to_string (Todo.niceid todo) in
-  `Assoc [
-    "type", `String "todo";
-    "niceid", `String niceid;
-  ]
+  Common.item_summary_json ~entity_type:"todo" ~niceid:(Todo.niceid todo)
 
 let run first_identifier rest_identifiers json =
   let identifiers = first_identifier :: rest_identifiers in

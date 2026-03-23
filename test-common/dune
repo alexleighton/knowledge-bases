@@ -1,0 +1,14 @@
+(include_subdirs no)
+
+(env
+ (_
+  (flags
+   ; warning 70 [missing-mli] — shared test helpers don't have interface files
+   (:standard -w -70))))
+
+(library
+ (name kbases_tests_common)
+ (wrapped false)
+ (libraries kbases)
+ (preprocess (pps ppx_inline_test ppx_expect))
+)

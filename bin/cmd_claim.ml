@@ -107,6 +107,10 @@ let cmd_man = [
   `P "  bs claim kb-0";
   `P "Claim and show full details:";
   `P "  bs claim kb-0 --show";
+  `P "Claim with JSON output:";
+  `P "  bs claim kb-0 --json";
+  `P "Combine --show and --json:";
+  `P "  bs claim kb-0 --show --json";
 ]
 
 let cmd_info = Cmd.info "claim" ~doc:"Claim an open todo by setting its status to in-progress." ~man:cmd_man

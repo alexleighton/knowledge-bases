@@ -9,6 +9,7 @@
 * `docs/lib/unused-exports.md`: How to suppress `check-unused.py` warnings with `@unused-ok` annotations.
 * `docs/scripts/principles.md`: Rules for code that lives in `scripts/`.
 * `docs/test/principles.md`: Rules for code that lives in `test`.
+* `docs/test-common/architecture.md`: Structure and purpose of shared test utilities in `test-common/`.
 * `docs/test-integration/architecture.md`: Structure and conventions for integration tests in `test-integration/`.
 * `docs/test-integration/deferred-tests.md`: Backlog of integration tests blocked on missing CLI functionality.
 * `docs/test-integration/principles.md`: Rules for code that lives in `test-integration/`.

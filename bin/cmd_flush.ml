@@ -24,6 +24,8 @@ let cmd_man = [
   `S "EXAMPLES";
   `P "After adding or updating items, persist for git:";
   `P "  bs flush";
+  `P "Machine-readable JSON output:";
+  `P "  bs flush --json";
 ]
 
 let cmd_info = Cmd.info "flush" ~doc:"Serialize SQLite data to .kbases.jsonl for git." ~man:cmd_man

@@ -92,12 +92,12 @@ let _sort_items spec items =
       let cmp = if spec.ascending then cmp else fun a b -> cmp b a in
       List.sort cmp items
   | Some Sort_created ->
-      let cmp a b = Data.Timestamp.compare (Data.Item.created_at b) (Data.Item.created_at a) in
-      let cmp = if spec.ascending then fun a b -> cmp b a else cmp in
+      let cmp a b = Data.Timestamp.compare (Data.Item.created_at a) (Data.Item.created_at b) in
+      let cmp = if spec.ascending then cmp else fun a b -> cmp b a in
       List.sort cmp items
   | Some Sort_updated ->
-      let cmp a b = Data.Timestamp.compare (Data.Item.updated_at b) (Data.Item.updated_at a) in
-      let cmp = if spec.ascending then fun a b -> cmp b a else cmp in
+      let cmp a b = Data.Timestamp.compare (Data.Item.updated_at a) (Data.Item.updated_at b) in
+      let cmp = if spec.ascending then cmp else fun a b -> cmp b a in
       List.sort cmp items
 
 (* --- Counting --- *)

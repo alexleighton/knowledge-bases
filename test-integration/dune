@@ -19,5 +19,5 @@
   ; integration tests whose output can vary with the host environment
   ; (see the TERM/cmdliner discussion in test_helper.ml).
   (deps %{bin:bs} (universe)))
- (libraries kbases unix str)
+ (libraries kbases kbases_tests_common unix str)
  (preprocess (pps ppx_inline_test ppx_expect)))

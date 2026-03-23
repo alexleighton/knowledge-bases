@@ -10,13 +10,13 @@ module Identifier = Kbases.Data.Identifier
 
 let item_to_json_and_msg = function
   | Service.Todo_item todo ->
-      let niceid = Identifier.to_string (Todo.niceid todo) in
-      (`Assoc ["type", `String "todo"; "niceid", `String niceid],
-       Printf.sprintf "Reopened todo: %s" niceid)
+      let niceid = Todo.niceid todo in
+      (Common.item_summary_json ~entity_type:"todo" ~niceid,
+       Printf.sprintf "Reopened todo: %s" (Identifier.to_string niceid))
   | Service.Note_item note ->
-      let niceid = Identifier.to_string (Note.niceid note) in
-      (`Assoc ["type", `String "note"; "niceid", `String niceid],
-       Printf.sprintf "Reactivated note: %s" niceid)
+      let niceid = Note.niceid note in
+      (Common.item_summary_json ~entity_type:"note" ~niceid,
+       Printf.sprintf "Reactivated note: %s" (Identifier.to_string niceid))
 
 let run first_identifier rest_identifiers json =
   let identifiers = first_identifier :: rest_identifiers in

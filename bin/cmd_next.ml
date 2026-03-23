@@ -41,6 +41,10 @@ let cmd_man = [
   `P "  bs next";
   `P "Claim and show full details:";
   `P "  bs next --show";
+  `P "Claim with JSON output:";
+  `P "  bs next --json";
+  `P "Combine --show and --json:";
+  `P "  bs next --show --json";
 ]
 
 let cmd_info = Cmd.info "next" ~doc:"Claim the next available open todo." ~man:cmd_man

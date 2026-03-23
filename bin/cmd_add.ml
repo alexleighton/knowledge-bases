@@ -116,6 +116,8 @@ let note_man = [
   `P "  bs add note \"Title\" --content \"Body\" --depends-on kb-0";
   `P "Create with a custom unidirectional relation:";
   `P "  bs add note \"Title\" --content \"Body\" --uni designed-by,kb-0";
+  `P "Machine-readable JSON output:";
+  `P "  bs add note \"Title\" --content \"Body\" --json";
 ]
 
 let note_info = Cmd.info "note" ~doc:note_doc ~man:note_man
@@ -136,6 +138,8 @@ let todo_man = [
   `P "  bs add todo \"Title\" --content \"Content\" --depends-on kb-0";
   `P "Create with a custom unidirectional relation:";
   `P "  bs add todo \"Title\" --content \"Content\" --uni blocks,kb-1";
+  `P "Machine-readable JSON output:";
+  `P "  bs add todo \"Title\" --content \"Content\" --json";
 ]
 
 let todo_info = Cmd.info "todo" ~doc:todo_doc ~man:todo_man

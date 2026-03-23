@@ -53,6 +53,8 @@ let _reverse_exists repo rel =
           | Sqlite.Row_parse_failed _ | Sqlite.Constraint_violation as err) ->
       Error (Backend_failure (Sqlite.error_message err))
 
+let _select_cols = "source, target, kind, bidirectional, blocking"
+
 let _relation_of_row stmt =
   let source = Data.Uuid.Typeid.of_string (Sql.column_text stmt 0) in
   let target = Data.Uuid.Typeid.of_string (Sql.column_text stmt 1) in
@@ -89,8 +91,7 @@ let create repo rel =
 
 let list_all repo =
   Sqlite.with_stmt repo.db
-    "SELECT source, target, kind, bidirectional, blocking \
-     FROM relation ORDER BY source, target, kind;"
+    (Printf.sprintf "SELECT %s FROM relation ORDER BY source, target, kind;" _select_cols)
     []
     _relation_of_row
   |> map_sqlite_error
@@ -98,8 +99,7 @@ let list_all repo =
 let find_by_source repo typeid =
   let id = Data.Uuid.Typeid.to_string typeid in
   Sqlite.with_stmt repo.db
-    "SELECT source, target, kind, bidirectional, blocking \
-     FROM relation WHERE source = ? ORDER BY target, kind;"
+    (Printf.sprintf "SELECT %s FROM relation WHERE source = ? ORDER BY target, kind;" _select_cols)
     [(1, Sql.Data.TEXT id)]
     _relation_of_row
   |> map_sqlite_error
@@ -107,8 +107,7 @@ let find_by_source repo typeid =
 let find_by_target repo typeid =
   let id = Data.Uuid.Typeid.to_string typeid in
   Sqlite.with_stmt repo.db
-    "SELECT source, target, kind, bidirectional, blocking \
-     FROM relation WHERE target = ? ORDER BY source, kind;"
+    (Printf.sprintf "SELECT %s FROM relation WHERE target = ? ORDER BY source, kind;" _select_cols)
     [(1, Sql.Data.TEXT id)]
     _relation_of_row
   |> map_sqlite_error

@@ -60,6 +60,8 @@ let cmd_man = [
   `P "  bs relate kb-0 --bi reviews,kb-1";
   `P "Multiple relations in one command:";
   `P "  bs relate kb-0 --depends-on kb-1 --depends-on kb-2";
+  `P "Machine-readable JSON output:";
+  `P "  bs relate kb-0 --depends-on kb-1 --json";
 ]
 
 let cmd_info = Cmd.info "relate" ~doc:"Create relations from a source item to one or more targets." ~man:cmd_man

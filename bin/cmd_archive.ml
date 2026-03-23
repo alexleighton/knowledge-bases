@@ -8,11 +8,7 @@ module Note = Kbases.Data.Note
 module Identifier = Kbases.Data.Identifier
 
 let result_to_json note =
-  let niceid = Identifier.to_string (Note.niceid note) in
-  `Assoc [
-    "type", `String "note";
-    "niceid", `String niceid;
-  ]
+  Common.item_summary_json ~entity_type:"note" ~niceid:(Note.niceid note)
 
 let run first_identifier rest_identifiers json =
   let identifiers = first_identifier :: rest_identifiers in

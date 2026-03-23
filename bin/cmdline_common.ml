@@ -36,6 +36,12 @@ let resolve_content_source content_opt =
         if raw = "" then None else Some raw
       else None
 
+let item_summary_json ~entity_type ~niceid =
+  `Assoc [
+    "type", `String entity_type;
+    "niceid", `String (Kbases.Data.Identifier.to_string niceid);
+  ]
+
 let json_flag =
   let doc = "Output result as JSON." in
   Cmdliner.Arg.(value & flag & info [ "json" ] ~doc)

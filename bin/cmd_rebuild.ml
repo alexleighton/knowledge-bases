@@ -25,6 +25,8 @@ let cmd_man = [
   `S "EXAMPLES";
   `P "After cloning or pulling changes:";
   `P "  bs rebuild";
+  `P "Machine-readable JSON output:";
+  `P "  bs rebuild --json";
 ]
 
 let cmd_info = Cmd.info "rebuild" ~doc:"Reconstruct SQLite from .kbases.jsonl." ~man:cmd_man

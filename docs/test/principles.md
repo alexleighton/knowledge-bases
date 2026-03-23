@@ -116,7 +116,9 @@ file is "primary."
 
 **Preamble duplication:** each split file duplicates the module aliases and thin
 wrapper helpers (e.g., `with_mutation_service`). Shared *logic* belongs in
-`test_helpers.ml`, not copied between files.
+`test_helpers.ml`, not copied between files. Logic shared across both `test/`
+and `test-integration/` belongs in `test-common/` (see
+`docs/test-common/architecture.md`).
 
 ## 5. Clean up temporary files and directories
 

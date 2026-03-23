@@ -47,30 +47,11 @@ let bs_exe =
      if Sys.file_exists exe then exe
      else failwith ("bs executable not found at " ^ exe))
 
-let rec rm_rf path =
-  match Sys.file_exists path with
-  | false -> ()
-  | true ->
-    if Sys.is_directory path then begin
-      Array.iter
-        (fun entry -> rm_rf (Filename.concat path entry))
-        (Sys.readdir path);
-      Unix.rmdir path
-    end else
-      Sys.remove path
-
-let create_git_root ?(name = "kb-integ-") () =
-  let dir = Filename.temp_dir name "" in
-  Unix.mkdir (Filename.concat dir ".git") 0o755;
-  dir
-
-let with_git_root ?name f =
-  let dir = create_git_root ?name () in
-  Fun.protect ~finally:(fun () -> rm_rf dir) (fun () -> f dir)
+let with_git_root ?(name = "kb-integ-") f =
+  Test_common.with_git_root name f
 
 let with_temp_dir ?(name = "kb-integ-") f =
-  let dir = Filename.temp_dir name "" in
-  Fun.protect ~finally:(fun () -> rm_rf dir) (fun () -> f dir)
+  Test_common.with_temp_dir name f
 
 let run_bs ~dir ?stdin args =
   let exe = Lazy.force bs_exe in

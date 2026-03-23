@@ -1,7 +1,6 @@
 module TodoRepo = Repository.Todo
 module NoteRepo = Repository.Note
 
-
 type t = {
   items        : Item_service.t;
   todo_repo    : TodoRepo.t;

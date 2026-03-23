@@ -79,6 +79,17 @@ type candidate = {
   updated_at  : Data.Timestamp.t;
 }
 
+let _candidates_of (type a s)
+    (module E : Data.Entity.S with type t = a and type status = s) ~cutoff entities =
+  List.filter_map (fun entity ->
+    let updated = E.updated_at entity in
+    if Data.Timestamp.to_epoch updated <= cutoff then
+      Some { typeid = E.id entity; niceid = E.niceid entity;
+             entity_type = E.entity_name; title = E.title entity;
+             updated_at = updated }
+    else None
+  ) entities
+
 let _list_terminal_candidates t ~max_age_seconds ~now =
   let open Result.Syntax in
   let cutoff = now - max_age_seconds in
@@ -86,31 +97,12 @@ let _list_terminal_candidates t ~max_age_seconds ~now =
     TodoRepo.list t.todo_repo ~statuses:[Data.Todo.Done]
     |> Result.map_error Item_service.map_todo_repo_error
   in
-  let* archived_notes =
+  let+ archived_notes =
     NoteRepo.list t.note_repo ~statuses:[Data.Note.Archived]
     |> Result.map_error Item_service.map_note_repo_error
   in
-  let todo_candidates = List.filter_map (fun todo ->
-    let updated = Data.Todo.updated_at todo in
-    if Data.Timestamp.to_epoch updated <= cutoff then
-      Some { typeid = Data.Todo.id todo;
-             niceid = Data.Todo.niceid todo;
-             entity_type = "todo";
-             title = Data.Todo.title todo;
-             updated_at = updated }
-    else None
-  ) done_todos in
-  let note_candidates = List.filter_map (fun note ->
-    let updated = Data.Note.updated_at note in
-    if Data.Timestamp.to_epoch updated <= cutoff then
-      Some { typeid = Data.Note.id note;
-             niceid = Data.Note.niceid note;
-             entity_type = "note";
-             title = Data.Note.title note;
-             updated_at = updated }
-    else None
-  ) archived_notes in
-  Ok (todo_candidates @ note_candidates)
+  _candidates_of (module Data.Todo) ~cutoff done_todos
+  @ _candidates_of (module Data.Note) ~cutoff archived_notes
 
 module TypeidSet = Data.Uuid.Typeid.Set
 

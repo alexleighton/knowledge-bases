@@ -74,6 +74,8 @@ let cmd_man = [
   `P "  bs update kb-0 --content \"New body\"";
   `P "Update content from stdin:";
   `P "  echo \"New body\" | bs update kb-0";
+  `P "Machine-readable JSON output:";
+  `P "  bs update kb-0 --title \"New title\" --json";
 ]
 
 let cmd_info = Cmd.info "update" ~doc:"Update an existing item." ~man:cmd_man

@@ -3,6 +3,6 @@
 (library
  (name kbases_tests_service)
  (inline_tests)
- (libraries kbases)
+ (libraries kbases kbases_tests_common)
  (preprocess (pps ppx_inline_test ppx_expect))
 )

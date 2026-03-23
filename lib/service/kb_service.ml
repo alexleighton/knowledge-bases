@@ -40,10 +40,6 @@ let map_lifecycle_error = function
   | Lifecycle.Repository_error msg -> Repository_error msg
   | Lifecycle.Validation_error msg -> Validation_error msg
 
-let map_sync_error_from_item = function
-  | Item_service.Repository_error msg -> Repository_error msg
-  | Item_service.Validation_error msg -> Validation_error msg
-
 let map_sync_error = function
   | Sync_service.Sync_failed msg -> Repository_error msg
 
@@ -100,8 +96,7 @@ let init root = {
 let _run_gc root sync =
   let open Result.Syntax in
   let gc = Gc_service.init root in
-  let* result = Gc_service.run_with_config gc
-    |> Result.map_error map_sync_error_from_item in
+  let* result = Gc_service.run_with_config gc in
   if result.Gc_service.items_removed > 0 then begin
     let* () = Sync_service.mark_dirty sync |> Result.map_error map_sync_error in
     Sync_service.flush sync |> Result.map_error map_sync_error
@@ -143,37 +138,32 @@ let add_todo t ~title ~content ?status () =
     Repository.Todo.create t.todo_repo ~title ~content ?status ()
     |> Result.map_error Item_service.map_todo_repo_error)
 
-let add_note_with_relations t ~title ~content ~specs =
+let _add_with_relations (type a) t ~create ~niceid ~id ~entity_type ~specs =
   _with_flush t (fun () ->
     Repository.Sqlite.with_transaction t.db
       ~on_begin_error:(fun msg -> Repository_error msg)
       (fun () ->
         let open Result.Syntax in
-        let* note = Repository.Note.create t.note_repo ~title ~content ()
-                    |> Result.map_error Item_service.map_note_repo_error in
-        let source = Data.Identifier.to_string (Data.Note.niceid note) in
+        let* (entity : a) = create () in
+        let source = Data.Identifier.to_string (niceid entity) in
         let* results = Relation.relate_many t.relation_svc ~source ~specs in
         let relations = List.map _relation_entry_of_relate_result results in
-        Ok { niceid = Data.Note.niceid note;
-             typeid = Data.Note.id note;
-             entity_type = "note";
-             relations }))
+        Ok { niceid = niceid entity; typeid = id entity;
+             entity_type; relations }))
+
+let add_note_with_relations t ~title ~content ~specs =
+  _add_with_relations t ~specs ~entity_type:"note"
+    ~niceid:Data.Note.niceid ~id:Data.Note.id
+    ~create:(fun () ->
+      Repository.Note.create t.note_repo ~title ~content ()
+      |> Result.map_error Item_service.map_note_repo_error)
 
 let add_todo_with_relations t ~title ~content ~specs ?status () =
-  _with_flush t (fun () ->
-    Repository.Sqlite.with_transaction t.db
-      ~on_begin_error:(fun msg -> Repository_error msg)
-      (fun () ->
-        let open Result.Syntax in
-        let* todo = Repository.Todo.create t.todo_repo ~title ~content ?status ()
-                    |> Result.map_error Item_service.map_todo_repo_error in
-        let source = Data.Identifier.to_string (Data.Todo.niceid todo) in
-        let* results = Relation.relate_many t.relation_svc ~source ~specs in
-        let relations = List.map _relation_entry_of_relate_result results in
-        Ok { niceid = Data.Todo.niceid todo;
-             typeid = Data.Todo.id todo;
-             entity_type = "todo";
-             relations }))
+  _add_with_relations t ~specs ~entity_type:"todo"
+    ~niceid:Data.Todo.niceid ~id:Data.Todo.id
+    ~create:(fun () ->
+      Repository.Todo.create t.todo_repo ~title ~content ?status ()
+      |> Result.map_error Item_service.map_todo_repo_error)
 
 (* --- Query operations --- *)
 
