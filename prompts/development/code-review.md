@@ -55,7 +55,12 @@ Read every changed file, then trace outward:
 Build your understanding from the code and docs — do not guess at
 project structure.
 
-### 4. Present findings
+### 4. Filter and present findings
+
+Before presenting, discard any item where you cannot propose a specific
+change. If you investigated something and found no problem, it is not a
+finding — omit it entirely. The list should contain only items that
+require the user to act or decide.
 
 Produce a numbered list of suggestions. For each one:
 
@@ -63,8 +68,9 @@ Produce a numbered list of suggestions. For each one:
 * **Explain why it matters** — grounded in project principles,
   consistency, correctness, or maintainability.
 * **Propose a concrete action** — what to change, or what decision the
-  user needs to make. When there are multiple reasonable options, name
-  them briefly and say which you lean toward.
+  user needs to make. If you cannot fill this in, drop the item from
+  the list. When there are multiple reasonable options, name them
+  briefly and say which you lean toward.
 
 Keep each suggestion independent. The user will accept, reject, or
 redirect each one individually.

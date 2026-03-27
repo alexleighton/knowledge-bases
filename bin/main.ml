@@ -1,6 +1,7 @@
 include Cmdline_common
 
 module Cmd = Cmdliner.Cmd
+module Term = Cmdliner.Term
 
 let root_doc = "Knowledge base management CLI."
 
@@ -8,26 +9,6 @@ let root_man = [
   `S "DESCRIPTION";
   `P "Track todos, notes, and relations in a local knowledge base. \
       Designed for use by coding agents and humans alike.";
-  `S "COMMANDS";
-  `P "init        Initialise a new knowledge base in a git repository.";
-  `P "uninstall   Remove all knowledge-base artifacts from a repository.";
-  `P "add note    Create a note (content from --content or stdin).";
-  `P "add todo    Create a todo (content from --content or stdin).";
-  `P "list        List todos and notes, with optional type and status filters.";
-  `P "show        Display full details of one or more items.";
-  `P "update      Update status, title, or content of an item.";
-  `P "claim       Claim an open todo (set status to in-progress).";
-  `P "next        Claim the next available open todo.";
-  `P "resolve     Mark a todo as done.";
-  `P "close       Mark a todo as done (alias for resolve).";
-  `P "archive     Mark a note as archived.";
-  `P "reopen      Return a terminal item to its initial status.";
-  `P "delete      Delete items and their relations.";
-  `P "relate      Create relations between items.";
-  `P "unrelate    Remove relations from an item.";
-  `P "flush       Serialize SQLite to .kbases.jsonl for git.";
-  `P "rebuild     Reconstruct SQLite from .kbases.jsonl.";
-  `P "gc          Garbage-collect old terminal items.";
   `S "EXAMPLES";
   `P "Initialise a knowledge base:";
   `P "  bs init";
@@ -61,7 +42,9 @@ let root_man = [
 
 let root_info = Cmd.info "bs" ~doc:root_doc ~man:root_man
 
-let root_cmd = Cmd.group root_info [
+let root_cmd =
+  let default = Term.(ret (const (`Help (`Auto, None)))) in
+  Cmd.group ~default root_info [
   Cmd_init.cmd; Cmd_uninstall.cmd;
   Cmd_add.cmd; Cmd_list.cmd; Cmd_show.cmd;
   Cmd_update.cmd; Cmd_claim.cmd; Cmd_next.cmd;
