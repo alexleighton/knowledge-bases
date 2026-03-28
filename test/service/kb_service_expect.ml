@@ -29,7 +29,7 @@ let%expect_test "open_kb succeeds and returns functional service" =
   with_git_root "kb-open-happy-" (fun root ->
     with_chdir root (fun () ->
       expect_ok
-        (Service.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None)
+        (Service.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None ~mode:None)
         (fun _ ->
           with_open_kb (fun db_root service ->
             expect_ok

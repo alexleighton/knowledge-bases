@@ -97,10 +97,13 @@ let _run_gc root sync =
   let open Result.Syntax in
   let gc = Gc_service.init root in
   let* result = Gc_service.run_with_config gc in
-  if result.Gc_service.items_removed > 0 then begin
-    let* () = Sync_service.mark_dirty sync |> Result.map_error map_sync_error in
-    Sync_service.flush sync |> Result.map_error map_sync_error
-  end else Ok ()
+  if result.Gc_service.items_removed > 0 then
+    match sync with
+    | None -> Ok ()
+    | Some s ->
+        let* () = Sync_service.mark_dirty s |> Result.map_error map_sync_error in
+        Sync_service.flush s |> Result.map_error map_sync_error
+  else Ok ()
 
 let open_kb () =
   let open Result.Syntax in
@@ -108,18 +111,28 @@ let open_kb () =
     Lifecycle.open_kb ()
     |> Result.map_error map_lifecycle_error
   in
-  let jsonl_path = Filename.concat dir Lifecycle.jsonl_filename in
-  let sync = Sync_service.init root ~jsonl_path in
-  let* () =
-    Sync_service.rebuild_if_needed sync
-    |> Result.map_error map_sync_error
+  let mode = match Repository.Config.get (Repository.Root.config root) "mode" with
+    | Ok "local" -> "local"
+    | Ok _ | Error _ -> "shared"
   in
-  let* () = _run_gc root sync in
-  let t = { (init root) with sync = Some sync } in
-  Ok (root, t)
+  if mode = "local" then begin
+    let* () = _run_gc root None in
+    let t = init root in
+    Ok (root, t)
+  end else begin
+    let jsonl_path = Filename.concat dir Lifecycle.jsonl_filename in
+    let sync = Sync_service.init root ~jsonl_path in
+    let* () =
+      Sync_service.rebuild_if_needed sync
+      |> Result.map_error map_sync_error
+    in
+    let* () = _run_gc root (Some sync) in
+    let t = { (init root) with sync = Some sync } in
+    Ok (root, t)
+  end
 
-let init_kb ~directory ~namespace ~gc_max_age =
-  Lifecycle.init_kb ~directory ~namespace ~gc_max_age
+let init_kb ~directory ~namespace ~gc_max_age ~mode =
+  Lifecycle.init_kb ~directory ~namespace ~gc_max_age ~mode
   |> Result.map_error map_lifecycle_error
 
 let uninstall_kb ~directory =
@@ -244,13 +257,13 @@ let gc_run_with_config t = Gc.run_with_config t.gc_svc
 let flush t =
   let open Result.Syntax in
   match t.sync with
-  | None -> Error (Repository_error "Sync not enabled")
+  | None -> Error (Repository_error "Sync is not available in local mode.")
   | Some sync ->
       let* () = Sync_service.mark_dirty sync |> Result.map_error map_sync_error in
       Sync_service.flush sync |> Result.map_error map_sync_error
 
 let force_rebuild t =
   match t.sync with
-  | None -> Error (Repository_error "Sync not enabled")
+  | None -> Error (Repository_error "Sync is not available in local mode.")
   | Some sync ->
       Sync_service.force_rebuild sync |> Result.map_error map_sync_error

@@ -44,6 +44,11 @@ VERBOSE = False
 
 EXPECT_SUFFIX = "_expect.ml"
 
+# Stems exempt from the cmd_*.ml matching rule.  Prefix match: "workflow"
+# exempts workflow_planning_expect.ml, workflow_persistence_expect.ml, etc.
+# "help" exempts help_expect.ml (tests the top-level command, no cmd_help.ml).
+EXEMPT_PREFIXES = ["workflow", "help"]
+
 # Group commands whose subcommands are the real test targets.
 # Maps the group name to its list of subcommand names.
 # The joined form (e.g. "add_note") becomes a valid command stem.
@@ -95,9 +100,9 @@ def check():
         file_count += 1
         stem = test_file.name.removesuffix(EXPECT_SUFFIX)
 
-        # workflow_* files are exempt.
-        if stem.startswith("workflow"):
-            log(f"  {test_file.name} -> workflow (exempt)")
+        # Exempt prefixes (workflow_*, help, etc.).
+        if any(stem.startswith(p) for p in EXEMPT_PREFIXES):
+            log(f"  {test_file.name} -> {stem} (exempt)")
             continue
 
         # Exact match: stem is the command name.

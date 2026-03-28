@@ -84,7 +84,7 @@ let%expect_test "uninstall_git_exclude returns Entry_not_found when file missing
 
 let%expect_test "uninstall_git_exclude roundtrip with install_git_exclude" =
   with_git_root "lc-ungitex-roundtrip-" (fun root ->
-    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None);
+    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None ~mode:None);
     let info_dir = Filename.concat (Filename.concat root ".git") "info" in
     let exclude_path = Filename.concat info_dir "exclude" in
     Printf.printf "entry present before: %b\n"
@@ -119,7 +119,7 @@ let%expect_test "uninstall_agents_md returns Not_found when file missing" =
 
 let%expect_test "uninstall_agents_md deletes file when exact match" =
   with_git_root "lc-unagents-exact-" (fun root ->
-    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None);
+    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None ~mode:None);
     let path = Filename.concat root "AGENTS.md" in
     let result = Lifecycle.uninstall_agents_md ~directory:root in
     Printf.printf "result: %s\n" (pp_agents_md_uninstall result);
@@ -134,7 +134,7 @@ let%expect_test "uninstall_agents_md removes appended section" =
     let path = Filename.concat root "AGENTS.md" in
     let other = "# Other\n\nSome content.\n" in
     Io.write_file ~path ~contents:other;
-    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None);
+    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None ~mode:None);
     let result = Lifecycle.uninstall_agents_md ~directory:root in
     Printf.printf "result: %s\n" (pp_agents_md_uninstall result);
     let contents = Io.read_file path in
@@ -158,7 +158,7 @@ let%expect_test "uninstall_agents_md reports Section_modified when marker headin
 
 let%expect_test "uninstall_agents_md roundtrip: init then uninstall deletes file" =
   with_git_root "lc-unagents-roundtrip-" (fun root ->
-    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None);
+    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None ~mode:None);
     let path = Filename.concat root "AGENTS.md" in
     Printf.printf "file exists before: %b\n" (Sys.file_exists path);
     let result = Lifecycle.uninstall_agents_md ~directory:root in
@@ -202,7 +202,7 @@ let pp_file_action = function
 
 let%expect_test "uninstall_kb full roundtrip after init_kb" =
   with_git_root "lc-uninstall-roundtrip-" (fun root ->
-    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None);
+    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None ~mode:None);
     let db = Filename.concat root ".kbases.db" in
     let jsonl = Filename.concat root ".kbases.jsonl" in
     Printf.printf "db before: %b\n" (Sys.file_exists db);
@@ -244,7 +244,7 @@ let%expect_test "uninstall_kb on git root with no KB reports not found" =
 
 let%expect_test "uninstall_kb resolves repo root from cwd when directory is None" =
   with_git_root "lc-uninstall-cwd-" (fun root ->
-    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None);
+    ignore (Lifecycle.init_kb ~directory:(Some root) ~namespace:(Some "kb") ~gc_max_age:None ~mode:None);
     let nested = Filename.concat root "nested" in
     Unix.mkdir nested 0o755;
     with_chdir nested (fun () ->

@@ -57,6 +57,7 @@ type init_result = {
   directory   : string;
   namespace   : string;
   db_file     : string;
+  mode        : string;
   agents_md   : agents_md_action;
   git_exclude : git_exclude_action;
 }
@@ -114,7 +115,7 @@ let map_config_error e =
   | Item_service.Repository_error msg -> Repository_error msg
   | Item_service.Validation_error msg -> Validation_error msg
 
-let install_database ~db_file ~namespace ~gc_max_age =
+let install_database ~db_file ~namespace ~gc_max_age ~mode =
   let open Result.Syntax in
   let* root =
     Root.init ~db_file ~namespace:(Some namespace)
@@ -132,6 +133,8 @@ let install_database ~db_file ~namespace ~gc_max_age =
                       |> Result.map_error map_config_error
         | None -> Ok ()
       in
+      let* () = Config.set config "mode" mode
+                 |> Result.map_error map_config_error in
       Ok ())
 
 let _has_kb_heading contents =
@@ -257,20 +260,21 @@ let open_kb () =
           Error
             (Validation_error "No knowledge base found. Run 'bs init' first.")
 
-let init_kb ~directory ~namespace ~gc_max_age =
+let init_kb ~directory ~namespace ~gc_max_age ~mode =
   let open Result.Syntax in
   let* directory = resolve_directory directory in
   let* namespace = resolve_namespace ~directory namespace in
   let db_file = Filename.concat directory db_filename in
+  let mode = match mode with Some m -> m | None -> "shared" in
   if Sys.file_exists db_file then
     Error
       (Validation_error
          (Printf.sprintf "Knowledge base already initialised at %s." db_file))
   else
-    let* () = install_database ~db_file ~namespace ~gc_max_age in
+    let* () = install_database ~db_file ~namespace ~gc_max_age ~mode in
     let agents_md = install_agents_md ~directory in
     let git_exclude = install_git_exclude ~directory in
-    Ok { directory; namespace; db_file; agents_md; git_exclude }
+    Ok { directory; namespace; db_file; mode; agents_md; git_exclude }
 
 let uninstall_kb ~directory =
   let open Result.Syntax in

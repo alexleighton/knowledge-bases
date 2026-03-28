@@ -46,13 +46,15 @@ val init : Repository.Root.t -> t
     Callers must close the root when done. *)
 val open_kb : unit -> (Repository.Root.t * t, error) result
 
-(** [init_kb ~directory ~namespace ~gc_max_age] initializes a knowledge base in
-    a git repository, creates [.kbases.db], and persists the effective namespace.
-    When [gc_max_age] is provided, stores it in the config table. *)
+(** [init_kb ~directory ~namespace ~gc_max_age ~mode] initializes a knowledge
+    base in a git repository, creates [.kbases.db], and persists the effective
+    namespace.  When [gc_max_age] is provided, stores it in the config table.
+    [mode] selects ["local"] or ["shared"]; defaults to ["shared"]. *)
 val init_kb :
   directory:string option ->
   namespace:string option ->
   gc_max_age:string option ->
+  mode:string option ->
   (Lifecycle.init_result, error) result
 
 (** [uninstall_kb ~directory] removes all knowledge-base artifacts from the
@@ -218,9 +220,10 @@ val gc_run_with_config : t -> (Gc.gc_result, error) result
 (* --- Sync --- *)
 
 (** [flush t] forces a flush of all SQLite data to the JSONL file.
-    Returns an error if sync is not enabled. *)
+    Returns an error in local mode (sync is not available). *)
 val flush : t -> (unit, error) result
 
 (** [force_rebuild t] unconditionally replaces all SQLite data with the
-    contents of the JSONL file. Returns an error if sync is not enabled. *)
+    contents of the JSONL file.
+    Returns an error in local mode (sync is not available). *)
 val force_rebuild : t -> (unit, error) result

@@ -29,17 +29,21 @@ type init_result = {
   directory   : string;
   namespace   : string;
   db_file     : string;
+  mode        : string;
   agents_md   : agents_md_action;
   git_exclude : git_exclude_action;
 }
 
-(** [init_kb ~directory ~namespace ~gc_max_age] initializes a knowledge base in
-    a git repository, creates [.kbases.db], and persists the effective namespace.
-    When [gc_max_age] is provided, stores it in the config table. *)
+(** [init_kb ~directory ~namespace ~gc_max_age ~mode] initializes a knowledge
+    base in a git repository, creates [.kbases.db], and persists the effective
+    namespace.  When [gc_max_age] is provided, stores it in the config table.
+    [mode] selects ["local"] (SQLite only) or ["shared"] (SQLite + JSONL sync);
+    defaults to ["shared"] when [None]. *)
 val init_kb :
   directory:string option ->
   namespace:string option ->
   gc_max_age:string option ->
+  mode:string option ->
   (init_result, error) result
 
 (** [uninstall_file path] deletes [path] if it exists and returns [Deleted],

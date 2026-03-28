@@ -60,6 +60,32 @@ let%expect_test "bs flush --json" =
     file: .kbases.jsonl
   |}]
 
+let%expect_test "bs flush in local mode returns error" =
+  Helper.with_git_root (fun dir ->
+    ignore (Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"; "--mode"; "local"]);
+    let result = Helper.run_bs ~dir ["flush"] in
+    Helper.print_result ~dir result);
+  [%expect {|
+    [exit 1]
+    STDERR: Error: Sync is not available in local mode.
+  |}]
+
+let%expect_test "bs flush --json in local mode returns json error" =
+  Helper.with_git_root (fun dir ->
+    ignore (Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"; "--mode"; "local"]);
+    let result = Helper.run_bs ~dir ["flush"; "--json"] in
+    Printf.printf "[exit %d]\n" result.exit_code;
+    Printf.printf "stderr empty: %b\n" (result.stderr = "");
+    let json = Helper.parse_json result.stdout in
+    Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
+    Printf.printf "reason: %s\n" (Helper.get_string json "reason"));
+  [%expect {|
+    [exit 1]
+    stderr empty: true
+    ok: false
+    reason: error
+  |}]
+
 let%expect_test "bs flush auto-rebuilds when db is missing" =
   Helper.with_git_root (fun dir ->
     Helper.init_kb dir;

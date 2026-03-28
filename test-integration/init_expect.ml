@@ -20,6 +20,7 @@ let%expect_test "bs init with explicit directory and namespace" =
       Directory:   <DIR>
       Namespace:   kb
       Database:    <DIR>/.kbases.db
+      Mode:        shared
       AGENTS.md:   created
       Git exclude: added to .git/info/exclude
       GC max age:  30d (default)
@@ -56,6 +57,7 @@ let%expect_test "bs init resolves git root from cwd" =
       Directory:   <DIR>
       Namespace:   kb
       Database:    <DIR>/.kbases.db
+      Mode:        shared
       AGENTS.md:   created
       Git exclude: added to .git/info/exclude
       GC max age:  30d (default)
@@ -136,6 +138,7 @@ let%expect_test "bs init appends to existing AGENTS.md" =
       Directory:   <DIR>
       Namespace:   kb
       Database:    <DIR>/.kbases.db
+      Mode:        shared
       AGENTS.md:   appended to existing file
       Git exclude: added to .git/info/exclude
       GC max age:  30d (default)
@@ -168,6 +171,7 @@ let%expect_test "bs init is idempotent when AGENTS.md section already present" =
       Directory:   <DIR>
       Namespace:   kb
       Database:    <DIR>/.kbases.db
+      Mode:        shared
       AGENTS.md:   section already present
       Git exclude: added to .git/info/exclude
       GC max age:  30d (default)
@@ -220,12 +224,13 @@ let%expect_test "bs init --gc-max-age persists the setting" =
       Directory:   <DIR>
       Namespace:   kb
       Database:    <DIR>/.kbases.db
+      Mode:        shared
       AGENTS.md:   created
       Git exclude: added to .git/info/exclude
       GC max age:  14d
     [exit 0]
     GC max age: 14d
-  |}]
+    |}]
 
 let%expect_test "bs init --json" =
   Helper.with_git_root (fun dir ->
@@ -236,6 +241,7 @@ let%expect_test "bs init --json" =
     Printf.printf "has directory: %b\n" (Helper.get_string json "directory" <> "<missing>");
     Printf.printf "namespace: %s\n" (Helper.get_string json "namespace");
     Printf.printf "has db_file: %b\n" (Helper.get_string json "db_file" <> "<missing>");
+    Printf.printf "mode: %s\n" (Helper.get_string json "mode");
     Printf.printf "agents_md: %s\n" (Helper.get_string json "agents_md");
     Printf.printf "git_exclude: %s\n" (Helper.get_string json "git_exclude"));
   [%expect {|
@@ -244,6 +250,8 @@ let%expect_test "bs init --json" =
     has directory: true
     namespace: kb
     has db_file: true
+    mode: shared
     agents_md: created
     git_exclude: added to .git/info/exclude
   |}]
+

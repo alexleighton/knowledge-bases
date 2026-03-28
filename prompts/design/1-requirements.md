@@ -40,6 +40,10 @@ looking for:
 
 * **Ambiguities** — where the description could mean more than one
   thing.
+* **Naming & vocabulary** — what should the new concepts be called?
+  If the feature introduces a mode, state, or entity that users will
+  refer to, propose names and ask for preferences. Good names reduce
+  confusion in the codebase and UI alike.
 * **Unstated requirements** — functionality the user probably expects
   but hasn't said. Think about what a user of the feature would
   assume works.
@@ -49,6 +53,9 @@ looking for:
   most likely to be overlooked.
 * **Scope boundaries** — what is explicitly not part of this work.
 * **Priorities** — which aspects matter most when trade-offs arise.
+* **Motivation** — what is the driving use case? Understanding *why*
+  the user wants the feature helps prioritize trade-offs and
+  distinguish essential requirements from nice-to-haves.
 * **Validity** — whether this is the right problem to solve. If the
   description sounds like a solution to an unstated problem, ask what
   the underlying problem is. If the feature seems like it might not
