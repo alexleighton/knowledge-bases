@@ -11,15 +11,8 @@ let with_chdir = Test_helpers.with_chdir
 let with_root = Test_helpers.with_root
 let query_count = Test_helpers.query_count
 
-let pp_error err =
-  match err with
-  | Lifecycle.Repository_error msg -> Printf.printf "repository error: %s\n" msg
-  | Lifecycle.Validation_error msg -> Printf.printf "validation error: %s\n" msg
-
-let expect_ok result f =
-  match result with
-  | Error err -> pp_error err
-  | Ok v -> f v
+let pp_error = Test_helpers.pp_lifecycle_error
+let expect_ok = Test_helpers.expect_lifecycle_ok
 
 let%expect_test "init_kb succeeds with explicit directory and namespace" =
   with_git_root "lc-init-explicit-" (fun root ->

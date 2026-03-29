@@ -19,26 +19,8 @@ let with_query_service f =
   Test_helpers.with_service QueryService.init f
 
 let pp_error = Test_helpers.pp_item_error
-
-let print_items items =
-  List.iter (function
-    | QueryService.Todo_item todo ->
-        Printf.printf "%s todo %s %s\n"
-          (Identifier.to_string (Todo.niceid todo))
-          (Todo.status_to_string (Todo.status todo))
-          (Title.to_string (Todo.title todo))
-    | QueryService.Note_item note ->
-        Printf.printf "%s note %s %s\n"
-          (Identifier.to_string (Note.niceid note))
-          (Note.status_to_string (Note.status note))
-          (Title.to_string (Note.title note)))
-    items
-
-let unwrap_items result =
-  match result with
-  | Ok (QueryService.Items v) -> v
-  | Ok (QueryService.Counts _) -> failwith "unexpected counts"
-  | Error err -> pp_error err; failwith "unexpected error"
+let print_items = Test_helpers.print_query_items
+let unwrap_items = Test_helpers.unwrap_query_items
 
 let spec = QueryService.default_list_spec
 

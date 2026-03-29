@@ -1,4 +1,5 @@
 module Helper = Test_helper
+module Io = Kbases.Control.Io
 
 let contains_substring = Kbases.Data.String.contains_substring
 
@@ -36,9 +37,7 @@ let%expect_test "bs uninstall --yes removes all artifacts" =
 let%expect_test "bs uninstall --yes removes appended section from AGENTS.md" =
   Helper.with_git_root (fun dir ->
     let agents_path = Filename.concat dir "AGENTS.md" in
-    let oc = open_out agents_path in
-    output_string oc "# Project\n\nExisting content.\n";
-    close_out oc;
+    Io.write_file ~path:agents_path ~contents:"# Project\n\nExisting content.\n";
     Helper.init_kb dir;
     let result = Helper.run_bs ~dir ["uninstall"; "--yes"; "-d"; dir] in
     Helper.print_result ~dir result;
@@ -92,9 +91,7 @@ let%expect_test "bs uninstall --yes roundtrip restores original state" =
     let exclude_dir = Filename.concat (Filename.concat dir ".git") "info" in
     Unix.mkdir exclude_dir 0o755;
     let exclude_path = Filename.concat exclude_dir "exclude" in
-    let oc = open_out exclude_path in
-    output_string oc "*.log\n";
-    close_out oc;
+    Io.write_file ~path:exclude_path ~contents:"*.log\n";
     Helper.init_kb dir;
     ignore (Helper.run_bs ~dir ["uninstall"; "--yes"; "-d"; dir]);
     Printf.printf "db exists: %b\n"
@@ -119,9 +116,7 @@ let%expect_test "bs uninstall --yes warns when AGENTS.md section was modified" =
     Helper.init_kb dir;
     let agents_path = Filename.concat dir "AGENTS.md" in
     let custom_content = "## ※ Knowledge Base\n\nCustomized instructions.\n" in
-    let oc = open_out agents_path in
-    output_string oc custom_content;
-    close_out oc;
+    Io.write_file ~path:agents_path ~contents:custom_content;
     let result = Helper.run_bs ~dir ["uninstall"; "--yes"; "-d"; dir] in
     Helper.print_result ~dir result;
     Printf.printf "agents still exists: %b\n" (Sys.file_exists agents_path);

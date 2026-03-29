@@ -46,6 +46,9 @@ let map_sync_error = function
 let _map_sync_to_claim_error e : Mutation.claim_error =
   Mutation.Service_error (map_sync_error e)
 
+let _map_sync_to_delete_error e =
+  Delete.Service_error (map_sync_error e)
+
 (* --- Internal helpers --- *)
 
 let _with_flush_map t ~map_err f =
@@ -220,9 +223,6 @@ let next t =
 let claim t ~identifier =
   _with_flush_map t ~map_err:_map_sync_to_claim_error (fun () ->
     Mutation.claim t.mutation_svc ~identifier)
-
-let _map_sync_to_delete_error e =
-  Delete.Service_error (map_sync_error e)
 
 let delete_many t ~identifiers ~force =
   _with_flush_map t ~map_err:_map_sync_to_delete_error (fun () ->

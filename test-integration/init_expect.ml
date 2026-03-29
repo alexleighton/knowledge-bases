@@ -1,6 +1,7 @@
 module Helper = Test_helper
 module Root = Kbases.Repository.Root
 module Config = Kbases.Repository.Config
+module Io = Kbases.Control.Io
 
 let with_root db_file f =
   match Root.init ~db_file ~namespace:None with
@@ -122,9 +123,8 @@ let%expect_test "bs init creates AGENTS.md with expected content" =
 let%expect_test "bs init appends to existing AGENTS.md" =
   Helper.with_git_root (fun dir ->
     let agents_md_path = Filename.concat dir "AGENTS.md" in
-    let oc = open_out agents_md_path in
-    output_string oc "# Project\n\nExisting agent instructions.\n";
-    close_out oc;
+    Io.write_file ~path:agents_md_path
+      ~contents:"# Project\n\nExisting agent instructions.\n";
     let result = Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"] in
     Helper.print_result ~dir result;
     let contents = Helper.read_file agents_md_path in
@@ -149,9 +149,8 @@ let%expect_test "bs init appends to existing AGENTS.md" =
 let%expect_test "bs init is idempotent when AGENTS.md section already present" =
   Helper.with_git_root (fun dir ->
     let agents_md_path = Filename.concat dir "AGENTS.md" in
-    let oc = open_out agents_md_path in
-    output_string oc "# Project\n\n## ※ Knowledge Base\n\nExisting section.\n";
-    close_out oc;
+    Io.write_file ~path:agents_md_path
+      ~contents:"# Project\n\n## ※ Knowledge Base\n\nExisting section.\n";
     let result = Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"] in
     Helper.print_result ~dir result;
     let contents = Helper.read_file agents_md_path in
@@ -198,9 +197,7 @@ let%expect_test "bs init preserves existing .git/info/exclude content" =
     let info_dir = Filename.concat (Filename.concat dir ".git") "info" in
     Unix.mkdir info_dir 0o755;
     let exclude_path = Filename.concat info_dir "exclude" in
-    let oc = open_out exclude_path in
-    output_string oc "*.swp\n.DS_Store\n";
-    close_out oc;
+    Io.write_file ~path:exclude_path ~contents:"*.swp\n.DS_Store\n";
     ignore (Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"]);
     let contents = Helper.read_file exclude_path in
     Printf.printf "has original: %b\n"

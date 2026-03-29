@@ -38,7 +38,26 @@ pattern: validate on construction, keep values immutable, and encapsulate
 primitives. See [Correct Construction](correct-construction.md) for the full
 treatment.
 
-## 3. Low nesting depth
+## 3. Respect abstraction boundaries
+
+When a Data module exposes an operation — comparison, equality, formatting,
+parsing — use it. Do not convert a domain value to its underlying representation
+and re-implement the operation on the primitive.
+
+This is the consumer-side complement of [Correct Construction](correct-construction.md).
+Correct Construction says: *define* abstract types with smart constructors and
+encapsulated primitives. This principle says: *use* the operations those types
+provide. Reaching through the abstraction (e.g., converting two `Relation_kind.t`
+values to strings in order to compare them, when `Relation_kind.equal` exists)
+couples the caller to the internal representation and defeats the encapsulation
+that Correct Construction established.
+
+**Why:** If the internal representation changes, every site that unwrapped and
+operated on the primitive breaks — even though the module's own API would have
+handled the change transparently. Using the provided operations keeps callers
+insulated from representation choices they should not depend on.
+
+## 4. Low nesting depth
 
 Keep expressions nested at most two or three levels deep. Deeply nested code
 is hard to follow because the reader must hold every enclosing context in their
@@ -69,7 +88,7 @@ Approaches for reducing nesting:
   library that raises, catch exceptions internally and return result values.
   This removes `try`/`with` nesting from every call site.
 
-## 4. Parameterize shared helpers
+## 5. Parameterize shared helpers
 
 When a shared helper hardcodes a behavioral choice — an exit code, an output
 destination, an error-mapping strategy — callers that need a different value are
@@ -87,14 +106,14 @@ mapping as the default eliminates the duplication.
 unusable when that one thing varies. The result is either duplicated code or
 callers that skip the helper and lose its guarantees.
 
-## 5. File length
+## 6. File length
 
 Keep files below approximately 300 lines. Larger files are harder to read and
 understand. A file approaching this limit is often a sign that the concept it
 represents is too complex and should be broken into smaller, composable
 modules.
 
-## 6. Explicit entropy initialization
+## 7. Explicit entropy initialization
 
 Code that depends on randomness for correctness — unique IDs, tokens, nonces —
 must explicitly initialize its entropy source. OCaml's `Random` module produces

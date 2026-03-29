@@ -238,6 +238,6 @@ let read ~path =
   | header_line :: entity_lines ->
       let* header = _parse_header_line header_line in
       let non_empty = List.filter (fun s -> String.length s > 0) entity_lines in
-      let* records = Data.Result.sequence (List.map _parse_entity_line non_empty) in
+      let* records = Data.Result.traverse _parse_entity_line non_empty in
       Ok (header, records)
 

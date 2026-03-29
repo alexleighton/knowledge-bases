@@ -93,11 +93,4 @@ let show t ~identifier =
   Ok { item; outgoing; incoming }
 
 let show_many t ~identifiers =
-  let open Result.Syntax in
-  let rec go acc = function
-    | [] -> Ok (List.rev acc)
-    | id :: rest ->
-        let* result = show t ~identifier:id in
-        go (result :: acc) rest
-  in
-  go [] identifiers
+  Data.Result.traverse (fun id -> show t ~identifier:id) identifiers

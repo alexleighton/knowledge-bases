@@ -1,5 +1,11 @@
 module RelationRepo = Repository.Relation
 
+type unrelate_spec = {
+  target        : string;
+  kind          : string;
+  bidirectional : bool;
+}
+
 type relate_spec = {
   target        : string;
   kind          : string;
@@ -20,12 +26,21 @@ type relate_result = {
   target_title  : Data.Title.t;
 }
 
+type unrelate_result = {
+  source_niceid : Data.Identifier.t;
+  target_niceid : Data.Identifier.t;
+  kind          : Data.Relation_kind.t;
+  bidirectional : bool;
+}
+
 let map_relation_repo_error = Item_service.map_relation_repo_error
 
 let init root = {
   items         = Item_service.init root;
   relation_repo = Repository.Root.relation root;
 }
+
+(* --- Relate operations --- *)
 
 let build_specs ~depends_on ~related_to ~uni ~bi ~blocking =
   List.map (fun tgt ->
@@ -65,6 +80,21 @@ let find_blockers t todo =
       in
       Ok blockers
 
+let list_unblocked_todos t ~todo_repo =
+  let open Result.Syntax in
+  let* todos =
+    Repository.Todo.list todo_repo ~statuses:[Data.Todo.Open]
+    |> Result.map_error Item_service.map_todo_repo_error
+  in
+  let rec go unblocked stuck = function
+    | [] -> Ok (List.rev unblocked, stuck)
+    | todo :: rest ->
+        let* blockers = find_blockers t todo in
+        if blockers = [] then go (todo :: unblocked) stuck rest
+        else go unblocked (stuck + 1) rest
+  in
+  go [] 0 todos
+
 let relate_many t ~source ~specs =
   let open Result.Syntax in
   let* source_item = Item_service.find t.items ~identifier:source in
@@ -72,15 +102,14 @@ let relate_many t ~source ~specs =
   let source_niceid = Data.Item.niceid source_item in
   (* Validate phase: resolve all targets and parse all kinds before inserting *)
   let* resolved =
-    List.map (fun spec ->
+    Data.Result.traverse (fun (spec : relate_spec) ->
       let* target_item = Item_service.find t.items ~identifier:spec.target in
       let+ kind = Parse.relation_kind spec.kind in
       (target_item, kind, spec.bidirectional, spec.blocking)
     ) specs
-    |> Data.Result.sequence
   in
   (* Create phase: insert all relations *)
-  List.map (fun (target_item, kind, bidirectional, blocking) ->
+  Data.Result.traverse (fun (target_item, kind, bidirectional, blocking) ->
     let target_typeid = Data.Item.typeid target_item in
     let rel = Data.Relation.make ~source:source_typeid ~target:target_typeid
                 ~kind ~bidirectional ~blocking in
@@ -96,7 +125,6 @@ let relate_many t ~source ~specs =
       target_title = Data.Item.title target_item;
     }
   ) resolved
-  |> Data.Result.sequence
 
 let relate t ~source ~target ~kind ~bidirectional ~blocking =
   let open Result.Syntax in
@@ -104,11 +132,7 @@ let relate t ~source ~target ~kind ~bidirectional ~blocking =
   let+ results = relate_many t ~source ~specs in
   List.hd results
 
-type unrelate_spec = {
-  target        : string;
-  kind          : string;
-  bidirectional : bool;
-}
+(* --- Unrelate operations --- *)
 
 let build_unrelate_specs ~depends_on ~related_to ~uni ~bi =
   List.map (fun tgt ->
@@ -124,27 +148,19 @@ let build_unrelate_specs ~depends_on ~related_to ~uni ~bi =
       { target = tgt; kind = k; bidirectional = true })
     bi
 
-type unrelate_result = {
-  source_niceid : Data.Identifier.t;
-  target_niceid : Data.Identifier.t;
-  kind          : Data.Relation_kind.t;
-  bidirectional : bool;
-}
-
 let unrelate_many t ~source ~specs =
   let open Result.Syntax in
   let* source_item = Item_service.find t.items ~identifier:source in
   let source_typeid = Data.Item.typeid source_item in
   let source_niceid = Data.Item.niceid source_item in
   let* resolved =
-    List.map (fun (spec : unrelate_spec) ->
+    Data.Result.traverse (fun (spec : unrelate_spec) ->
       let* target_item = Item_service.find t.items ~identifier:spec.target in
       let+ kind = Parse.relation_kind spec.kind in
       (target_item, kind, spec.bidirectional)
     ) specs
-    |> Data.Result.sequence
   in
-  List.map (fun (target_item, kind, bidirectional) ->
+  Data.Result.traverse (fun (target_item, kind, bidirectional) ->
     let target_typeid = Data.Item.typeid target_item in
     let+ () =
       RelationRepo.delete t.relation_repo ~source:source_typeid
@@ -158,4 +174,3 @@ let unrelate_many t ~source ~specs =
       bidirectional;
     }
   ) resolved
-  |> Data.Result.sequence

@@ -18,20 +18,15 @@ let map_sqlite_error r = Result.map_error (function
       Backend_failure (Sqlite.error_message err)
 ) r
 
-let init ~db =
-  let create_sql =
-    "CREATE TABLE IF NOT EXISTS relation (\
-       source TEXT NOT NULL,\
-       target TEXT NOT NULL,\
-       kind TEXT NOT NULL,\
-       bidirectional INTEGER NOT NULL,\
-       blocking INTEGER NOT NULL DEFAULT 0,\
-       PRIMARY KEY (source, target, kind)\
-     );"
-  in
-  match exec_sql db create_sql with
-  | Ok () -> Ok { db }
-  | Error _ as e -> e
+let _select_cols = "source, target, kind, bidirectional, blocking"
+
+let _relation_of_row stmt =
+  let source = Data.Uuid.Typeid.of_string (Sql.column_text stmt 0) in
+  let target = Data.Uuid.Typeid.of_string (Sql.column_text stmt 1) in
+  let kind = Data.Relation_kind.make (Sql.column_text stmt 2) in
+  let bidirectional = Sql.column_int stmt 3 <> 0 in
+  let blocking = Sql.column_int stmt 4 <> 0 in
+  Ok (Data.Relation.make ~source ~target ~kind ~bidirectional ~blocking)
 
 let _reverse_exists repo rel =
   let source = Data.Uuid.Typeid.to_string (Data.Relation.target rel) in
@@ -53,15 +48,20 @@ let _reverse_exists repo rel =
           | Sqlite.Row_parse_failed _ | Sqlite.Constraint_violation as err) ->
       Error (Backend_failure (Sqlite.error_message err))
 
-let _select_cols = "source, target, kind, bidirectional, blocking"
-
-let _relation_of_row stmt =
-  let source = Data.Uuid.Typeid.of_string (Sql.column_text stmt 0) in
-  let target = Data.Uuid.Typeid.of_string (Sql.column_text stmt 1) in
-  let kind = Data.Relation_kind.make (Sql.column_text stmt 2) in
-  let bidirectional = Sql.column_int stmt 3 <> 0 in
-  let blocking = Sql.column_int stmt 4 <> 0 in
-  Ok (Data.Relation.make ~source ~target ~kind ~bidirectional ~blocking)
+let init ~db =
+  let create_sql =
+    "CREATE TABLE IF NOT EXISTS relation (\
+       source TEXT NOT NULL,\
+       target TEXT NOT NULL,\
+       kind TEXT NOT NULL,\
+       bidirectional INTEGER NOT NULL,\
+       blocking INTEGER NOT NULL DEFAULT 0,\
+       PRIMARY KEY (source, target, kind)\
+     );"
+  in
+  match exec_sql db create_sql with
+  | Ok () -> Ok { db }
+  | Error _ as e -> e
 
 let create repo rel =
   let open Result.Syntax in

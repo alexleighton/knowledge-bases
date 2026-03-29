@@ -16,8 +16,7 @@ let _map_err e = Item_service.map_relation_repo_error e
 let _matches_kind filter rel =
   match filter with
   | None -> true
-  | Some k -> Data.Relation_kind.to_string (Data.Relation.kind rel)
-              = Data.Relation_kind.to_string k
+  | Some k -> Data.Relation_kind.equal (Data.Relation.kind rel) k
 
 module TypeidSet = Typeid.Set
 

@@ -3,6 +3,7 @@ module NoteRepo = Repository.Note
 module RelationRepo = Repository.Relation
 module NiceidRepo = Repository.Niceid
 module Config = Repository.Config
+module TypeidSet = Data.Uuid.Typeid.Set
 
 type t = {
   todo_repo     : TodoRepo.t;
@@ -25,7 +26,20 @@ type gc_result = {
   relations_removed : int;
 }
 
+type max_age_result =
+  | Configured of string
+  | Default
+
+type candidate = {
+  typeid      : Data.Uuid.Typeid.t;
+  niceid      : Data.Identifier.t;
+  entity_type : string;
+  title       : Data.Title.t;
+  updated_at  : Data.Timestamp.t;
+}
+
 let default_max_age_seconds = 30 * 86400
+let default_max_age_display = "30d"
 
 let parse_age s =
   let len = String.length s in
@@ -35,49 +49,12 @@ let parse_age s =
   else
     (try Some (int_of_string s) with Failure _ -> None)
 
-let init root = {
-  todo_repo     = Repository.Root.todo root;
-  note_repo     = Repository.Root.note root;
-  relation_repo = Repository.Root.relation root;
-  niceid_repo   = Repository.Root.niceid root;
-  graph_svc     = Graph_service.init root;
-  config        = Repository.Root.config root;
-}
-
-type max_age_result =
-  | Configured of string
-  | Default
-
-let default_max_age_display = "30d"
-
-let get_max_age t =
-  match Config.get t.config "gc_max_age" with
-  | Ok s -> Ok (Configured s)
-  | Error (Config.Not_found _) -> Ok Default
-  | Error (Config.Backend_failure _ as e) -> Error (Item_service.map_config_error e)
-
-let set_max_age t age_str =
-  match parse_age age_str with
-  | None ->
-      Error (Item_service.Validation_error
-        (Printf.sprintf "invalid age format: %S (expected e.g. 14d)" age_str))
-  | Some _ ->
-      Config.set t.config "gc_max_age" age_str
-      |> Result.map_error Item_service.map_config_error
+(* --- Internal helpers --- *)
 
 let _resolve_max_age t =
   match Config.get t.config "gc_max_age" with
   | Ok s -> (match parse_age s with Some v -> v | None -> default_max_age_seconds)
   | Error _ -> default_max_age_seconds
-
-(* An item is terminal if it's Done (todo) or Archived (note) *)
-type candidate = {
-  typeid      : Data.Uuid.Typeid.t;
-  niceid      : Data.Identifier.t;
-  entity_type : string;
-  title       : Data.Title.t;
-  updated_at  : Data.Timestamp.t;
-}
 
 let _candidates_of (type a s)
     (module E : Data.Entity.S with type t = a and type status = s) ~cutoff entities =
@@ -103,8 +80,6 @@ let _list_terminal_candidates t ~max_age_seconds ~now =
   in
   _candidates_of (module Data.Todo) ~cutoff done_todos
   @ _candidates_of (module Data.Note) ~cutoff archived_notes
-
-module TypeidSet = Data.Uuid.Typeid.Set
 
 (* Filter candidates: only keep those in components where ALL members are
    terminal and age-eligible *)
@@ -140,18 +115,6 @@ let _filter_by_component t candidates =
   in
   Ok (List.rev !eligible)
 
-let collect t ~max_age_seconds ~now =
-  let open Result.Syntax in
-  let* candidates = _list_terminal_candidates t ~max_age_seconds ~now in
-  let+ filtered = _filter_by_component t candidates in
-  List.map (fun c ->
-    let age_seconds = now - Data.Timestamp.to_epoch c.updated_at in
-    { niceid = c.niceid;
-      entity_type = c.entity_type;
-      title = c.title;
-      age_days = age_seconds / 86400 }
-  ) filtered
-
 let _map_cascade_err = function
   | `Todo e -> Item_service.map_todo_repo_error e
   | `Note e -> Item_service.map_note_repo_error e
@@ -165,13 +128,52 @@ let _delete_candidate t cand =
     ~map_err:_map_cascade_err
     ~typeid:cand.typeid ~niceid:cand.niceid ~entity_type:cand.entity_type
 
+(* --- Initialization --- *)
+
+let init root = {
+  todo_repo     = Repository.Root.todo root;
+  note_repo     = Repository.Root.note root;
+  relation_repo = Repository.Root.relation root;
+  niceid_repo   = Repository.Root.niceid root;
+  graph_svc     = Graph_service.init root;
+  config        = Repository.Root.config root;
+}
+
+(* --- Public operations --- *)
+
+let get_max_age t =
+  match Config.get t.config "gc_max_age" with
+  | Ok s -> Ok (Configured s)
+  | Error (Config.Not_found _) -> Ok Default
+  | Error (Config.Backend_failure _ as e) -> Error (Item_service.map_config_error e)
+
+let set_max_age t age_str =
+  match parse_age age_str with
+  | None ->
+      Error (Item_service.Validation_error
+        (Printf.sprintf "invalid age format: %S (expected e.g. 14d)" age_str))
+  | Some _ ->
+      Config.set t.config "gc_max_age" age_str
+      |> Result.map_error Item_service.map_config_error
+
+let collect t ~max_age_seconds ~now =
+  let open Result.Syntax in
+  let* candidates = _list_terminal_candidates t ~max_age_seconds ~now in
+  let+ filtered = _filter_by_component t candidates in
+  List.map (fun c ->
+    let age_seconds = now - Data.Timestamp.to_epoch c.updated_at in
+    { niceid = c.niceid;
+      entity_type = c.entity_type;
+      title = c.title;
+      age_days = age_seconds / 86400 }
+  ) filtered
+
 let run t ~max_age_seconds ~now =
   let open Result.Syntax in
   let* candidates = _list_terminal_candidates t ~max_age_seconds ~now in
   let* filtered = _filter_by_component t candidates in
   let+ rels_counts =
-    List.map (fun c -> _delete_candidate t c) filtered
-    |> Data.Result.sequence
+    Data.Result.traverse (fun c -> _delete_candidate t c) filtered
   in
   { items_removed = List.length filtered;
     relations_removed = List.fold_left ( + ) 0 rels_counts }

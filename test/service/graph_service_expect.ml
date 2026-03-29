@@ -40,10 +40,9 @@ let make_todos root n =
 
 let pp_niceids root ids =
   let strs = List.map (fun id ->
-    let id_str = Typeid.to_string id in
-    match TodoRepo.get (Root.todo root) (Typeid.of_string id_str) with
+    match TodoRepo.get (Root.todo root) id with
     | Ok t -> Identifier.to_string (Todo.niceid t)
-    | Error _ -> id_str
+    | Error _ -> Typeid.to_string id
   ) ids in
   Printf.printf "[%s]\n" (String.concat ", " (List.sort String.compare strs))
 

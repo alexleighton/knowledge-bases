@@ -93,22 +93,17 @@ let _start_todo t todo =
 
 let next t =
   let open Result.Syntax in
-  let* todos = TodoRepo.list t.todo_repo ~statuses:[Data.Todo.Open]
-               |> Result.map_error (fun e -> Service_error (Item_service.map_todo_repo_error e)) in
-  let rec find_available stuck_count = function
-    | [] ->
-        if stuck_count = 0 then Ok None
-        else Error (Nothing_available { stuck_count })
-    | todo :: rest ->
-        let* blockers = Relation_service.find_blockers t.relation_svc todo
-                        |> Result.map_error (fun e -> Service_error e) in
-        match blockers with
-        | [] ->
-            let+ todo = _start_todo t todo in
-            Some todo
-        | _ -> find_available (stuck_count + 1) rest
+  let* (unblocked, stuck_count) =
+    Relation_service.list_unblocked_todos t.relation_svc ~todo_repo:t.todo_repo
+    |> Result.map_error (fun e -> Service_error e)
   in
-  find_available 0 todos
+  match unblocked with
+  | [] ->
+      if stuck_count = 0 then Ok None
+      else Error (Nothing_available { stuck_count })
+  | todo :: _ ->
+      let+ todo = _start_todo t todo in
+      Some todo
 
 let claim t ~identifier =
   let open Result.Syntax in

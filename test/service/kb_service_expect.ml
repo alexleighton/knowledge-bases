@@ -15,15 +15,8 @@ let query_count = Test_helpers.query_count
 let query_rows = Test_helpers.query_rows
 
 let pp_error = Test_helpers.pp_item_error
-
-let expect_ok result f =
-  match result with
-  | Error err -> pp_error err
-  | Ok v -> f v
-
-let with_open_kb f =
-  expect_ok (Service.open_kb ()) (fun (root, service) ->
-    Fun.protect ~finally:(fun () -> Root.close root) (fun () -> f root service))
+let expect_ok = Test_helpers.expect_service_ok
+let with_open_kb = Test_helpers.with_open_kb
 
 let%expect_test "open_kb succeeds and returns functional service" =
   with_git_root "kb-open-happy-" (fun root ->

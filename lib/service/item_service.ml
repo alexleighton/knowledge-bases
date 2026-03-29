@@ -19,11 +19,6 @@ type t = {
   todo_repo : Todo.t;
 }
 
-let init root = {
-  note_repo = Repository.Root.note root;
-  todo_repo = Repository.Root.todo root;
-}
-
 let map_note_repo_error = function
   | Note.Backend_failure msg -> Repository_error msg
   | Note.Duplicate_niceid niceid ->
@@ -51,6 +46,11 @@ let map_todo_repo_error = function
   | Todo.Duplicate_niceid niceid ->
       Repository_error ("duplicate nice id " ^ Data.Identifier.to_string niceid)
   | Todo.Not_found _ -> Repository_error "todo not found"
+
+let init root = {
+  note_repo = Repository.Root.note root;
+  todo_repo = Repository.Root.todo root;
+}
 
 let find_by_niceid t niceid =
   match Todo.get_by_niceid t.todo_repo niceid with

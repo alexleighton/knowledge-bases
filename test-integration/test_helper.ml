@@ -22,13 +22,7 @@ type run_result = {
   stderr : string;
 }
 
-let read_file path =
-  let ic = open_in path in
-  Fun.protect
-    ~finally:(fun () -> close_in ic)
-    (fun () ->
-      let n = in_channel_length ic in
-      really_input_string ic n)
+let read_file = Kbases.Control.Io.read_file
 
 let find_project_root () =
   let rec search dir =
@@ -103,8 +97,7 @@ let run_bs_with_pipe_stdin ~dir ?(timeout_s = 2.0) args =
     Unix.environment ()
     |> Array.to_list
     |> List.filter (fun s ->
-         not (String.length s >= 5
-              && String.sub s 0 5 = "TERM="))
+         not (String.starts_with ~prefix:"TERM=" s))
     |> (fun l -> l @ ["TERM=dumb"])
     |> Array.of_list
   in

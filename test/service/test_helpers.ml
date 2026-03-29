@@ -72,3 +72,55 @@ let query_relations root =
         ON t.id = r.target
       ORDER BY s.niceid, r.kind|}
     []
+
+(* -- Query-service helpers (shared across query_service_*_expect.ml splits) -- *)
+
+module Note = Kbases.Data.Note
+module Title = Kbases.Data.Title
+module QueryService = Kbases.Service.Query_service
+
+let print_query_items items =
+  List.iter (function
+    | QueryService.Todo_item todo ->
+        Printf.printf "%s todo %s %s\n"
+          (Identifier.to_string (Todo.niceid todo))
+          (Todo.status_to_string (Todo.status todo))
+          (Title.to_string (Todo.title todo))
+    | QueryService.Note_item note ->
+        Printf.printf "%s note %s %s\n"
+          (Identifier.to_string (Note.niceid note))
+          (Note.status_to_string (Note.status note))
+          (Title.to_string (Note.title note)))
+    items
+
+let unwrap_query_items result =
+  match result with
+  | Ok (QueryService.Items v) -> v
+  | Ok (QueryService.Counts _) -> failwith "unexpected counts"
+  | Error err -> pp_item_error err; failwith "unexpected error"
+
+(* -- Lifecycle helpers (shared across lifecycle_*_expect.ml splits) -- *)
+
+module Lifecycle = Kbases.Service.Lifecycle
+
+let pp_lifecycle_error = function
+  | Lifecycle.Repository_error msg -> Printf.printf "repository error: %s\n" msg
+  | Lifecycle.Validation_error msg -> Printf.printf "validation error: %s\n" msg
+
+let expect_lifecycle_ok result f =
+  match result with
+  | Error err -> pp_lifecycle_error err
+  | Ok v -> f v
+
+(* -- Kb_service helpers (shared across kb_service_*_expect.ml splits) -- *)
+
+module Service = Kbases.Service.Kb_service
+
+let expect_service_ok result f =
+  match result with
+  | Error err -> pp_item_error err
+  | Ok v -> f v
+
+let with_open_kb f =
+  expect_service_ok (Service.open_kb ()) (fun (root, service) ->
+    Fun.protect ~finally:(fun () -> Root.close root) (fun () -> f root service))

@@ -43,8 +43,7 @@ let run directory yes json =
           Printf.printf "  AGENTS.md:   %s\n" (agents_md_action_msg agents_md);
           Printf.printf "  Git exclude: %s\n" (git_exclude_action_msg git_exclude)
         end
-    | Error (Service.Validation_error msg | Service.Repository_error msg) ->
-        Common.exit_with_error ~json msg
+    | Error err -> Common.exit_with_error ~json (Common.service_error_msg err)
 
 let directory_arg =
   let doc = "Git repository directory to uninstall from." in

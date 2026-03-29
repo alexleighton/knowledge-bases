@@ -93,7 +93,7 @@ let force_rebuild t =
   let* () =
     Repository.Niceid.delete_all (Root.niceid t.root)
     |> Result.map_error (_map_repo_error Item_service.map_niceid_repo_error) in
-  let* () = Data.Result.sequence (List.map (fun record ->
+  let* () = Data.Result.traverse (fun record ->
     match record with
     | Jsonl.Todo { id; title; content; status; created_at; updated_at } ->
         Repository.Todo.import (Root.todo t.root) ~id ~title ~content ~status
@@ -109,7 +109,7 @@ let force_rebuild t =
         Repository.Relation.create (Root.relation t.root) rel
         |> Result.map (fun _ -> ())
         |> Result.map_error (_map_repo_error Item_service.map_relation_repo_error)
-  ) sorted_records) |> Result.map (fun _ -> ()) in
+  ) sorted_records |> Result.map (fun _ -> ()) in
   let* file_hash = _hash_file t.jsonl_path in
   let* () = _set_config t "content_hash" file_hash in
   _set_config t "dirty" "false"

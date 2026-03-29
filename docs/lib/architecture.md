@@ -115,6 +115,8 @@ Examples (not exhaustive):
 | `Entity_repo`| Generic CRUD functor for entity repositories        |
 | `Niceid` | Sequential nice-id allocator (per namespace)            |
 | `Note`   | Note CRUD — `Entity_repo.Make(Data.Note)`               |
+| `Todo`   | Todo CRUD — `Entity_repo.Make(Data.Todo)`               |
+| `Relation`| Relation persistence                                   |
 | `Root`   | Opens the DB, initialises all repos, provides accessors |
 
 **JSONL and git automerge.** The `.kbases.jsonl` file is designed to
@@ -134,9 +136,9 @@ Any change to `Jsonl` should be evaluated against these invariants.
 
 Note: `Repository.Note` and `Data.Note` share a name deliberately.
 `Data.Note` is the domain type; `Repository.Note` knows how to persist
-it.  This pattern should be followed for future domain entities —
-the data definition lives in `Data`, and the storage surface lives in
-`Repository` under the same name.
+it.  The same pattern applies to `Todo` and `Relation`.  Follow it for
+future domain entities — the data definition lives in `Data`, and the
+storage surface lives in `Repository` under the same name.
 
 **Put new code here when** you need to read or write persistent state.
 Typical steps for a new entity:
@@ -176,6 +178,11 @@ Examples (not exhaustive):
 | `Git`       | Git repository detection and `.git/info/exclude` |
 | `Lifecycle` | Knowledge-base init, open, and discovery         |
 | `Kb_service`| Public facade for all CLI operations             |
+| `Query_service` | Read-only queries (list, filter)             |
+| `Show_service`  | Item display with relations                  |
+| `Mutation_service` | State transitions (claim, resolve, etc.)  |
+| `Relation_service` | Relation creation and removal             |
+| `Gc_service`| Garbage collection of soft-deleted items         |
 
 **Put new code here when** you need to combine several repository
 operations into a single logical action, or when you need to translate

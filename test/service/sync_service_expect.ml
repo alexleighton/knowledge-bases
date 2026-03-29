@@ -19,13 +19,8 @@ let unwrap_sync = function
   | Ok v -> v
   | Error (Sync.Sync_failed msg) -> failwith ("sync failed: " ^ msg)
 
-let unwrap_todo = function
-  | Ok v -> v
-  | Error _ -> failwith "todo error"
-
-let unwrap_note = function
-  | Ok v -> v
-  | Error _ -> failwith "note error"
+let unwrap_todo = Test_helpers.unwrap_todo_repo
+let unwrap_note = Test_helpers.unwrap_note_repo
 
 let with_sync f =
   Test_helpers.with_temp_dir "sync_test" (fun tmp_dir ->

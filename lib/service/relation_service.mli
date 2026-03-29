@@ -118,3 +118,11 @@ val unrelate_many :
     [todo] is not blocked. *)
 val find_blockers :
   t -> Data.Todo.t -> (string list, Item_service.error) result
+
+(** [list_unblocked_todos t ~todo_repo] returns all open todos that have no
+    unresolved blocking dependencies, along with a count of open todos that
+    were skipped because they are blocked. *)
+val list_unblocked_todos :
+  t ->
+  todo_repo:Repository.Todo.t ->
+  (Data.Todo.t list * int, Item_service.error) result

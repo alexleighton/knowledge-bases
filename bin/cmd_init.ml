@@ -44,8 +44,7 @@ let run directory namespace gc_max_age mode json =
         Printf.printf "  Git exclude: %s\n" (git_exclude_msg git_exclude);
         Printf.printf "  GC max age:  %s\n" gc_label
       end
-  | Error (Service.Validation_error msg | Service.Repository_error msg) ->
-      Common.exit_with_error ~json msg
+  | Error err -> Common.exit_with_error ~json (Common.service_error_msg err)
 
 let directory_arg =
   let doc = "Git repository directory for the knowledge base." in

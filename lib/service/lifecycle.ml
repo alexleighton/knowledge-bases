@@ -4,6 +4,35 @@ module Jsonl = Repository.Jsonl
 module Io = Control.Io
 module Namespace = Data.Namespace
 
+type error =
+  | Repository_error of string
+  | Validation_error of string
+
+type file_action = Deleted | Not_found
+
+type agents_md_action = Created | Appended | Already_present
+type git_exclude_action = Excluded | Already_excluded
+type agents_md_uninstall_action =
+  | File_deleted | Section_removed | Section_modified | Not_found
+type git_exclude_uninstall_action = Entry_removed | Entry_not_found
+
+type init_result = {
+  directory   : string;
+  namespace   : string;
+  db_file     : string;
+  mode        : string;
+  agents_md   : agents_md_action;
+  git_exclude : git_exclude_action;
+}
+
+type uninstall_result = {
+  directory   : string;
+  database    : file_action;
+  jsonl       : file_action;
+  agents_md   : agents_md_uninstall_action;
+  git_exclude : git_exclude_uninstall_action;
+}
+
 let db_filename = ".kbases.db"
 let jsonl_filename = ".kbases.jsonl"
 let agents_md_filename = "AGENTS.md"
@@ -40,35 +69,6 @@ bs relate kb-2 --depends-on kb-3 --related-to kb-4
 Run `bs --help` for the full command reference.
 ※
 |}
-
-type error =
-  | Repository_error of string
-  | Validation_error of string
-
-type file_action = Deleted | Not_found
-
-type agents_md_action = Created | Appended | Already_present
-type git_exclude_action = Excluded | Already_excluded
-type agents_md_uninstall_action =
-  | File_deleted | Section_removed | Section_modified | Not_found
-type git_exclude_uninstall_action = Entry_removed | Entry_not_found
-
-type init_result = {
-  directory   : string;
-  namespace   : string;
-  db_file     : string;
-  mode        : string;
-  agents_md   : agents_md_action;
-  git_exclude : git_exclude_action;
-}
-
-type uninstall_result = {
-  directory   : string;
-  database    : file_action;
-  jsonl       : file_action;
-  agents_md   : agents_md_uninstall_action;
-  git_exclude : git_exclude_uninstall_action;
-}
 
 (* --- Initialization helpers --- *)
 
@@ -114,6 +114,13 @@ let map_config_error e =
   match Item_service.map_config_error e with
   | Item_service.Repository_error msg -> Repository_error msg
   | Item_service.Validation_error msg -> Validation_error msg
+
+let map_root_error (Repository.Root.Backend_failure msg) =
+  Repository_error msg
+
+let map_jsonl_error = function
+  | Repository.Jsonl.Io_error msg -> Repository_error msg
+  | Repository.Jsonl.Parse_error msg -> Repository_error msg
 
 let install_database ~db_file ~namespace ~gc_max_age ~mode =
   let open Result.Syntax in
@@ -229,31 +236,22 @@ let open_kb () =
       if Sys.file_exists db_file then
         Root.init ~db_file ~namespace:None
         |> Result.map (fun root -> (root, dir))
-        |> Result.map_error (fun (Root.Backend_failure msg) ->
-               Repository_error msg)
+        |> Result.map_error map_root_error
       else
         let jsonl_path = Filename.concat dir jsonl_filename in
         if Sys.file_exists jsonl_path then
           let open Result.Syntax in
           let* header =
             Jsonl.read_header ~path:jsonl_path
-            |> Result.map_error (fun err ->
-                   match err with
-                   | Jsonl.Io_error msg -> Repository_error msg
-                   | Jsonl.Parse_error msg -> Repository_error msg)
+            |> Result.map_error map_jsonl_error
           in
           let* root =
             Root.init ~db_file ~namespace:(Some header.Jsonl.namespace)
-            |> Result.map_error (fun (Root.Backend_failure msg) ->
-                   Repository_error msg)
+            |> Result.map_error map_root_error
           in
           let* () =
             Config.set (Root.config root) "namespace" header.Jsonl.namespace
-            |> Result.map_error (fun err ->
-                   match err with
-                   | Config.Backend_failure msg -> Repository_error msg
-                   | Config.Not_found key ->
-                       Repository_error ("Config key not found: " ^ key))
+            |> Result.map_error map_config_error
           in
           Ok (root, dir)
         else

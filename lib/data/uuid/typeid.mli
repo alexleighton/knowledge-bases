@@ -38,5 +38,8 @@ val get_prefix : t -> string
 (** [get_suffix t] returns the Base32-encoded suffix of the TypeId. *)
 val get_suffix : t -> string
 
+(** [equal a b] is [true] when [a] and [b] represent the same TypeId. *)
+val equal : t -> t -> bool
+
 (** Set of TypeIds, ordered by string representation. *)
 module Set : Set.S with type elt = t

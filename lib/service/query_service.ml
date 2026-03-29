@@ -83,22 +83,25 @@ let init root = {
 
 (* --- Sorting --- *)
 
+let _sort_by ~ascending ~cmp items =
+  let cmp = if ascending then cmp else fun a b -> cmp b a in
+  List.sort cmp items
+
 let _sort_items spec items =
   match spec.sort with
   | None ->
-      let cmp a b = Int.compare
-        (Data.Identifier.raw_id (Data.Item.niceid a))
-        (Data.Identifier.raw_id (Data.Item.niceid b)) in
-      let cmp = if spec.ascending then cmp else fun a b -> cmp b a in
-      List.sort cmp items
+      _sort_by ~ascending:spec.ascending items
+        ~cmp:(fun a b -> Int.compare
+          (Data.Identifier.raw_id (Data.Item.niceid a))
+          (Data.Identifier.raw_id (Data.Item.niceid b)))
   | Some Sort_created ->
-      let cmp a b = Data.Timestamp.compare (Data.Item.created_at a) (Data.Item.created_at b) in
-      let cmp = if spec.ascending then cmp else fun a b -> cmp b a in
-      List.sort cmp items
+      _sort_by ~ascending:spec.ascending items
+        ~cmp:(fun a b -> Data.Timestamp.compare
+          (Data.Item.created_at a) (Data.Item.created_at b))
   | Some Sort_updated ->
-      let cmp a b = Data.Timestamp.compare (Data.Item.updated_at a) (Data.Item.updated_at b) in
-      let cmp = if spec.ascending then cmp else fun a b -> cmp b a in
-      List.sort cmp items
+      _sort_by ~ascending:spec.ascending items
+        ~cmp:(fun a b -> Data.Timestamp.compare
+          (Data.Item.updated_at a) (Data.Item.updated_at b))
 
 (* --- Counting --- *)
 
@@ -125,19 +128,10 @@ let _count_items items =
 
 let _list_available t =
   let open Result.Syntax in
-  let* todos =
-    Todo.list t.todo_repo ~statuses:[Data.Todo.Open]
-    |> Result.map_error Item_service.map_todo_repo_error
+  let+ (unblocked, _stuck) =
+    Relation_service.list_unblocked_todos t.relation_svc ~todo_repo:t.todo_repo
   in
-  let rec filter_unblocked acc = function
-    | [] -> Ok (List.rev acc)
-    | todo :: rest ->
-        let* blockers = Relation_service.find_blockers t.relation_svc todo in
-        if blockers = [] then filter_unblocked (todo :: acc) rest
-        else filter_unblocked acc rest
-  in
-  let* unblocked = filter_unblocked [] todos in
-  Ok (List.map (fun todo -> Todo_item todo) unblocked)
+  List.map (fun todo -> Todo_item todo) unblocked
 
 let _fetch_items t ~entity_type ~statuses =
   let open Result.Syntax in
@@ -157,11 +151,11 @@ let _fetch_items t ~entity_type ~statuses =
   in
   match entity_type with
   | Some "todo" ->
-      let* todo_statuses = Result_data.sequence (List.map Parse.todo_status statuses) in
+      let* todo_statuses = Result_data.traverse Parse.todo_status statuses in
       let+ todos = fetch_todos todo_statuses in
       List.map (fun todo -> Todo_item todo) todos
   | Some "note" ->
-      let* note_statuses = Result_data.sequence (List.map Parse.note_status statuses) in
+      let* note_statuses = Result_data.traverse Parse.note_status statuses in
       let+ notes = fetch_notes note_statuses in
       List.map (fun note -> Note_item note) notes
   | Some other ->
@@ -198,7 +192,7 @@ let _apply_relation_filters t spec items =
   else
   let open Result.Syntax in
   let* allowed_sets =
-    List.map (fun (rf : relation_filter) ->
+    Result_data.traverse (fun (rf : relation_filter) ->
       let* target_item = Item_service.find t.items ~identifier:rf.target in
       let target_typeid = Data.Item.typeid target_item in
       let* kind = Parse.relation_kind rf.kind in
@@ -226,8 +220,7 @@ let _apply_relation_filters t spec items =
               out @ inc
         in
         let matching = List.filter (fun rel ->
-          Data.Relation_kind.to_string (Data.Relation.kind rel)
-          = Data.Relation_kind.to_string kind
+          Data.Relation_kind.equal (Data.Relation.kind rel) kind
         ) rels in
         let ids = List.map (fun rel ->
           match rf.direction with
@@ -236,12 +229,11 @@ let _apply_relation_filters t spec items =
           | Graph_service.Any ->
               let src = Data.Relation.source rel in
               let tgt = Data.Relation.target rel in
-              if Data.Uuid.Typeid.to_string src = Data.Uuid.Typeid.to_string target_typeid
+              if Data.Uuid.Typeid.equal src target_typeid
               then tgt else src
         ) matching in
         Ok (List.fold_left (fun s id -> TypeidSet.add id s) TypeidSet.empty ids)
     ) spec.relation_filters
-    |> Result_data.sequence
   in
   let combined = match allowed_sets with
     | [] -> TypeidSet.empty
@@ -255,17 +247,16 @@ let _apply_relation_filters t spec items =
 
 let _filter_blocked t items =
   let open Result.Syntax in
-  let rec go acc = function
-    | [] -> Ok (List.rev acc)
-    | item :: rest ->
-        match item with
-        | Todo_item todo ->
-            let* blockers = Relation_service.find_blockers t.relation_svc todo in
-            if blockers <> [] then go (item :: acc) rest
-            else go acc rest
-        | Note_item _ -> go acc rest
+  let+ tagged =
+    Data.Result.traverse (fun item ->
+      match item with
+      | Todo_item todo ->
+          let+ blockers = Relation_service.find_blockers t.relation_svc todo in
+          (item, blockers <> [])
+      | Note_item _ -> Ok (item, false)
+    ) items
   in
-  go [] items
+  List.filter_map (fun (item, blocked) -> if blocked then Some item else None) tagged
 
 (* --- Main list function --- *)
 

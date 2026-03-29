@@ -4,7 +4,6 @@ module Arg = Cmdliner.Arg
 
 module Common = Cmdline_common
 module Service = Kbases.Service.Kb_service
-module ItemService = Kbases.Service.Item_service
 module Todo = Kbases.Data.Todo
 module Title = Kbases.Data.Title
 module Identifier = Kbases.Data.Identifier
@@ -21,8 +20,7 @@ let claim_error_msg = function
       Printf.sprintf "%s is blocked by %s" niceid (String.concat ", " blocked_by)
   | Service.Mutation.Nothing_available _ ->
       "no available todos"
-  | Service.Mutation.Service_error (ItemService.Repository_error msg)
-  | Service.Mutation.Service_error (ItemService.Validation_error msg) -> msg
+  | Service.Mutation.Service_error err -> Common.service_error_msg err
 
 let claim_error_json = function
   | Service.Mutation.Not_a_todo id ->
@@ -38,10 +36,9 @@ let claim_error_json = function
   | Service.Mutation.Nothing_available { stuck_count } ->
       `Assoc ["ok", `Bool false; "reason", `String "nothing_available";
               "stuck_count", `Int stuck_count]
-  | Service.Mutation.Service_error (ItemService.Repository_error msg)
-  | Service.Mutation.Service_error (ItemService.Validation_error msg) ->
+  | Service.Mutation.Service_error err ->
       `Assoc ["ok", `Bool false; "reason", `String "error";
-              "message", `String msg]
+              "message", `String (Common.service_error_msg err)]
 
 let exit_claim_error ~json err =
   if json then begin
