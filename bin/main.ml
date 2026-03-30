@@ -51,7 +51,7 @@ let root_cmd =
   Cmd_resolve.cmd; Cmd_close.cmd; Cmd_archive.cmd;
   Cmd_reopen.cmd; Cmd_delete.cmd;
   Cmd_relate.cmd; Cmd_unrelate.cmd;
-  Cmd_flush.cmd; Cmd_rebuild.cmd; Cmd_gc.cmd;
+  Cmd_flush.cmd; Cmd_rebuild.cmd; Cmd_gc.cmd; Cmd_config.cmd;
 ]
 
 let () = exit (Cmd.eval root_cmd)

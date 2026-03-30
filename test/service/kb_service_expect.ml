@@ -46,8 +46,13 @@ let%expect_test "open_kb succeeds and returns functional service" =
 let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
 let unwrap_note_repo = Test_helpers.unwrap_note_repo
 
+module ConfigService = Kbases.Service.Config_service
+
 let with_service f =
-  Test_helpers.with_service Service.init f
+  Test_helpers.with_service
+    (fun root -> Service.init root
+      ~config_svc:(ConfigService.init root ~dir:Test_helpers.dir_without_kbases_jsonl))
+    f
 
 let%expect_test "resolve_many via Kb_service" =
   with_service (fun root service ->

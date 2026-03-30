@@ -20,22 +20,9 @@ type gc_result = {
   relations_removed : int;
 }
 
-(** Default max age as a display string. *)
-val default_max_age_display : string
-
-(** [init root] initializes the GC service. *)
-val init : Repository.Root.t -> t
-
-(** Result of reading the configured max age. *)
-type max_age_result =
-  | Configured of string
-  | Default
-
-(** [get_max_age t] reads the gc_max_age from config. *)
-val get_max_age : t -> (max_age_result, Item_service.error) result
-
-(** [set_max_age t age_str] validates and persists a new gc_max_age. *)
-val set_max_age : t -> string -> (unit, Item_service.error) result
+(** [init root ~config_svc] initializes the GC service.
+    Uses [config_svc] for reading and writing gc_max_age. *)
+val init : Repository.Root.t -> config_svc:Config_service.t -> t
 
 (** [collect t ~max_age_seconds ~now] identifies eligible items without
     removing them (dry-run). Returns items grouped by connected component

@@ -1,5 +1,6 @@
 module Root = Kbases.Repository.Root
 module Config = Kbases.Repository.Config
+module ConfigService = Kbases.Service.Config_service
 module Jsonl = Kbases.Repository.Jsonl
 module Lifecycle = Kbases.Service.Lifecycle
 module Io = Kbases.Control.Io
@@ -192,8 +193,9 @@ let%expect_test "init_kb with mode=local persists mode in config" =
                  ~gc_max_age:None ~mode:(Some "local")) (fun result ->
       Printf.printf "mode: %s\n" result.mode;
       with_root result.db_file (fun opened ->
-        match Config.get (Root.config opened) "mode" with
-        | Ok m -> Printf.printf "config mode: %s\n" m
+        let cfg = ConfigService.init opened ~dir:root in
+        match ConfigService.get cfg "mode" with
+        | Ok { value; _ } -> Printf.printf "config mode: %s\n" value
         | Error _ -> print_endline "config mode: missing")));
   [%expect {|
     mode: local
@@ -206,8 +208,9 @@ let%expect_test "init_kb with mode=shared persists mode in config" =
                  ~gc_max_age:None ~mode:(Some "shared")) (fun result ->
       Printf.printf "mode: %s\n" result.mode;
       with_root result.db_file (fun opened ->
-        match Config.get (Root.config opened) "mode" with
-        | Ok m -> Printf.printf "config mode: %s\n" m
+        let cfg = ConfigService.init opened ~dir:root in
+        match ConfigService.get cfg "mode" with
+        | Ok { value; _ } -> Printf.printf "config mode: %s\n" value
         | Error _ -> print_endline "config mode: missing")));
   [%expect {|
     mode: shared
@@ -220,8 +223,9 @@ let%expect_test "init_kb defaults to shared when mode is None" =
                  ~gc_max_age:None ~mode:None) (fun result ->
       Printf.printf "mode: %s\n" result.mode;
       with_root result.db_file (fun opened ->
-        match Config.get (Root.config opened) "mode" with
-        | Ok m -> Printf.printf "config mode: %s\n" m
+        let cfg = ConfigService.init opened ~dir:root in
+        match ConfigService.get cfg "mode" with
+        | Ok { value; _ } -> Printf.printf "config mode: %s\n" value
         | Error _ -> print_endline "config mode: missing")));
   [%expect {|
     mode: shared

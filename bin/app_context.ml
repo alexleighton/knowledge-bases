@@ -15,4 +15,6 @@ let init () =
 
 let service t = t.service
 
+let config_svc t = Service.config_svc t.service
+
 let close t = Root.close t.root

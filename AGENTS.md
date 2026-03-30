@@ -26,13 +26,13 @@ All documentation related to coding principles and practices, project
 conventions, etc can be discovered via the index: `docs/index.md`.
 Do not use the auto memory system; project context is managed here instead.
 
-## Knowledge Base
+## ※ Knowledge Base
 
 This repository uses `bs` to track todos and notes. Use it to
 externalize work you've identified, decisions, and research.
 
 ```
-# Create items (content from stdin)
+# Create items (content from --content or stdin)
 echo "Description" | bs add todo "Title"
 echo "Research findings" | bs add note "Title"
 
@@ -48,6 +48,10 @@ bs claim kb-0
 # Complete and archive
 bs resolve kb-0 kb-1
 bs archive kb-5 kb-6
+
+# Link items after creation
+bs relate kb-2 --depends-on kb-3 --related-to kb-4
 ```
 
 Run `bs --help` for the full command reference.
+※

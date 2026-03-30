@@ -86,7 +86,7 @@ let%expect_test "bs show invalid identifier" =
     Helper.print_result ~dir result);
   [%expect {|
     [exit 1]
-    STDERR: Error: invalid identifier "garbage" — expected a niceid (e.g. kb-0) or typeid (e.g. <TYPEID>...)
+    STDERR: Error: invalid identifier "garbage" — expected a niceid (e.g. kb-0) or typeid (e.g. todo_01abc...)
   |}]
 
 let%expect_test "bs show fails when not in git repo" =

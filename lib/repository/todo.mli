@@ -55,6 +55,11 @@ val list :
 (** [list_all repo] returns every todo regardless of status, ordered by id. *)
 val list_all : t -> (Data.Todo.t list, error) result
 
+(** [rename_namespace repo ~old_prefix ~new_prefix] rewrites the niceid column
+    for all rows whose niceid starts with [old_prefix], replacing that prefix
+    with [new_prefix]. Used when the knowledge-base namespace changes. *)
+val rename_namespace : t -> old_prefix:string -> new_prefix:string -> (unit, error) result
+
 (** [delete_all repo] removes every todo from the table. *)
 val delete_all : t -> (unit, error) result
 

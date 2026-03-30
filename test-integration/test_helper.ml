@@ -160,7 +160,12 @@ let normalize_dir ~dir text =
 let typeid_re = Str.regexp "[a-z][a-z_]*_[0-9a-hjkmnp-tv-z]+"
 
 let normalize_typeids text =
-  Str.global_replace typeid_re "<TYPEID>" text
+  Str.global_substitute typeid_re (fun s ->
+    let m = Str.matched_string s in
+    let suffix_start = String.rindex m '_' + 1 in
+    if String.length m - suffix_start = 26 then "<TYPEID>"
+    else m
+  ) text
 
 let timestamp_re = Str.regexp "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9] [0-9][0-9]:[0-9][0-9]:[0-9][0-9] UTC"
 

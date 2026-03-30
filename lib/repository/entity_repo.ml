@@ -182,6 +182,17 @@ module Make (E : Data.Entity.S) = struct
       _entity_of_row
     |> map_sqlite_error
 
+  let rename_namespace repo ~old_prefix ~new_prefix =
+    let old_prefix_len = String.length old_prefix in
+    Sqlite.with_stmt_cmd repo.db
+      (Printf.sprintf
+         "UPDATE %s SET niceid = ? || substr(niceid, ?) WHERE niceid LIKE ?"
+         _table)
+      [ (1, Sql.Data.TEXT new_prefix);
+        (2, Sql.Data.INT (Int64.of_int (old_prefix_len + 1)));
+        (3, Sql.Data.TEXT (old_prefix ^ "%")) ]
+    |> map_sqlite_error
+
   let delete_all repo =
     Sqlite.with_stmt_cmd repo.db (Printf.sprintf "DELETE FROM %s;" _table) []
     |> map_sqlite_error

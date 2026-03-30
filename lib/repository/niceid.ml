@@ -72,6 +72,12 @@ let delete { db; _ } typeid =
   | Ok () -> (Error Not_found : (unit, error) result)
   | Error _ as e -> e
 
+let rename_namespace { db; _ } ~old_ns ~new_ns =
+  Sqlite.with_stmt_cmd db
+    "UPDATE niceid SET namespace = ? WHERE namespace = ?"
+    [ (1, Sql.Data.TEXT new_ns); (2, Sql.Data.TEXT old_ns) ]
+  |> map_sqlite_error
+
 let delete_all { db; _ } =
   Sqlite.with_stmt_cmd db "DELETE FROM niceid;" []
   |> map_sqlite_error

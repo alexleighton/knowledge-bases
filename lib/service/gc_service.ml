@@ -2,7 +2,6 @@ module TodoRepo = Repository.Todo
 module NoteRepo = Repository.Note
 module RelationRepo = Repository.Relation
 module NiceidRepo = Repository.Niceid
-module Config = Repository.Config
 module TypeidSet = Data.Uuid.Typeid.Set
 
 type t = {
@@ -11,7 +10,7 @@ type t = {
   relation_repo : RelationRepo.t;
   niceid_repo   : NiceidRepo.t;
   graph_svc     : Graph_service.t;
-  config        : Config.t;
+  config_svc    : Config_service.t;
 }
 
 type gc_item = {
@@ -26,10 +25,6 @@ type gc_result = {
   relations_removed : int;
 }
 
-type max_age_result =
-  | Configured of string
-  | Default
-
 type candidate = {
   typeid      : Data.Uuid.Typeid.t;
   niceid      : Data.Identifier.t;
@@ -38,22 +33,19 @@ type candidate = {
   updated_at  : Data.Timestamp.t;
 }
 
-let default_max_age_seconds = 30 * 86400
-let default_max_age_display = "30d"
+let default_max_age_seconds = int_of_string Config_service.default_gc_max_age
 
 let parse_age s =
-  let len = String.length s in
-  if len > 0 && s.[len - 1] = 'd' then
-    (try Some (int_of_string (String.sub s 0 (len - 1)) * 86400)
-     with Failure _ -> None)
-  else
-    (try Some (int_of_string s) with Failure _ -> None)
+  match int_of_string_opt s with
+  | Some n when n >= 0 -> Some n
+  | _ -> None
 
 (* --- Internal helpers --- *)
 
 let _resolve_max_age t =
-  match Config.get t.config "gc_max_age" with
-  | Ok s -> (match parse_age s with Some v -> v | None -> default_max_age_seconds)
+  match Config_service.get t.config_svc "gc_max_age" with
+  | Ok { Config_service.value; _ } ->
+      (match parse_age value with Some v -> v | None -> default_max_age_seconds)
   | Error _ -> default_max_age_seconds
 
 let _candidates_of (type a s)
@@ -130,31 +122,16 @@ let _delete_candidate t cand =
 
 (* --- Initialization --- *)
 
-let init root = {
+let init root ~config_svc = {
   todo_repo     = Repository.Root.todo root;
   note_repo     = Repository.Root.note root;
   relation_repo = Repository.Root.relation root;
   niceid_repo   = Repository.Root.niceid root;
   graph_svc     = Graph_service.init root;
-  config        = Repository.Root.config root;
+  config_svc;
 }
 
 (* --- Public operations --- *)
-
-let get_max_age t =
-  match Config.get t.config "gc_max_age" with
-  | Ok s -> Ok (Configured s)
-  | Error (Config.Not_found _) -> Ok Default
-  | Error (Config.Backend_failure _ as e) -> Error (Item_service.map_config_error e)
-
-let set_max_age t age_str =
-  match parse_age age_str with
-  | None ->
-      Error (Item_service.Validation_error
-        (Printf.sprintf "invalid age format: %S (expected e.g. 14d)" age_str))
-  | Some _ ->
-      Config.set t.config "gc_max_age" age_str
-      |> Result.map_error Item_service.map_config_error
 
 let collect t ~max_age_seconds ~now =
   let open Result.Syntax in

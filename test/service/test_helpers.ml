@@ -112,6 +112,23 @@ let expect_lifecycle_ok result f =
   | Error err -> pp_lifecycle_error err
   | Ok v -> f v
 
+(* -- Config_service helpers (shared across config_service_*_expect.ml splits) -- *)
+
+module ConfigService = Kbases.Service.Config_service
+
+let dir_without_kbases_jsonl = "/tmp/test"
+
+let pp_config_error = function
+  | ConfigService.Unknown_key k -> Printf.printf "unknown key: %s\n" k
+  | ConfigService.Validation_error msg -> Printf.printf "validation error: %s\n" msg
+  | ConfigService.Nothing_to_update -> Printf.printf "nothing to update\n"
+  | ConfigService.Backend_error msg -> Printf.printf "backend error: %s\n" msg
+
+let with_config_service f =
+  with_service
+    (fun root -> ConfigService.init root ~dir:dir_without_kbases_jsonl)
+    f
+
 (* -- Kb_service helpers (shared across kb_service_*_expect.ml splits) -- *)
 
 module Service = Kbases.Service.Kb_service

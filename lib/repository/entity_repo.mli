@@ -47,5 +47,6 @@ module Make (E : Data.Entity.S) : sig
     (E.t list, error) result
 
   val list_all : t -> (E.t list, error) result
+  val rename_namespace : t -> old_prefix:string -> new_prefix:string -> (unit, error) result
   val delete_all : t -> (unit, error) result
 end

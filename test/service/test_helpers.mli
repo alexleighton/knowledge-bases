@@ -32,6 +32,10 @@ val print_query_items : Kbases.Service.Query_service.item list -> unit
 val unwrap_query_items :
   (Kbases.Service.Query_service.list_result, Kbases.Service.Query_service.error) result ->
   Kbases.Service.Query_service.item list
+val dir_without_kbases_jsonl : string
+val pp_config_error : Kbases.Service.Config_service.error -> unit
+val with_config_service :
+  (Kbases.Repository.Root.t -> Kbases.Service.Config_service.t -> unit) -> unit
 val pp_lifecycle_error : Kbases.Service.Lifecycle.error -> unit
 val expect_lifecycle_ok :
   ('a, Kbases.Service.Lifecycle.error) result -> ('a -> unit) -> unit

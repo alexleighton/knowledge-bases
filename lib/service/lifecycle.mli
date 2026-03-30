@@ -76,9 +76,6 @@ type uninstall_result = {
     in the result. *)
 val uninstall_kb : directory:string option -> (uninstall_result, error) result
 
-(** JSONL filename used for the git-tracked snapshot (e.g. [".kbases.jsonl"]). *)
-val jsonl_filename : string
-
 (** [open_kb ()] finds the git root from the current directory and opens the
     knowledge base at [.kbases.db]. Returns the root handle and the git root
     directory. Callers must close the root when done. *)

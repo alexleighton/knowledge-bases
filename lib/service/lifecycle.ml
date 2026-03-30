@@ -1,5 +1,4 @@
 module Root = Repository.Root
-module Config = Repository.Config
 module Jsonl = Repository.Jsonl
 module Io = Control.Io
 module Namespace = Data.Namespace
@@ -33,8 +32,6 @@ type uninstall_result = {
   git_exclude : git_exclude_uninstall_action;
 }
 
-let db_filename = ".kbases.db"
-let jsonl_filename = ".kbases.jsonl"
 let agents_md_filename = "AGENTS.md"
 let agents_md_section_heading = "## ※ Knowledge Base"
 let agents_md_marker = "※"
@@ -110,11 +107,6 @@ let resolve_namespace ~directory = function
                   "Derived namespace \"%s\" is invalid (%s). Use -n to specify one."
                   derived reason))
 
-let map_config_error e =
-  match Item_service.map_config_error e with
-  | Item_service.Repository_error msg -> Repository_error msg
-  | Item_service.Validation_error msg -> Validation_error msg
-
 let map_root_error (Repository.Root.Backend_failure msg) =
   Repository_error msg
 
@@ -122,7 +114,20 @@ let map_jsonl_error = function
   | Repository.Jsonl.Io_error msg -> Repository_error msg
   | Repository.Jsonl.Parse_error msg -> Repository_error msg
 
-let install_database ~db_file ~namespace ~gc_max_age ~mode =
+let _map_config_svc_error = function
+  | Config_service.Unknown_key k -> Validation_error ("unknown config key: " ^ k)
+  | Config_service.Validation_error msg -> Validation_error msg
+  | Config_service.Nothing_to_update -> Validation_error "nothing to update"
+  | Config_service.Backend_error msg -> Repository_error msg
+
+let _set_config_init cfg key value =
+  match Config_service.set ~run_on_set:false cfg key value with
+  | Ok () | Error Config_service.Nothing_to_update -> Ok ()
+  | Error (Config_service.Unknown_key _ | Config_service.Validation_error _
+          | Config_service.Backend_error _ as e) ->
+      Error (_map_config_svc_error e)
+
+let install_database ~db_file ~dir ~namespace ~gc_max_age ~mode =
   let open Result.Syntax in
   let* root =
     Root.init ~db_file ~namespace:(Some namespace)
@@ -132,16 +137,13 @@ let install_database ~db_file ~namespace ~gc_max_age ~mode =
   Fun.protect
     ~finally:(fun () -> Root.close root)
     (fun () ->
-      let config = Root.config root in
-      let* () = Config.set config "namespace" namespace
-                 |> Result.map_error map_config_error in
+      let cfg = Config_service.init root ~dir in
+      let* () = _set_config_init cfg "namespace" namespace in
       let* () = match gc_max_age with
-        | Some age -> Config.set config "gc_max_age" age
-                      |> Result.map_error map_config_error
+        | Some age -> _set_config_init cfg "gc_max_age" age
         | None -> Ok ()
       in
-      let* () = Config.set config "mode" mode
-                 |> Result.map_error map_config_error in
+      let* () = _set_config_init cfg "mode" mode in
       Ok ())
 
 let _has_kb_heading contents =
@@ -164,7 +166,7 @@ let install_agents_md ~directory =
   end
 
 let install_git_exclude ~directory =
-  match Git.add_exclude ~directory db_filename with
+  match Git.add_exclude ~directory Data.Kb_filenames.db with
   | Git.Added -> Excluded
   | Git.Already_present -> Already_excluded
 
@@ -219,7 +221,7 @@ let uninstall_agents_md ~directory : agents_md_uninstall_action =
         else Not_found
 
 let uninstall_git_exclude ~directory =
-  match Git.remove_exclude ~directory db_filename with
+  match Git.remove_exclude ~directory Data.Kb_filenames.db with
   | Git.Removed -> Entry_removed
   | Git.Remove_not_found -> Entry_not_found
 
@@ -232,13 +234,13 @@ let open_kb () =
         (Validation_error
            "Not inside a git repository. Run 'bs add' from within a git repository.")
   | Some dir ->
-      let db_file = Filename.concat dir db_filename in
+      let db_file = Filename.concat dir Data.Kb_filenames.db in
       if Sys.file_exists db_file then
         Root.init ~db_file ~namespace:None
         |> Result.map (fun root -> (root, dir))
         |> Result.map_error map_root_error
       else
-        let jsonl_path = Filename.concat dir jsonl_filename in
+        let jsonl_path = Filename.concat dir Data.Kb_filenames.jsonl in
         if Sys.file_exists jsonl_path then
           let open Result.Syntax in
           let* header =
@@ -249,10 +251,8 @@ let open_kb () =
             Root.init ~db_file ~namespace:(Some header.Jsonl.namespace)
             |> Result.map_error map_root_error
           in
-          let* () =
-            Config.set (Root.config root) "namespace" header.Jsonl.namespace
-            |> Result.map_error map_config_error
-          in
+          let cfg = Config_service.init root ~dir in
+          let* () = _set_config_init cfg "namespace" header.Jsonl.namespace in
           Ok (root, dir)
         else
           Error
@@ -262,14 +262,14 @@ let init_kb ~directory ~namespace ~gc_max_age ~mode =
   let open Result.Syntax in
   let* directory = resolve_directory directory in
   let* namespace = resolve_namespace ~directory namespace in
-  let db_file = Filename.concat directory db_filename in
+  let db_file = Filename.concat directory Data.Kb_filenames.db in
   let mode = match mode with Some m -> m | None -> "shared" in
   if Sys.file_exists db_file then
     Error
       (Validation_error
          (Printf.sprintf "Knowledge base already initialised at %s." db_file))
   else
-    let* () = install_database ~db_file ~namespace ~gc_max_age ~mode in
+    let* () = install_database ~db_file ~dir:directory ~namespace ~gc_max_age ~mode in
     let agents_md = install_agents_md ~directory in
     let git_exclude = install_git_exclude ~directory in
     Ok { directory; namespace; db_file; mode; agents_md; git_exclude }
@@ -277,8 +277,8 @@ let init_kb ~directory ~namespace ~gc_max_age ~mode =
 let uninstall_kb ~directory =
   let open Result.Syntax in
   let* directory = resolve_directory directory in
-  let database = uninstall_file (Filename.concat directory db_filename) in
-  let jsonl = uninstall_file (Filename.concat directory jsonl_filename) in
+  let database = uninstall_file (Filename.concat directory Data.Kb_filenames.db) in
+  let jsonl = uninstall_file (Filename.concat directory Data.Kb_filenames.jsonl) in
   let agents_md = uninstall_agents_md ~directory in
   let git_exclude = uninstall_git_exclude ~directory in
   Ok { directory; database; jsonl; agents_md; git_exclude }

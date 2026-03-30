@@ -4,6 +4,7 @@ module Arg = Cmdliner.Arg
 
 module Common = Cmdline_common
 module Service = Kbases.Service.Kb_service
+module ConfigService = Kbases.Service.Config_service
 
 let agents_md_msg = function
   | Service.Lifecycle.Created -> "created"
@@ -18,7 +19,8 @@ let run directory namespace gc_max_age mode json =
   match Service.init_kb ~directory ~namespace ~gc_max_age ~mode with
   | Ok ({ Service.Lifecycle.directory; namespace; db_file; mode;
           agents_md; git_exclude }) ->
-      let gc_age_str = match gc_max_age with Some s -> s | None -> "30d" in
+      let gc_age_str = match gc_max_age with
+        | Some s -> s | None -> ConfigService.default_gc_max_age in
       let gc_label = match gc_max_age with
         | Some _ -> gc_age_str
         | None -> gc_age_str ^ " (default)"
@@ -61,8 +63,9 @@ let namespace_arg =
     & info [ "n"; "namespace" ] ~docv:"NAMESPACE" ~doc)
 
 let gc_max_age_arg =
-  let doc = "GC max age threshold (e.g. 14d, 30d). Defaults to 30d." in
-  Arg.(value & opt (some string) None & info [ "gc-max-age" ] ~docv:"AGE" ~doc)
+  let doc = "GC max age threshold in seconds (e.g. 1209600 for 14 days). \
+             Defaults to 2592000 (30 days)." in
+  Arg.(value & opt (some string) None & info [ "gc-max-age" ] ~docv:"SECONDS" ~doc)
 
 let mode_arg =
   let modes = ["local", "local"; "shared", "shared"] in
@@ -80,8 +83,8 @@ let cmd_man = [
   `P "  bs init -d /path/to/repo -n ns";
   `P "Initialise a local (SQLite-only) knowledge base:";
   `P "  bs init --mode local";
-  `P "Set custom GC max age:";
-  `P "  bs init --gc-max-age 14d";
+  `P "Set custom GC max age (14 days in seconds):";
+  `P "  bs init --gc-max-age 1209600";
   `P "Machine-readable JSON output:";
   `P "  bs init --json";
 ]

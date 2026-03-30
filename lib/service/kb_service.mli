@@ -37,9 +37,13 @@ type add_with_relations_result = {
 
 (* --- Lifecycle --- *)
 
-(** [init root] initializes the service from a shared {!Repository.Root.t}
-    handle. The service does not own the root — callers manage its lifecycle. *)
-val init : Repository.Root.t -> t
+(** [init root ~config_svc] initializes the service from a shared
+    {!Repository.Root.t} handle. The service does not own the root —
+    callers manage its lifecycle. *)
+val init : Repository.Root.t -> config_svc:Config_service.t -> t
+
+(** [config_svc t] returns the config service handle used by [t]. *)
+val config_svc : t -> Config_service.t
 
 (** [open_kb ()] finds the git root from the current directory, opens the
     knowledge base at [.kbases.db], and returns the root and service handle.
@@ -204,12 +208,6 @@ val delete_many :
   (Delete.delete_result list, Delete.delete_error) result
 
 (* --- GC --- *)
-
-(** [gc_get_max_age t] reads the gc_max_age from config. *)
-val gc_get_max_age : t -> (Gc.max_age_result, error) result
-
-(** [gc_set_max_age t age_str] validates and persists a new gc_max_age. *)
-val gc_set_max_age : t -> string -> (unit, error) result
 
 (** [gc_collect_with_config t] identifies eligible items without removing them. *)
 val gc_collect_with_config : t -> (Gc.gc_item list, error) result

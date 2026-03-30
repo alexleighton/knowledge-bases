@@ -15,7 +15,7 @@ let%expect_test "bs init --mode local" =
       Mode:        local
       AGENTS.md:   created
       Git exclude: added to .git/info/exclude
-      GC max age:  30d (default)
+      GC max age:  2592000 (default)
     jsonl exists: false
   |}]
 
@@ -32,7 +32,7 @@ let%expect_test "bs init --mode shared" =
       Mode:        shared
       AGENTS.md:   created
       Git exclude: added to .git/info/exclude
-      GC max age:  30d (default)
+      GC max age:  2592000 (default)
   |}]
 
 let%expect_test "bs init --mode foo rejects invalid mode" =

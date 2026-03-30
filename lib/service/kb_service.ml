@@ -15,6 +15,7 @@ type t = {
   relation_svc : Relation.t;
   delete_svc   : Delete.t;
   gc_svc       : Gc.t;
+  config_svc   : Config_service.t;
   sync         : Sync_service.t option;
   db           : Sqlite3.db;
 }
@@ -81,7 +82,7 @@ let build_filters = Query.build_filters
 
 (* --- Initialization --- *)
 
-let init root = {
+let init root ~config_svc = {
   note_repo = Repository.Root.note root;
   todo_repo = Repository.Root.todo root;
   query_svc    = Query.init root;
@@ -89,16 +90,19 @@ let init root = {
   mutation_svc = Mutation.init root;
   relation_svc = Relation.init root;
   delete_svc = Delete.init root;
-  gc_svc   = Gc.init root;
+  gc_svc   = Gc.init root ~config_svc;
+  config_svc;
   sync     = None;
   db       = Repository.Root.db root;
 }
 
+let config_svc t = t.config_svc
+
 (* --- Lifecycle --- *)
 
-let _run_gc root sync =
+let _run_gc root ~config_svc sync =
   let open Result.Syntax in
-  let gc = Gc_service.init root in
+  let gc = Gc_service.init root ~config_svc in
   let* result = Gc_service.run_with_config gc in
   if result.Gc_service.items_removed > 0 then
     match sync with
@@ -114,23 +118,24 @@ let open_kb () =
     Lifecycle.open_kb ()
     |> Result.map_error map_lifecycle_error
   in
-  let mode = match Repository.Config.get (Repository.Root.config root) "mode" with
-    | Ok "local" -> "local"
-    | Ok _ | Error _ -> "shared"
+  let config_svc = Config_service.init root ~dir in
+  let mode = match Config_service.get config_svc "mode" with
+    | Ok { Config_service.value; _ } -> value
+    | Error _ -> "shared"
   in
   if mode = "local" then begin
-    let* () = _run_gc root None in
-    let t = init root in
+    let* () = _run_gc root ~config_svc None in
+    let t = init root ~config_svc in
     Ok (root, t)
   end else begin
-    let jsonl_path = Filename.concat dir Lifecycle.jsonl_filename in
+    let jsonl_path = Filename.concat dir Data.Kb_filenames.jsonl in
     let sync = Sync_service.init root ~jsonl_path in
     let* () =
       Sync_service.rebuild_if_needed sync
       |> Result.map_error map_sync_error
     in
-    let* () = _run_gc root (Some sync) in
-    let t = { (init root) with sync = Some sync } in
+    let* () = _run_gc root ~config_svc (Some sync) in
+    let t = { (init root ~config_svc) with sync = Some sync } in
     Ok (root, t)
   end
 
@@ -243,10 +248,6 @@ let unrelate t ~source ~specs =
     Relation.unrelate_many t.relation_svc ~source ~specs)
 
 (* --- GC operations --- *)
-
-let gc_get_max_age t = Gc.get_max_age t.gc_svc
-
-let gc_set_max_age t age_str = Gc.set_max_age t.gc_svc age_str
 
 let gc_collect_with_config t = Gc.collect_with_config t.gc_svc
 

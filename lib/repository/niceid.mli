@@ -25,5 +25,9 @@ val allocate :
     @return [Error Not_found] if no mapping exists for the given TypeId. *)
 val delete : t -> Data.Uuid.Typeid.t -> (unit, error) result
 
+(** [rename_namespace repo ~old_ns ~new_ns] updates all niceid rows whose
+    namespace matches [old_ns] to use [new_ns]. *)
+val rename_namespace : t -> old_ns:string -> new_ns:string -> (unit, error) result
+
 (** [delete_all repo] removes every niceid mapping from the table. *)
 val delete_all : t -> (unit, error) result

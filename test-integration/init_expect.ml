@@ -24,7 +24,7 @@ let%expect_test "bs init with explicit directory and namespace" =
       Mode:        shared
       AGENTS.md:   created
       Git exclude: added to .git/info/exclude
-      GC max age:  30d (default)
+      GC max age:  2592000 (default)
     |}]
 
 let%expect_test "bs init creates database with correct namespace" =
@@ -61,7 +61,7 @@ let%expect_test "bs init resolves git root from cwd" =
       Mode:        shared
       AGENTS.md:   created
       Git exclude: added to .git/info/exclude
-      GC max age:  30d (default)
+      GC max age:  2592000 (default)
     |}]
 
 let%expect_test "bs init in non-git directory fails" =
@@ -141,7 +141,7 @@ let%expect_test "bs init appends to existing AGENTS.md" =
       Mode:        shared
       AGENTS.md:   appended to existing file
       Git exclude: added to .git/info/exclude
-      GC max age:  30d (default)
+      GC max age:  2592000 (default)
     has original content: true
     has kbases section: true
     |}]
@@ -173,7 +173,7 @@ let%expect_test "bs init is idempotent when AGENTS.md section already present" =
       Mode:        shared
       AGENTS.md:   section already present
       Git exclude: added to .git/info/exclude
-      GC max age:  30d (default)
+      GC max age:  2592000 (default)
     heading count: 1
     |}]
 
@@ -211,9 +211,9 @@ let%expect_test "bs init preserves existing .git/info/exclude content" =
 
 let%expect_test "bs init --gc-max-age persists the setting" =
   Helper.with_git_root (fun dir ->
-    let result = Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"; "--gc-max-age"; "14d"] in
+    let result = Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"; "--gc-max-age"; "1209600"] in
     Helper.print_result ~dir result;
-    let show = Helper.run_bs ~dir ["gc"; "--show-max-age"] in
+    let show = Helper.run_bs ~dir ["config"; "get"; "gc_max_age"] in
     Helper.print_result ~dir show);
   [%expect {|
     [exit 0]
@@ -224,9 +224,9 @@ let%expect_test "bs init --gc-max-age persists the setting" =
       Mode:        shared
       AGENTS.md:   created
       Git exclude: added to .git/info/exclude
-      GC max age:  14d
+      GC max age:  1209600
     [exit 0]
-    GC max age: 14d
+    1209600
     |}]
 
 let%expect_test "bs init --json" =
