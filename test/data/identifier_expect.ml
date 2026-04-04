@@ -1,7 +1,7 @@
 module Id = Kbases.Data.Identifier
 module Namespace = Kbases.Data.Namespace
 
-let%expect_test "make comprehensive test" =
+let%expect_test "make validates namespace and raw_id constraints" =
   let test_cases = [
     (* Success cases *)
     ("test", 42);
@@ -29,7 +29,7 @@ let%expect_test "make comprehensive test" =
     ERR: raw_id must be >= 0, got -1
   |}]
 
-let%expect_test "from_string happy path" =
+let%expect_test "from_string parses namespace and raw_id" =
   (* Test successful parsing *)
   let id = Id.from_string "ok-0" in
   Printf.printf "%s-%d\n" (Namespace.to_string (Id.namespace id)) (Id.raw_id id);

@@ -1,7 +1,7 @@
 module Helper = Test_helper
 module Sqlite = Kbases.Repository.Sqlite
 
-let%expect_test "local mode: add and list work, no JSONL created" =
+let%expect_test "local mode: add and list succeed without creating JSONL file" =
   Helper.with_git_root (fun dir ->
     ignore (Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"; "--mode"; "local"]);
     ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "My task"]);
@@ -15,7 +15,7 @@ let%expect_test "local mode: add and list work, no JSONL created" =
     jsonl exists: false
   |}]
 
-let%expect_test "local mode: resolve works normally" =
+let%expect_test "local mode: resolve transitions todo to done" =
   Helper.with_git_root (fun dir ->
     ignore (Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"; "--mode"; "local"]);
     ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "Fix bug"]);

@@ -1,6 +1,4 @@
 module Root = Kbases.Repository.Root
-module TodoRepo = Kbases.Repository.Todo
-module NoteRepo = Kbases.Repository.Note
 module RelationService = Kbases.Service.Relation_service
 module ItemService = Kbases.Service.Item_service
 module Title = Kbases.Data.Title
@@ -11,16 +9,12 @@ module Identifier = Kbases.Data.Identifier
 module Relation_kind = Kbases.Data.Relation_kind
 module Relation = Kbases.Data.Relation
 
-let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
-let unwrap_note_repo = Test_helpers.unwrap_note_repo
-let query_rows = Test_helpers.query_rows
-
-let query_relations = Test_helpers.query_relations
+open Test_helpers
 
 let with_relation_service f =
-  Test_helpers.with_service RelationService.init f
+  with_service RelationService.init f
 
-let pp_error = Test_helpers.pp_item_error
+let pp_error = pp_item_error
 
 (* -- Happy path tests -- *)
 

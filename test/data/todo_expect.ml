@@ -9,7 +9,13 @@ let sample_todo_id = Typeid.of_string "todo_0123456789abcdefghjkmnpqrs"
 
 let statuses = [Todo.Open; Todo.In_Progress; Todo.Done]
 
-let%expect_test "make comprehensive test" =
+let make_todo ?(status = Todo.Open) ?(created_at = 0) ?(updated_at = 0)
+    tid niceid title content =
+  Todo.make (Typeid.of_string tid) (Id.from_string niceid)
+    (Title.make title) (Content.make content) status
+    ~created_at:(Timestamp.make created_at) ~updated_at:(Timestamp.make updated_at)
+
+let%expect_test "make succeeds with valid inputs and rejects wrong TypeId prefix" =
   let test_cases = [
     (* Success cases *)
     ("todo_01h455vb4pex5vsknk084sn02q", "task-1", "Todo Title", "Simple content", Todo.Open);
@@ -36,15 +42,14 @@ let%expect_test "make comprehensive test" =
     ERR: todo TypeId prefix must be "todo", got "note"
     |}]
 
-let%expect_test "make_id generation" =
+let%expect_test "make_id returns a typeid with todo prefix" =
   let id = Todo.make_id () in
   Printf.printf "Prefix: %s\n" (Typeid.get_prefix id);
   [%expect {| Prefix: todo |}]
 
-let%expect_test "accessor functions" =
-  let identifier = Id.from_string "task-42" in
-  let tid = Typeid.of_string "todo_01h455vb4pex5vsknk084sn02r" in
-  let todo = Todo.make tid identifier (Title.make "My Title") (Content.make "My content") Todo.Done ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0) in
+let%expect_test "accessors return title, content, status, and niceid from constructed todo" =
+  let todo = make_todo ~status:Todo.Done
+    "todo_01h455vb4pex5vsknk084sn02r" "task-42" "My Title" "My content" in
   Printf.printf "TypeId: %s\n" (Typeid.to_string (Todo.id todo));
   Printf.printf "NiceId: %s\n" (Id.to_string (Todo.niceid todo));
   Printf.printf "Title: %S\n" (Title.to_string (Todo.title todo));
@@ -58,7 +63,7 @@ let%expect_test "accessor functions" =
     Status: done
   |}]
 
-let%expect_test "make boundary lengths" =
+let%expect_test "make accepts boundary title and content lengths" =
   let identifier = Id.from_string "bound-7" in
   let todo_min =
     Todo.make
@@ -83,7 +88,7 @@ let%expect_test "make boundary lengths" =
     (String.length (Content.to_string (Todo.content todo_max)));
   [%expect {| Boundary lengths: min title=1 content=1; max title=100 content=10000 |}]
 
-let%expect_test "status conversions" =
+let%expect_test "status_to_string and status_from_string round-trip all statuses" =
   List.iter (fun status ->
     let as_string = Todo.status_to_string status in
     let round_tripped = Todo.status_from_string as_string in
@@ -100,10 +105,9 @@ let%expect_test "status_from_string invalid input" =
    with Invalid_argument msg -> print_endline msg);
   [%expect {| Invalid status "pending" |}]
 
-let%expect_test "pretty printing" =
-  let identifier = Id.from_string "todo-5" in
-  let todo = Todo.make sample_todo_id identifier
-    (Title.make "Task") (Content.make "Review") Todo.In_Progress ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0) in
+let%expect_test "show and pp produce formatted todo representation" =
+  let todo = make_todo ~status:Todo.In_Progress
+    "todo_0123456789abcdefghjkmnpqrs" "todo-5" "Task" "Review" in
   Format.printf "%a@." Todo.pp todo;
   [%expect {|
     { Todo.id = todo_0123456789abcdefghjkmnpqrs; niceid = todo-5; title = "Task";
@@ -112,9 +116,7 @@ let%expect_test "pretty printing" =
     |}]
 
 let%expect_test "with_status changes status, preserves other fields" =
-  let identifier = Id.from_string "task-1" in
-  let tid = Typeid.of_string "todo_01h455vb4pex5vsknk084sn02q" in
-  let todo = Todo.make tid identifier (Title.make "Fix bug") (Content.make "Details") Todo.Open ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0) in
+  let todo = make_todo "todo_01h455vb4pex5vsknk084sn02q" "task-1" "Fix bug" "Details" in
   let updated = Todo.with_status todo Todo.Done in
   Printf.printf "Status: %s\n" (Todo.status_to_string (Todo.status updated));
   Printf.printf "Title: %s\n" (Title.to_string (Todo.title updated));
@@ -130,9 +132,8 @@ let%expect_test "with_status changes status, preserves other fields" =
   |}]
 
 let%expect_test "with_title changes title, preserves other fields" =
-  let identifier = Id.from_string "task-2" in
-  let tid = Typeid.of_string "todo_01h455vb4pex5vsknk084sn02r" in
-  let todo = Todo.make tid identifier (Title.make "Old title") (Content.make "Body") Todo.In_Progress ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0) in
+  let todo = make_todo ~status:Todo.In_Progress
+    "todo_01h455vb4pex5vsknk084sn02r" "task-2" "Old title" "Body" in
   let updated = Todo.with_title todo (Title.make "New title") in
   Printf.printf "Title: %s\n" (Title.to_string (Todo.title updated));
   Printf.printf "Status: %s\n" (Todo.status_to_string (Todo.status updated));
@@ -165,9 +166,7 @@ let%expect_test "status_of_string invalid input" =
   [%expect {| Error: Invalid status "pending" |}]
 
 let%expect_test "with_content changes content, preserves other fields" =
-  let identifier = Id.from_string "task-3" in
-  let tid = Typeid.of_string "todo_01h455vb4pex5vsknk084sn02s" in
-  let todo = Todo.make tid identifier (Title.make "Title") (Content.make "Old body") Todo.Open ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0) in
+  let todo = make_todo "todo_01h455vb4pex5vsknk084sn02s" "task-3" "Title" "Old body" in
   let updated = Todo.with_content todo (Content.make "New body") in
   Printf.printf "Content: %s\n" (Content.to_string (Todo.content updated));
   Printf.printf "Title: %s\n" (Title.to_string (Todo.title updated));
@@ -179,10 +178,8 @@ let%expect_test "with_content changes content, preserves other fields" =
   |}]
 
 let%expect_test "timestamp accessors return expected values" =
-  let identifier = Id.from_string "task-10" in
-  let tid = Typeid.of_string "todo_01h455vb4pex5vsknk084sn02q" in
-  let todo = Todo.make tid identifier (Title.make "Timed") (Content.make "Body")
-    Todo.Open ~created_at:(Timestamp.make 1710000000) ~updated_at:(Timestamp.make 1710003600) in
+  let todo = make_todo ~created_at:1710000000 ~updated_at:1710003600
+    "todo_01h455vb4pex5vsknk084sn02q" "task-10" "Timed" "Body" in
   Printf.printf "created_at: %d\n" (Timestamp.to_epoch (Todo.created_at todo));
   Printf.printf "updated_at: %d\n" (Timestamp.to_epoch (Todo.updated_at todo));
   [%expect {|
@@ -204,10 +201,8 @@ let%expect_test "default_excluded_status is Done" =
   [%expect {| done |}]
 
 let%expect_test "with_updated_at returns copy with new value" =
-  let identifier = Id.from_string "task-11" in
-  let tid = Typeid.of_string "todo_01h455vb4pex5vsknk084sn02r" in
-  let todo = Todo.make tid identifier (Title.make "Original") (Content.make "Body")
-    Todo.Open ~created_at:(Timestamp.make 1710000000) ~updated_at:(Timestamp.make 1710000000) in
+  let todo = make_todo ~created_at:1710000000 ~updated_at:1710000000
+    "todo_01h455vb4pex5vsknk084sn02r" "task-11" "Original" "Body" in
   let updated = Todo.with_updated_at todo (Timestamp.make 1710099999) in
   Printf.printf "created_at: %d\n" (Timestamp.to_epoch (Todo.created_at updated));
   Printf.printf "updated_at: %d\n" (Timestamp.to_epoch (Todo.updated_at updated));

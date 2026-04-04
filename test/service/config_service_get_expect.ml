@@ -2,8 +2,9 @@ module Root = Kbases.Repository.Root
 module Config = Kbases.Repository.Config
 module ConfigService = Kbases.Service.Config_service
 
-let pp_error = Test_helpers.pp_config_error
-let with_config_service = Test_helpers.with_config_service
+open Test_helpers
+
+let pp_error = pp_config_error
 
 (* --- get tests --- *)
 

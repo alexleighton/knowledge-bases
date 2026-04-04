@@ -1,6 +1,4 @@
 module Root = Kbases.Repository.Root
-module NoteRepo = Kbases.Repository.Note
-module TodoRepo = Kbases.Repository.Todo
 module RelationRepo = Kbases.Repository.Relation
 module QueryService = Kbases.Service.Query_service
 module Note = Kbases.Data.Note
@@ -12,15 +10,14 @@ module Relation = Kbases.Data.Relation
 module Relation_kind = Kbases.Data.Relation_kind
 module Timestamp = Kbases.Data.Timestamp
 
-let unwrap_note_repo = Test_helpers.unwrap_note_repo
-let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
+open Test_helpers
 
 let with_query_service f =
-  Test_helpers.with_service QueryService.init f
+  with_service QueryService.init f
 
-let pp_error = Test_helpers.pp_item_error
-let print_items = Test_helpers.print_query_items
-let unwrap_items = Test_helpers.unwrap_query_items
+let pp_error = pp_item_error
+let print_items = print_query_items
+let unwrap_items = unwrap_query_items
 
 let spec = QueryService.default_list_spec
 

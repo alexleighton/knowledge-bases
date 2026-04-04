@@ -1,9 +1,6 @@
 module Git = Kbases.Service.Git
 
-let with_git_root = Test_helpers.with_git_root
-let with_temp_dir = Test_helpers.with_temp_dir
-let normalize = Test_helpers.normalize
-let with_chdir = Test_helpers.with_chdir
+open Test_helpers
 
 let%expect_test "find_repo_root with explicit start_dir" =
   with_git_root "kb-git-test-" (fun root ->

@@ -1,6 +1,4 @@
 module Root = Kbases.Repository.Root
-module TodoRepo = Kbases.Repository.Todo
-module NoteRepo = Kbases.Repository.Note
 module RelationRepo = Kbases.Repository.Relation
 module GcService = Kbases.Service.Gc_service
 module ConfigService = Kbases.Service.Config_service
@@ -13,15 +11,16 @@ module Relation = Kbases.Data.Relation
 module Relation_kind = Kbases.Data.Relation_kind
 module Timestamp = Kbases.Data.Timestamp
 
-let unwrap_todo = Test_helpers.unwrap_todo_repo
-let unwrap_note = Test_helpers.unwrap_note_repo
-let query_count = Test_helpers.query_count
-let pp_error = Test_helpers.pp_item_error
+open Test_helpers
+
+let unwrap_todo = unwrap_todo_repo
+let unwrap_note = unwrap_note_repo
+let pp_error = pp_item_error
 
 let with_gc_service f =
-  Test_helpers.with_service
+  with_service
     (fun root -> GcService.init root
-      ~config_svc:(ConfigService.init root ~dir:Test_helpers.dir_without_kbases_jsonl))
+      ~config_svc:(ConfigService.init root ~dir:dir_without_kbases_jsonl))
     f
 
 let now = 1000000

@@ -1,6 +1,4 @@
 module Root = Kbases.Repository.Root
-module NoteRepo = Kbases.Repository.Note
-module TodoRepo = Kbases.Repository.Todo
 module MutationService = Kbases.Service.Mutation_service
 module ItemService = Kbases.Service.Item_service
 module Note = Kbases.Data.Note
@@ -9,14 +7,12 @@ module Title = Kbases.Data.Title
 module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
 
-let unwrap_note_repo = Test_helpers.unwrap_note_repo
-let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
-let query_rows = Test_helpers.query_rows
+open Test_helpers
 
 let with_mutation_service f =
-  Test_helpers.with_service MutationService.init f
+  with_service MutationService.init f
 
-let pp_error = Test_helpers.pp_item_error
+let pp_error = pp_item_error
 
 (* -- Update tests -- *)
 

@@ -1,5 +1,4 @@
 module Root = Kbases.Repository.Root
-module TodoRepo = Kbases.Repository.Todo
 module RelationRepo = Kbases.Repository.Relation
 module GraphService = Kbases.Service.Graph_service
 module Todo = Kbases.Data.Todo
@@ -10,10 +9,12 @@ module Typeid = Kbases.Data.Uuid.Typeid
 module Relation = Kbases.Data.Relation
 module Relation_kind = Kbases.Data.Relation_kind
 
-let unwrap_todo = Test_helpers.unwrap_todo_repo
+open Test_helpers
+
+let unwrap_todo = unwrap_todo_repo
 
 let with_graph_service f =
-  Test_helpers.with_service GraphService.init f
+  with_service GraphService.init f
 
 let make_rel root ~source ~target ~kind ~bidi =
   let rel = Relation.make ~source:(Todo.id source) ~target:(Todo.id target)
@@ -29,7 +30,7 @@ let pp_ids ids =
   ) ids in
   Printf.printf "[%s]\n" (String.concat ", " (List.sort String.compare strs))
 
-let pp_error = Test_helpers.pp_item_error
+let pp_error = pp_item_error
 
 (* Helper: create N todos, return them in order *)
 let make_todos root n =

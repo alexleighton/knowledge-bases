@@ -1,5 +1,4 @@
 module Root = Kbases.Repository.Root
-module TodoRepo = Kbases.Repository.Todo
 module RelationService = Kbases.Service.Relation_service
 module Title = Kbases.Data.Title
 module Content = Kbases.Data.Content
@@ -7,15 +6,12 @@ module Todo = Kbases.Data.Todo
 module Identifier = Kbases.Data.Identifier
 module Relation_kind = Kbases.Data.Relation_kind
 
-let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
-let query_rows = Test_helpers.query_rows
-
-let query_relations = Test_helpers.query_relations
+open Test_helpers
 
 let with_relation_service f =
-  Test_helpers.with_service RelationService.init f
+  with_service RelationService.init f
 
-let pp_error = Test_helpers.pp_item_error
+let pp_error = pp_item_error
 
 let%expect_test "unrelate removes existing relation" =
   with_relation_service (fun root service ->

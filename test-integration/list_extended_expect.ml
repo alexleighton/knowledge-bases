@@ -1,6 +1,6 @@
 module Helper = Test_helper
 
-let%expect_test "bs list --count" =
+let%expect_test "bs list --count prints per-type item totals" =
   Helper.with_git_root (fun dir ->
     Helper.init_kb dir;
     ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "T1"]);
@@ -14,7 +14,7 @@ let%expect_test "bs list --count" =
     1 active note
   |}]
 
-let%expect_test "bs list --count --json" =
+let%expect_test "bs list --count --json returns successful response envelope" =
   Helper.with_git_root (fun dir ->
     Helper.init_kb dir;
     ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "T1"]);

@@ -1,6 +1,4 @@
 module Root = Kbases.Repository.Root
-module NoteRepo = Kbases.Repository.Note
-module TodoRepo = Kbases.Repository.Todo
 module RelationRepo = Kbases.Repository.Relation
 module MutationService = Kbases.Service.Mutation_service
 module Note = Kbases.Data.Note
@@ -11,14 +9,12 @@ module Identifier = Kbases.Data.Identifier
 module Relation = Kbases.Data.Relation
 module Relation_kind = Kbases.Data.Relation_kind
 
-let unwrap_note_repo = Test_helpers.unwrap_note_repo
-let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
-let query_rows = Test_helpers.query_rows
+open Test_helpers
 
 let with_mutation_service f =
-  Test_helpers.with_service MutationService.init f
+  with_service MutationService.init f
 
-let pp_error = Test_helpers.pp_item_error
+let pp_error = pp_item_error
 
 let pp_claim_error = function
   | MutationService.Not_a_todo id -> Printf.printf "not a todo: %s\n" id
@@ -29,8 +25,6 @@ let pp_claim_error = function
   | MutationService.Nothing_available { stuck_count } ->
       Printf.printf "nothing available: %d stuck\n" stuck_count
   | MutationService.Service_error err -> pp_error err
-
-let make_blocking_rel = Test_helpers.make_blocking_rel
 
 (* -- Claim tests -- *)
 

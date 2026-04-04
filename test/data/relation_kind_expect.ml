@@ -7,7 +7,7 @@ let try_make s =
   with Invalid_argument msg ->
     Printf.printf "error: %s\n" msg
 
-let%expect_test "valid simple kind" =
+let%expect_test "make accepts lowercase hyphenated string" =
   try_make "depends-on";
   [%expect {| ok: depends-on |}]
 

@@ -10,15 +10,18 @@ module Timestamp = Kbases.Data.Timestamp
 let with_db = Test_helpers.with_db
 let query_rows = Test_helpers.query_rows_raw
 let query_count = Test_helpers.query_count_raw
+let unwrap_todo = Test_helpers.unwrap_todo
+let unwrap_niceid = Test_helpers.unwrap_niceid
 
-let unwrap_todo = function
-  | Ok v -> v
-  | Error _ -> failwith "unexpected error"
-
-let unwrap_niceid = function
-  | Ok v -> v
-  | Error (Niceid.Backend_failure msg) -> failwith ("backend failure: " ^ msg)
-  | Error Niceid.Not_found -> failwith "niceid not found"
+let pp_error = function
+  | TodoRepo.Not_found (`Id id) ->
+      Printf.printf "not found by id: %s\n" (Typeid.to_string id)
+  | TodoRepo.Not_found (`Niceid niceid) ->
+      Printf.printf "not found by niceid: %s\n" (Identifier.to_string niceid)
+  | TodoRepo.Duplicate_niceid niceid ->
+      Printf.printf "duplicate niceid: %s\n" (Identifier.to_string niceid)
+  | TodoRepo.Backend_failure msg ->
+      Printf.printf "backend failure: %s\n" msg
 
 let with_todo_repo f =
   with_db (fun db ->
@@ -26,56 +29,66 @@ let with_todo_repo f =
     let todo_repo = unwrap_todo (TodoRepo.init ~db ~niceid_repo) in
     f db todo_repo)
 
-let%expect_test "todo repo create/get/update/delete happy path" =
+let%expect_test "create assigns niceid and persists row" =
   with_todo_repo (fun db todo_repo ->
-    let todo1 = unwrap_todo (TodoRepo.create todo_repo
+    let todo = unwrap_todo (TodoRepo.create todo_repo
       ~title:(Title.make "Hello") ~content:(Content.make "World") ()) in
-    Printf.printf "created niceid=%s status=%s\n"
-      (Identifier.to_string (Todo.niceid todo1))
-      (Todo.status_to_string (Todo.status todo1));
+    Printf.printf "niceid=%s status=%s\n"
+      (Identifier.to_string (Todo.niceid todo))
+      (Todo.status_to_string (Todo.status todo));
     query_count db "todo";
-    query_rows db "SELECT niceid, title, content, status FROM todo" [];
+    query_rows db "SELECT niceid, title, content, status FROM todo" []);
+  [%expect {|
+    niceid=td-0 status=open
+    todo=1
+    td-0|Hello|World|open
+    |}]
 
-    let fetched = unwrap_todo (TodoRepo.get todo_repo (Todo.id todo1)) in
-    Printf.printf "fetched title=%s content=%s status=%s\n"
+let%expect_test "get and get_by_niceid return created todo" =
+  with_todo_repo (fun _db todo_repo ->
+    let todo = unwrap_todo (TodoRepo.create todo_repo
+      ~title:(Title.make "Hello") ~content:(Content.make "World") ()) in
+    let fetched = unwrap_todo (TodoRepo.get todo_repo (Todo.id todo)) in
+    Printf.printf "get title=%s content=%s status=%s\n"
       (Title.to_string (Todo.title fetched))
       (Content.to_string (Todo.content fetched))
       (Todo.status_to_string (Todo.status fetched));
+    let by_niceid = unwrap_todo (TodoRepo.get_by_niceid todo_repo (Todo.niceid todo)) in
+    Printf.printf "get_by_niceid title=%s\n" (Title.to_string (Todo.title by_niceid)));
+  [%expect {|
+    get title=Hello content=World status=open
+    get_by_niceid title=Hello
+    |}]
 
-    let fetched_by_niceid = unwrap_todo (TodoRepo.get_by_niceid todo_repo (Todo.niceid todo1)) in
-    Printf.printf "fetched_by_niceid title=%s\n" (Title.to_string (Todo.title fetched_by_niceid));
-
-    let updated =
-      Todo.make
-        (Todo.id todo1)
-        (Todo.niceid todo1)
-        (Title.make "Updated")
-        (Content.make "Body")
-        Todo.Done ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0)
-    in
-    let updated = unwrap_todo (TodoRepo.update todo_repo updated) in
-    Printf.printf "updated title=%s content=%s status=%s\n"
+let%expect_test "update changes persisted fields" =
+  with_todo_repo (fun db todo_repo ->
+    let todo = unwrap_todo (TodoRepo.create todo_repo
+      ~title:(Title.make "Hello") ~content:(Content.make "World") ()) in
+    let modified = Todo.make (Todo.id todo) (Todo.niceid todo)
+      (Title.make "Updated") (Content.make "Body")
+      Todo.Done ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0) in
+    let updated = unwrap_todo (TodoRepo.update todo_repo modified) in
+    Printf.printf "title=%s content=%s status=%s\n"
       (Title.to_string (Todo.title updated))
       (Content.to_string (Todo.content updated))
       (Todo.status_to_string (Todo.status updated));
-    query_rows db "SELECT niceid, title, content, status FROM todo" [];
+    query_rows db "SELECT niceid, title, content, status FROM todo" []);
+  [%expect {|
+    title=Updated content=Body status=done
+    td-0|Updated|Body|done
+    |}]
 
-    let () = unwrap_todo (TodoRepo.delete todo_repo (Todo.niceid todo1)) in
-    (match TodoRepo.get_by_niceid todo_repo (Todo.niceid todo1) with
+let%expect_test "delete removes todo and get_by_niceid returns Not_found" =
+  with_todo_repo (fun db todo_repo ->
+    let todo = unwrap_todo (TodoRepo.create todo_repo
+      ~title:(Title.make "Hello") ~content:(Content.make "World") ()) in
+    let () = unwrap_todo (TodoRepo.delete todo_repo (Todo.niceid todo)) in
+    (match TodoRepo.get_by_niceid todo_repo (Todo.niceid todo) with
      | Error (TodoRepo.Not_found (`Niceid _)) -> print_endline "deleted ok"
-     | Ok _ -> print_endline "unexpected lookup result"
-     | Error (TodoRepo.Duplicate_niceid _) -> print_endline "unexpected duplicate"
-     | Error (TodoRepo.Backend_failure _) -> print_endline "backend failure"
-     | Error (TodoRepo.Not_found (`Id _)) -> print_endline "unexpected not found id");
+     | Ok _ -> print_endline "unexpected: still exists"
+     | Error err -> pp_error err);
     query_count db "todo");
   [%expect {|
-    created niceid=td-0 status=open
-    todo=1
-    td-0|Hello|World|open
-    fetched title=Hello content=World status=open
-    fetched_by_niceid title=Hello
-    updated title=Updated content=Body status=done
-    td-0|Updated|Body|done
     deleted ok
     todo=0
     |}]
@@ -95,17 +108,13 @@ let%expect_test "todo repo not found cases" =
     let missing_id = Typeid.of_string "todo_0123456789abcdefghjkmnpqrs" in
     (match TodoRepo.get todo_repo missing_id with
      | Error (TodoRepo.Not_found (`Id _)) -> print_endline "missing by id"
-     | Ok _ -> print_endline "unexpected get result"
-     | Error (TodoRepo.Not_found (`Niceid _)) -> print_endline "unexpected not found niceid"
-     | Error (TodoRepo.Duplicate_niceid _) -> print_endline "unexpected duplicate"
-     | Error (TodoRepo.Backend_failure _) -> print_endline "backend failure");
+     | Ok _ -> print_endline "unexpected: found"
+     | Error err -> pp_error err);
     let missing_niceid = Identifier.make "td" 42 in
     (match TodoRepo.delete todo_repo missing_niceid with
      | Error (TodoRepo.Not_found (`Niceid _)) -> print_endline "missing delete"
-     | Ok () -> print_endline "unexpected delete result"
-     | Error (TodoRepo.Not_found (`Id _)) -> print_endline "unexpected not found id"
-     | Error (TodoRepo.Duplicate_niceid _) -> print_endline "unexpected duplicate"
-     | Error (TodoRepo.Backend_failure _) -> print_endline "backend failure"));
+     | Ok () -> print_endline "unexpected: deleted"
+     | Error err -> pp_error err));
   [%expect {|
     missing by id
     missing delete

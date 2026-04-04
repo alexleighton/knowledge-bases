@@ -1,6 +1,4 @@
 module Root = Kbases.Repository.Root
-module TodoRepo = Kbases.Repository.Todo
-module NoteRepo = Kbases.Repository.Note
 module RelationRepo = Kbases.Repository.Relation
 module Config = Kbases.Repository.Config
 module Sync = Kbases.Service.Sync_service
@@ -19,11 +17,13 @@ let unwrap_sync = function
   | Ok v -> v
   | Error (Sync.Sync_failed msg) -> failwith ("sync failed: " ^ msg)
 
-let unwrap_todo = Test_helpers.unwrap_todo_repo
-let unwrap_note = Test_helpers.unwrap_note_repo
+open Test_helpers
+
+let unwrap_todo = unwrap_todo_repo
+let unwrap_note = unwrap_note_repo
 
 let with_sync f =
-  Test_helpers.with_temp_dir "sync_test" (fun tmp_dir ->
+  with_temp_dir "sync_test" (fun tmp_dir ->
     let db_file = Filename.concat tmp_dir "test.db" in
     let jsonl_path = Filename.concat tmp_dir "test.jsonl" in
     match Root.init ~db_file ~namespace:(Some "kb") with

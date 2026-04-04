@@ -229,7 +229,7 @@ let%expect_test "bs init --gc-max-age persists the setting" =
     1209600
     |}]
 
-let%expect_test "bs init --json" =
+let%expect_test "bs init --json returns ok with directory and db_file" =
   Helper.with_git_root (fun dir ->
     let result = Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"; "--json"] in
     Printf.printf "[exit %d]\n" result.exit_code;

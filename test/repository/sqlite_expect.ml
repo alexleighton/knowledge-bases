@@ -1,6 +1,5 @@
 module Sqlite = Kbases.Repository.Sqlite
 
-let with_db = Test_helpers.with_db
 
 let print_exec_result label = function
   | Ok () -> Printf.printf "%s ok\n" label
@@ -14,7 +13,7 @@ let print_error = function
   | Sqlite.Row_parse_failed msg -> Printf.printf "row_parse_failed: %s\n" msg
 
 let%expect_test "exec commit rollback" =
-  with_db (fun db ->
+  Test_helpers.with_db (fun db ->
     print_exec_result "create" (Sqlite.exec db "CREATE TABLE items(id INTEGER)");
     print_exec_result "bad_sql" (Sqlite.exec db "THIS IS BAD SQL");
     print_exec_result "begin" (Sqlite.exec db "BEGIN");
@@ -51,7 +50,7 @@ let%expect_test "exec commit rollback" =
     |}]
 
 let%expect_test "with_stmt collects rows" =
-  with_db (fun db ->
+  Test_helpers.with_db (fun db ->
     ignore (Sqlite.exec db "CREATE TABLE numbers(n INTEGER, label TEXT)");
     ignore (Sqlite.exec db "INSERT INTO numbers(n, label) VALUES (1, 'one'), (2, 'two'), (3, 'three')");
     let rows =
@@ -71,7 +70,7 @@ let%expect_test "with_stmt collects rows" =
     |}]
 
 let%expect_test "with_stmt_single ok and missing" =
-  with_db (fun db ->
+  Test_helpers.with_db (fun db ->
     ignore (Sqlite.exec db "CREATE TABLE numbers(n INTEGER)");
     ignore (Sqlite.exec db "INSERT INTO numbers(n) VALUES (5)");
     let found =
@@ -94,7 +93,7 @@ let%expect_test "with_stmt_single ok and missing" =
     |}]
 
 let%expect_test "with_stmt_cmd constraint violation" =
-  with_db (fun db ->
+  Test_helpers.with_db (fun db ->
     ignore (Sqlite.exec db "CREATE TABLE uniq(v TEXT UNIQUE)");
     (match Sqlite.with_stmt_cmd db "INSERT INTO uniq(v) VALUES (?)" [ (1, Sqlite3.Data.TEXT "a") ] with
      | Ok () -> print_endline "first insert ok"

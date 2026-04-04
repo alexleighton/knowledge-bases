@@ -1,6 +1,4 @@
 module Root = Kbases.Repository.Root
-module NoteRepo = Kbases.Repository.Note
-module TodoRepo = Kbases.Repository.Todo
 module RelationRepo = Kbases.Repository.Relation
 module QueryService = Kbases.Service.Query_service
 module Note = Kbases.Data.Note
@@ -11,20 +9,16 @@ module Identifier = Kbases.Data.Identifier
 module Relation = Kbases.Data.Relation
 module Relation_kind = Kbases.Data.Relation_kind
 
-let unwrap_note_repo = Test_helpers.unwrap_note_repo
-let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
-let query_count = Test_helpers.query_count
+open Test_helpers
 
 let with_query_service f =
-  Test_helpers.with_service QueryService.init f
+  with_service QueryService.init f
 
-let pp_error = Test_helpers.pp_item_error
-let print_items = Test_helpers.print_query_items
-let unwrap_items = Test_helpers.unwrap_query_items
+let pp_error = pp_item_error
+let print_items = print_query_items
+let unwrap_items = unwrap_query_items
 
 let spec = QueryService.default_list_spec
-
-let make_blocking_rel = Test_helpers.make_blocking_rel
 
 let%expect_test "list defaults exclude done and archived" =
   with_query_service (fun root service ->

@@ -10,15 +10,18 @@ module Timestamp = Kbases.Data.Timestamp
 let with_db = Test_helpers.with_db
 let query_rows = Test_helpers.query_rows_raw
 let query_count = Test_helpers.query_count_raw
+let unwrap_note = Test_helpers.unwrap_note
+let unwrap_niceid = Test_helpers.unwrap_niceid
 
-let unwrap_note = function
-  | Ok v -> v
-  | Error _ -> failwith "unexpected error"
-
-let unwrap_niceid = function
-  | Ok v -> v
-  | Error (Niceid.Backend_failure msg) -> failwith ("backend failure: " ^ msg)
-  | Error Niceid.Not_found -> failwith "niceid not found"
+let pp_error = function
+  | NoteRepo.Not_found (`Id id) ->
+      Printf.printf "not found by id: %s\n" (Typeid.to_string id)
+  | NoteRepo.Not_found (`Niceid niceid) ->
+      Printf.printf "not found by niceid: %s\n" (Identifier.to_string niceid)
+  | NoteRepo.Duplicate_niceid niceid ->
+      Printf.printf "duplicate niceid: %s\n" (Identifier.to_string niceid)
+  | NoteRepo.Backend_failure msg ->
+      Printf.printf "backend failure: %s\n" msg
 
 let with_note_repo f =
   with_db (fun db ->
@@ -26,58 +29,68 @@ let with_note_repo f =
     let note_repo = unwrap_note (NoteRepo.init ~db ~niceid_repo) in
     f db note_repo)
 
-let%expect_test "note repo create/get/update/delete happy path" =
+let%expect_test "create assigns niceid and persists row" =
   with_note_repo (fun db note_repo ->
-    let note1 = unwrap_note (NoteRepo.create note_repo
+    let note = unwrap_note (NoteRepo.create note_repo
       ~title:(Title.make "Hello") ~content:(Content.make "World") ()) in
-    Printf.printf "created niceid=%s status=%s\n"
-      (Identifier.to_string (Note.niceid note1))
-      (Note.status_to_string (Note.status note1));
+    Printf.printf "niceid=%s status=%s\n"
+      (Identifier.to_string (Note.niceid note))
+      (Note.status_to_string (Note.status note));
     query_count db "note";
-    query_rows db "SELECT niceid, title, content, status FROM note" [];
+    query_rows db "SELECT niceid, title, content, status FROM note" []);
+  [%expect {|
+    niceid=nt-0 status=active
+    note=1
+    nt-0|Hello|World|active
+    |}]
 
-    let fetched = unwrap_note (NoteRepo.get note_repo (Note.id note1)) in
-    Printf.printf "fetched title=%s content=%s status=%s\n"
+let%expect_test "get and get_by_niceid return created note" =
+  with_note_repo (fun _db note_repo ->
+    let note = unwrap_note (NoteRepo.create note_repo
+      ~title:(Title.make "Hello") ~content:(Content.make "World") ()) in
+    let fetched = unwrap_note (NoteRepo.get note_repo (Note.id note)) in
+    Printf.printf "get title=%s content=%s status=%s\n"
       (Title.to_string (Note.title fetched))
       (Content.to_string (Note.content fetched))
       (Note.status_to_string (Note.status fetched));
+    let by_niceid = unwrap_note (NoteRepo.get_by_niceid note_repo (Note.niceid note)) in
+    Printf.printf "get_by_niceid title=%s status=%s\n"
+      (Title.to_string (Note.title by_niceid))
+      (Note.status_to_string (Note.status by_niceid)));
+  [%expect {|
+    get title=Hello content=World status=active
+    get_by_niceid title=Hello status=active
+    |}]
 
-    let fetched_by_niceid = unwrap_note (NoteRepo.get_by_niceid note_repo (Note.niceid note1)) in
-    Printf.printf "fetched_by_niceid title=%s status=%s\n"
-      (Title.to_string (Note.title fetched_by_niceid))
-      (Note.status_to_string (Note.status fetched_by_niceid));
-
-    let updated =
-      Note.make
-        (Note.id note1)
-        (Note.niceid note1)
-        (Title.make "Updated")
-        (Content.make "Body")
-        Note.Archived ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0)
-    in
-    let updated = unwrap_note (NoteRepo.update note_repo updated) in
-    Printf.printf "updated title=%s content=%s status=%s\n"
+let%expect_test "update changes persisted fields" =
+  with_note_repo (fun db note_repo ->
+    let note = unwrap_note (NoteRepo.create note_repo
+      ~title:(Title.make "Hello") ~content:(Content.make "World") ()) in
+    let modified = Note.make (Note.id note) (Note.niceid note)
+      (Title.make "Updated") (Content.make "Body")
+      Note.Archived ~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make 0) in
+    let updated = unwrap_note (NoteRepo.update note_repo modified) in
+    Printf.printf "title=%s content=%s status=%s\n"
       (Title.to_string (Note.title updated))
       (Content.to_string (Note.content updated))
       (Note.status_to_string (Note.status updated));
-    query_rows db "SELECT niceid, title, content, status FROM note" [];
+    query_rows db "SELECT niceid, title, content, status FROM note" []);
+  [%expect {|
+    title=Updated content=Body status=archived
+    nt-0|Updated|Body|archived
+    |}]
 
-    let () = unwrap_note (NoteRepo.delete note_repo (Note.niceid note1)) in
-    (match NoteRepo.get_by_niceid note_repo (Note.niceid note1) with
+let%expect_test "delete removes note and get_by_niceid returns Not_found" =
+  with_note_repo (fun db note_repo ->
+    let note = unwrap_note (NoteRepo.create note_repo
+      ~title:(Title.make "Hello") ~content:(Content.make "World") ()) in
+    let () = unwrap_note (NoteRepo.delete note_repo (Note.niceid note)) in
+    (match NoteRepo.get_by_niceid note_repo (Note.niceid note) with
      | Error (NoteRepo.Not_found (`Niceid _)) -> print_endline "deleted ok"
-     | Ok _ -> print_endline "unexpected lookup result"
-     | Error (NoteRepo.Duplicate_niceid _) -> print_endline "unexpected duplicate"
-     | Error (NoteRepo.Backend_failure _) -> print_endline "backend failure"
-     | Error (NoteRepo.Not_found (`Id _)) -> print_endline "unexpected not found id");
+     | Ok _ -> print_endline "unexpected: still exists"
+     | Error err -> pp_error err);
     query_count db "note");
   [%expect {|
-    created niceid=nt-0 status=active
-    note=1
-    nt-0|Hello|World|active
-    fetched title=Hello content=World status=active
-    fetched_by_niceid title=Hello status=active
-    updated title=Updated content=Body status=archived
-    nt-0|Updated|Body|archived
     deleted ok
     note=0
     |}]
@@ -87,17 +100,13 @@ let%expect_test "note repo not found cases" =
     let missing_id = Typeid.of_string "note_0123456789abcdefghjkmnpqrs" in
     (match NoteRepo.get note_repo missing_id with
      | Error (NoteRepo.Not_found (`Id _)) -> print_endline "missing by id"
-     | Ok _ -> print_endline "unexpected get result"
-     | Error (NoteRepo.Not_found (`Niceid _)) -> print_endline "unexpected not found niceid"
-     | Error (NoteRepo.Duplicate_niceid _) -> print_endline "unexpected duplicate"
-     | Error (NoteRepo.Backend_failure _) -> print_endline "backend failure");
+     | Ok _ -> print_endline "unexpected: found"
+     | Error err -> pp_error err);
     let missing_niceid = Identifier.make "nt" 42 in
     (match NoteRepo.delete note_repo missing_niceid with
      | Error (NoteRepo.Not_found (`Niceid _)) -> print_endline "missing delete"
-     | Ok () -> print_endline "unexpected delete result"
-     | Error (NoteRepo.Not_found (`Id _)) -> print_endline "unexpected not found id"
-     | Error (NoteRepo.Duplicate_niceid _) -> print_endline "unexpected duplicate"
-     | Error (NoteRepo.Backend_failure _) -> print_endline "backend failure"));
+     | Ok () -> print_endline "unexpected: deleted"
+     | Error err -> pp_error err));
   [%expect {|
     missing by id
     missing delete

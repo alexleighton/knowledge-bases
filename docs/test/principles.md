@@ -169,3 +169,75 @@ Instead, **inject the time source** so tests can control it:
 **Why:** A one-second sleep per test adds up quickly across hundreds of tests
 and provides no additional confidence. Injecting the clock makes ordering tests
 instant, deterministic, and independent of system load.
+
+## 7. Descriptive test names
+
+Every `let%expect_test` name must describe the behaviour being verified, not the
+function being called. A reader should know what the test checks without opening
+the file.
+
+* **Bad:** `"make comprehensive test"`, `"happy path"`, `"error cases"`
+* **Good:** `"make succeeds with valid inputs and rejects wrong TypeId prefix"`,
+  `"list filters by status"`, `"delete returns Not_found for missing niceid"`
+
+When a single test exercises both success and failure paths, mention both in the
+name. Prefer the pattern `"<function> <what it does under these conditions>"`.
+
+**Why:** Vague names force the reader to scan the test body to understand intent.
+When a test fails in CI, the name is the first thing you see — it should tell you
+what broke without further investigation.
+
+## 8. Avoid boolean-printing assertions
+
+Do not wrap a predicate check in `Printf.printf "%b"` as the sole assertion.
+When the check fails the output is just `false` with no indication of what the
+actual value was.
+
+```ocaml
+(* avoid *)
+Printf.printf "is-dir-error: %b\n"
+  (String.starts_with ~prefix:"Directory is not a git repository" msg)
+
+(* prefer — success prints a stable label, failure prints the actual value *)
+if String.starts_with ~prefix:"Directory is not a git repository" msg
+then print_endline "is-dir-error: true"
+else Printf.printf "unexpected validation error: %s\n" msg
+```
+
+The `if/else` form gives the same deterministic expected output on success but
+surfaces the real message on failure, making debugging straightforward.
+
+**Why:** A bare `false` in a failed expect-test diff tells you the predicate
+didn't hold but not *why*. Printing the actual value on the failure branch
+eliminates a re-run-with-logging step.
+
+## 9. Reduce entity construction boilerplate
+
+When many tests in a file build the same entity type with mostly default fields,
+define a local builder helper with optional parameters:
+
+```ocaml
+let make_note
+    ?(status = Note.Active)
+    ?(created_at = 0) ?(updated_at = 0)
+    tid niceid title content =
+  Note.make tid (Id.from_string niceid)
+    (Title.make title) (Content.make content) status
+    ~created_at:(Timestamp.make created_at)
+    ~updated_at:(Timestamp.make updated_at)
+```
+
+Call sites then only mention the fields that matter for the test:
+
+```ocaml
+let note = make_note tid "test-1" "Title" "Body" in
+let archived = make_note ~status:Note.Archived tid "test-2" "Title" "Body" in
+let timed = make_note ~created_at:1000 ~updated_at:2000 tid "test-3" "Title" "Body" in
+```
+
+Keep the builder local to the test file (not in `test_helpers`) — different
+files test different modules and need differently shaped builders.
+
+**Why:** Repeating `~created_at:(Timestamp.make 0) ~updated_at:(Timestamp.make
+0)` on every construction call obscures the parameters that actually vary between
+tests. A builder makes the interesting inputs stand out.

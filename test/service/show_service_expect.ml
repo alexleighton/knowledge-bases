@@ -1,6 +1,4 @@
 module Root = Kbases.Repository.Root
-module NoteRepo = Kbases.Repository.Note
-module TodoRepo = Kbases.Repository.Todo
 module ShowService = Kbases.Service.Show_service
 module Note = Kbases.Data.Note
 module Todo = Kbases.Data.Todo
@@ -9,13 +7,12 @@ module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
 module Typeid = Kbases.Data.Uuid.Typeid
 
-let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
-let unwrap_note_repo = Test_helpers.unwrap_note_repo
+open Test_helpers
 
 let with_show_service f =
-  Test_helpers.with_service ShowService.init f
+  with_service ShowService.init f
 
-let pp_error = Test_helpers.pp_item_error
+let pp_error = pp_item_error
 
 let mask_typeid s =
   let underscore_pos = String.index s '_' in

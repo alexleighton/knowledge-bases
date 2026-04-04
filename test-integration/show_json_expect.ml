@@ -1,6 +1,6 @@
 module Helper = Test_helper
 
-let%expect_test "bs show --json" =
+let%expect_test "bs show --json returns all item fields" =
   Helper.with_git_root (fun dir ->
     Helper.init_kb dir;
     ignore (Helper.run_bs ~dir ~stdin:"Content here" ["add"; "todo"; "My item"]);

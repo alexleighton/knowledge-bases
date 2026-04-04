@@ -1,6 +1,4 @@
 module Root = Kbases.Repository.Root
-module TodoRepo = Kbases.Repository.Todo
-module NoteRepo = Kbases.Repository.Note
 module Service = Kbases.Service.Kb_service
 module Note = Kbases.Data.Note
 module Todo = Kbases.Data.Todo
@@ -9,14 +7,10 @@ module Content = Kbases.Data.Content
 module Identifier = Kbases.Data.Identifier
 module Relation_kind = Kbases.Data.Relation_kind
 
-let with_git_root = Test_helpers.with_git_root
-let with_chdir = Test_helpers.with_chdir
-let query_count = Test_helpers.query_count
-let query_rows = Test_helpers.query_rows
+open Test_helpers
 
-let pp_error = Test_helpers.pp_item_error
-let expect_ok = Test_helpers.expect_service_ok
-let with_open_kb = Test_helpers.with_open_kb
+let pp_error = pp_item_error
+let expect_ok = expect_service_ok
 
 let%expect_test "open_kb succeeds and returns functional service" =
   with_git_root "kb-open-happy-" (fun root ->
@@ -43,15 +37,12 @@ let%expect_test "open_kb succeeds and returns functional service" =
     kb
   |}]
 
-let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
-let unwrap_note_repo = Test_helpers.unwrap_note_repo
-
 module ConfigService = Kbases.Service.Config_service
 
 let with_service f =
-  Test_helpers.with_service
+  with_service
     (fun root -> Service.init root
-      ~config_svc:(ConfigService.init root ~dir:Test_helpers.dir_without_kbases_jsonl))
+      ~config_svc:(ConfigService.init root ~dir:dir_without_kbases_jsonl))
     f
 
 let%expect_test "resolve_many via Kb_service" =

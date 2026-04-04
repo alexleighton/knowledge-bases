@@ -1,6 +1,5 @@
 module Root = Kbases.Repository.Root
 module Config = Kbases.Repository.Config
-module TodoRepo = Kbases.Repository.Todo
 module Service = Kbases.Service.Kb_service
 module Lifecycle = Kbases.Service.Lifecycle
 module Todo = Kbases.Data.Todo
@@ -8,14 +7,10 @@ module Title = Kbases.Data.Title
 module Content = Kbases.Data.Content
 module Timestamp = Kbases.Data.Timestamp
 
-let with_git_root = Test_helpers.with_git_root
-let with_chdir = Test_helpers.with_chdir
-let query_count = Test_helpers.query_count
-let pp_error = Test_helpers.pp_item_error
-let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
+open Test_helpers
 
-let expect_ok = Test_helpers.expect_service_ok
-let with_open_kb = Test_helpers.with_open_kb
+let pp_error = pp_item_error
+let expect_ok = expect_service_ok
 
 let%expect_test "open_kb with local mode does not construct sync" =
   with_git_root "kb-open-local-" (fun root ->

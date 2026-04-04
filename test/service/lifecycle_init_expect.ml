@@ -5,15 +5,10 @@ module Jsonl = Kbases.Repository.Jsonl
 module Lifecycle = Kbases.Service.Lifecycle
 module Io = Kbases.Control.Io
 
-let with_git_root = Test_helpers.with_git_root
-let with_temp_dir = Test_helpers.with_temp_dir
-let normalize = Test_helpers.normalize
-let with_chdir = Test_helpers.with_chdir
-let with_root = Test_helpers.with_root
-let query_count = Test_helpers.query_count
+open Test_helpers
 
-let pp_error = Test_helpers.pp_lifecycle_error
-let expect_ok = Test_helpers.expect_lifecycle_ok
+let pp_error = pp_lifecycle_error
+let expect_ok = expect_lifecycle_ok
 
 let%expect_test "init_kb succeeds with explicit directory and namespace" =
   with_git_root "lc-init-explicit-" (fun root ->
@@ -41,8 +36,9 @@ let%expect_test "init_kb rejects non-git root directory" =
     | Error (Lifecycle.Repository_error msg) ->
         Printf.printf "repo error: %s\n" msg
     | Error (Lifecycle.Validation_error msg) ->
-        Printf.printf "is-dir-error: %b\n"
-          (String.starts_with ~prefix:"Directory is not a git repository root: " msg));
+        if String.starts_with ~prefix:"Directory is not a git repository root: " msg
+        then print_endline "is-dir-error: true"
+        else Printf.printf "unexpected validation error: %s\n" msg);
   [%expect {|
     is-dir-error: true
   |}]
@@ -67,8 +63,9 @@ let%expect_test "init_kb guards against re-initialization" =
     | Error (Lifecycle.Repository_error msg) ->
         Printf.printf "repo error: %s\n" msg
     | Error (Lifecycle.Validation_error msg) ->
-        Printf.printf "already-init-error: %b\n"
-          (String.starts_with ~prefix:"Knowledge base already initialised at " msg));
+        if String.starts_with ~prefix:"Knowledge base already initialised at " msg
+        then print_endline "already-init-error: true"
+        else Printf.printf "unexpected validation error: %s\n" msg);
   [%expect {|
     already-init-error: true
   |}]
@@ -112,7 +109,9 @@ let%expect_test "init_kb reports invalid derived namespace" =
       | Ok _ -> print_endline "unexpected success"
       | Error (Lifecycle.Repository_error msg) -> Printf.printf "repo error: %s\n" msg
       | Error (Lifecycle.Validation_error msg) ->
-          Printf.printf "derived-error: %b\n" (String.starts_with ~prefix:"Derived namespace" msg)));
+          if String.starts_with ~prefix:"Derived namespace" msg
+          then print_endline "derived-error: true"
+          else Printf.printf "unexpected validation error: %s\n" msg));
   [%expect {|
     derived-error: true
   |}]

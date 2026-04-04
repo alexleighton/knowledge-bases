@@ -6,9 +6,6 @@ module TodoRepo = Kbases.Repository.Todo
 module Title = Kbases.Data.Title
 module Content = Kbases.Data.Content
 
-let with_root = Test_helpers.with_root
-let query_rows = Test_helpers.query_rows
-
 let make_todo root title =
   match TodoRepo.create (Root.todo root)
     ~title:(Title.make title) ~content:(Content.make "body") () with
@@ -18,7 +15,7 @@ let make_todo root title =
 (** Query stored relations with niceids resolved via a join on the todo
     table. Prints [source_niceid|kind|target_niceid|bidirectional] per row. *)
 let query_relations root =
-  query_rows root
+  Test_helpers.query_rows root
     {|SELECT s.niceid, r.kind, t.niceid, r.bidirectional
       FROM relation r
       JOIN todo s ON s.id = r.source
@@ -32,7 +29,7 @@ let pp_error = function
   | RelationRepo.Backend_failure msg -> Printf.printf "error: backend failure: %s\n" msg
 
 let%expect_test "create relation and verify row in DB" =
-  with_root (fun root ->
+  Test_helpers.with_root (fun root ->
     let t1 = make_todo root "First" in
     let t2 = make_todo root "Second" in
     let src = Kbases.Data.Todo.id t1 in
@@ -52,7 +49,7 @@ let%expect_test "create relation and verify row in DB" =
   |}]
 
 let%expect_test "exact duplicate returns Duplicate" =
-  with_root (fun root ->
+  Test_helpers.with_root (fun root ->
     let t1 = make_todo root "First" in
     let t2 = make_todo root "Second" in
     let src = Kbases.Data.Todo.id t1 in
@@ -66,7 +63,7 @@ let%expect_test "exact duplicate returns Duplicate" =
   [%expect {| error: duplicate |}]
 
 let%expect_test "bidirectional reverse duplicate returns Duplicate" =
-  with_root (fun root ->
+  Test_helpers.with_root (fun root ->
     let t1 = make_todo root "First" in
     let t2 = make_todo root "Second" in
     let src = Kbases.Data.Todo.id t1 in
@@ -81,7 +78,7 @@ let%expect_test "bidirectional reverse duplicate returns Duplicate" =
   [%expect {| error: duplicate |}]
 
 let%expect_test "unidirectional reverse is allowed" =
-  with_root (fun root ->
+  Test_helpers.with_root (fun root ->
     let t1 = make_todo root "First" in
     let t2 = make_todo root "Second" in
     let src = Kbases.Data.Todo.id t1 in
@@ -98,7 +95,7 @@ let%expect_test "unidirectional reverse is allowed" =
   [%expect {| created reverse: kind=depends-on |}]
 
 let%expect_test "list_all returns all relations" =
-  with_root (fun root ->
+  Test_helpers.with_root (fun root ->
     let t1 = make_todo root "First" in
     let t2 = make_todo root "Second" in
     let t3 = make_todo root "Third" in
@@ -133,7 +130,7 @@ let%expect_test "list_all returns all relations" =
   |}]
 
 let%expect_test "delete_all removes all relations" =
-  with_root (fun root ->
+  Test_helpers.with_root (fun root ->
     let t1 = make_todo root "First" in
     let t2 = make_todo root "Second" in
     let src = Kbases.Data.Todo.id t1 in
@@ -153,7 +150,7 @@ let%expect_test "delete_all removes all relations" =
   |}]
 
 let%expect_test "same pair with different kind is allowed" =
-  with_root (fun root ->
+  Test_helpers.with_root (fun root ->
     let t1 = make_todo root "First" in
     let t2 = make_todo root "Second" in
     let src = Kbases.Data.Todo.id t1 in
@@ -174,7 +171,7 @@ let%expect_test "same pair with different kind is allowed" =
   |}]
 
 let%expect_test "delete relation then list_all is empty" =
-  with_root (fun root ->
+  Test_helpers.with_root (fun root ->
     let t1 = make_todo root "First" in
     let t2 = make_todo root "Second" in
     let src = Kbases.Data.Todo.id t1 in
@@ -194,7 +191,7 @@ let%expect_test "delete relation then list_all is empty" =
   |}]
 
 let%expect_test "delete bidirectional relation from reverse endpoint" =
-  with_root (fun root ->
+  Test_helpers.with_root (fun root ->
     let t1 = make_todo root "First" in
     let t2 = make_todo root "Second" in
     let src = Kbases.Data.Todo.id t1 in
@@ -215,7 +212,7 @@ let%expect_test "delete bidirectional relation from reverse endpoint" =
   |}]
 
 let%expect_test "delete non-existent relation returns Not_found" =
-  with_root (fun root ->
+  Test_helpers.with_root (fun root ->
     let t1 = make_todo root "First" in
     let t2 = make_todo root "Second" in
     let src = Kbases.Data.Todo.id t1 in
@@ -227,7 +224,7 @@ let%expect_test "delete non-existent relation returns Not_found" =
   [%expect {| error: not found |}]
 
 let%expect_test "delete_by_entity removes all relations involving entity" =
-  with_root (fun root ->
+  Test_helpers.with_root (fun root ->
     let t1 = make_todo root "First" in
     let t2 = make_todo root "Second" in
     let t3 = make_todo root "Third" in

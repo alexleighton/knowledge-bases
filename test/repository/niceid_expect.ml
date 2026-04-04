@@ -2,7 +2,6 @@ module Niceid = Kbases.Repository.Niceid
 module Typeid = Kbases.Data.Uuid.Typeid
 module Identifier = Kbases.Data.Identifier
 
-let with_db = Test_helpers.with_db
 
 let unwrap = function
   | Ok v -> v
@@ -14,7 +13,7 @@ let pp_error = function
   | Niceid.Backend_failure msg -> Printf.printf "error: backend failure: %s\n" msg
 
 let%expect_test "allocate increments from zero" =
-  with_db (fun db ->
+  Test_helpers.with_db (fun db ->
     let repo = unwrap (Niceid.init ~db ~namespace:"nt") in
     let tid1 = Typeid.of_string "note_0123456789abcdefghjkmnpqrs" in
     let tid2 = Typeid.of_string "note_0123456789abcdefghjkmnpqrt" in
@@ -31,7 +30,7 @@ let%expect_test "allocate increments from zero" =
     |}]
 
 let%expect_test "delete_all clears all niceids and resets sequence" =
-  with_db (fun db ->
+  Test_helpers.with_db (fun db ->
     let repo = unwrap (Niceid.init ~db ~namespace:"nt") in
     let tid1 = Typeid.of_string "note_0123456789abcdefghjkmnpqrs" in
     let tid2 = Typeid.of_string "note_0123456789abcdefghjkmnpqrt" in
@@ -41,14 +40,13 @@ let%expect_test "delete_all clears all niceids and resets sequence" =
     let tid3 = Typeid.of_string "note_0123456789abcdefghjkmnpqrv" in
     (match Niceid.allocate repo tid3 with
      | Ok ident -> Printf.printf "after delete_all: %d\n" (Identifier.raw_id ident)
-     | Error (Niceid.Backend_failure msg) -> Printf.printf "alloc error: %s\n" msg
-     | Error Niceid.Not_found -> Printf.printf "alloc error: not found\n"));
+     | Error err -> pp_error err));
   [%expect {|
     after delete_all: 0
     |}]
 
 let%expect_test "delete niceid then new allocation does not conflict" =
-  with_db (fun db ->
+  Test_helpers.with_db (fun db ->
     let repo = unwrap (Niceid.init ~db ~namespace:"nt") in
     let tid1 = Typeid.of_string "note_0123456789abcdefghjkmnpqrs" in
     let tid2 = Typeid.of_string "note_0123456789abcdefghjkmnpqrt" in
@@ -70,7 +68,7 @@ let%expect_test "delete niceid then new allocation does not conflict" =
     |}]
 
 let%expect_test "delete non-existent typeid returns Not_found" =
-  with_db (fun db ->
+  Test_helpers.with_db (fun db ->
     let repo = unwrap (Niceid.init ~db ~namespace:"nt") in
     let tid = Typeid.of_string "note_0123456789abcdefghjkmnpqrs" in
     match Niceid.delete repo tid with

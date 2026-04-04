@@ -1,6 +1,4 @@
 module Root = Kbases.Repository.Root
-module TodoRepo = Kbases.Repository.Todo
-module NoteRepo = Kbases.Repository.Note
 module RelationRepo = Kbases.Repository.Relation
 module DeleteService = Kbases.Service.Delete_service
 module ItemService = Kbases.Service.Item_service
@@ -12,17 +10,15 @@ module Identifier = Kbases.Data.Identifier
 module Relation = Kbases.Data.Relation
 module Relation_kind = Kbases.Data.Relation_kind
 
-let unwrap_todo_repo = Test_helpers.unwrap_todo_repo
-let unwrap_note_repo = Test_helpers.unwrap_note_repo
-let query_count = Test_helpers.query_count
+open Test_helpers
 
 let with_delete_service f =
-  Test_helpers.with_service DeleteService.init f
+  with_service DeleteService.init f
 
 let pp_error = function
   | DeleteService.Blocked_dependency { niceid; dependents } ->
       Printf.printf "blocked: %s by [%s]\n" niceid (String.concat "; " dependents)
-  | DeleteService.Service_error err -> Test_helpers.pp_item_error err
+  | DeleteService.Service_error err -> pp_item_error err
 
 let%expect_test "delete_many single item removes it from list and show" =
   with_delete_service (fun root service ->

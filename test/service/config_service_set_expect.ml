@@ -2,8 +2,9 @@ module Root = Kbases.Repository.Root
 module Config = Kbases.Repository.Config
 module ConfigService = Kbases.Service.Config_service
 
-let pp_error = Test_helpers.pp_config_error
-let with_config_service = Test_helpers.with_config_service
+open Test_helpers
+
+let pp_error = pp_config_error
 
 (* --- validation tests --- *)
 
@@ -85,9 +86,6 @@ let%expect_test "set mode to default when never set returns Nothing_to_update" =
 
 (* --- set persists value tests --- *)
 
-let query_db = Test_helpers.query_db
-let query_rows = Test_helpers.query_rows
-
 let%expect_test "set gc_max_age persists the value in DB" =
   with_config_service (fun root service ->
     (match ConfigService.set service "gc_max_age" "604800" with
@@ -121,10 +119,10 @@ let%expect_test "set namespace renames niceids in niceid, todo, and note tables"
   with_config_service (fun root service ->
     ignore (Config.set (Root.config root) "namespace" "kb" : (unit, Config.error) result);
     ignore (Config.set (Root.config root) "mode" "local" : (unit, Config.error) result);
-    ignore (Test_helpers.unwrap_todo_repo
+    ignore (unwrap_todo_repo
       (TodoRepo.create (Root.todo root)
         ~title:(Title.make "A todo") ~content:(Content.make "body") ()));
-    ignore (Test_helpers.unwrap_note_repo
+    ignore (unwrap_note_repo
       (NoteRepo.create (Root.note root)
         ~title:(Title.make "A note") ~content:(Content.make "body") ()));
     (match ConfigService.set service "namespace" "proj" with
