@@ -1,5 +1,4 @@
 module Helper = Test_helper
-module Sqlite = Kbases.Repository.Sqlite
 
 let%expect_test "local mode: add and list succeed without creating JSONL file" =
   Helper.with_git_root (fun dir ->
@@ -32,20 +31,24 @@ let%expect_test "mode transition: local to shared enables sync" =
     ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "My task"]);
     Printf.printf "jsonl before: %b\n"
       (Sys.file_exists (Filename.concat dir ".kbases.jsonl"));
-    (* Change mode from local to shared via direct SQLite update.
-       TODO: rework once config updating is supported by the CLI. *)
-    let db_path = Filename.concat dir ".kbases.db" in
-    let db = Sqlite3.db_open db_path in
-    Fun.protect ~finally:(fun () -> ignore (Sqlite3.db_close db)) (fun () ->
-      match Sqlite.exec db "UPDATE config SET value='shared' WHERE key='mode'" with
-      | Ok () -> ()
-      | Error msg -> failwith ("config update failed: " ^ msg));
+    let mode_before = Helper.run_bs ~dir ["config"; "get"; "mode"] in
+    Helper.print_result ~dir mode_before;
+    let set_result = Helper.run_bs ~dir ["config"; "set"; "mode"; "shared"] in
+    Helper.print_result ~dir set_result;
+    let mode_after = Helper.run_bs ~dir ["config"; "get"; "mode"] in
+    Helper.print_result ~dir mode_after;
     let flush_result = Helper.run_bs ~dir ["flush"] in
     Helper.print_result ~dir flush_result;
     Printf.printf "jsonl after: %b\n"
       (Sys.file_exists (Filename.concat dir ".kbases.jsonl")));
   [%expect {|
     jsonl before: false
+    [exit 0]
+    local
+    [exit 0]
+    mode set to: shared
+    [exit 0]
+    shared
     [exit 0]
     Flushed to .kbases.jsonl
     jsonl after: true

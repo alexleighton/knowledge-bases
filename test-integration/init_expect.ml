@@ -107,12 +107,15 @@ let%expect_test "bs init creates AGENTS.md with expected content" =
     let agents_md_path = Filename.concat dir "AGENTS.md" in
     Printf.printf "AGENTS.md exists: %b\n" (Sys.file_exists agents_md_path);
     let contents = Helper.read_file agents_md_path in
-    Printf.printf "has section heading: %b\n"
-      (contains_substring ~needle:"Knowledge Base" contents);
-    Printf.printf "has add todo example: %b\n"
-      (contains_substring ~needle:"bs add todo" contents);
-    Printf.printf "has --help pointer: %b\n"
-      (contains_substring ~needle:"bs --help" contents));
+    if contains_substring ~needle:"Knowledge Base" contents
+    then print_endline "has section heading: true"
+    else Printf.printf "missing 'Knowledge Base' in:\n%s\n" contents;
+    if contains_substring ~needle:"bs add todo" contents
+    then print_endline "has add todo example: true"
+    else Printf.printf "missing 'bs add todo' in:\n%s\n" contents;
+    if contains_substring ~needle:"bs --help" contents
+    then print_endline "has --help pointer: true"
+    else Printf.printf "missing 'bs --help' in:\n%s\n" contents);
   [%expect {|
     AGENTS.md exists: true
     has section heading: true
@@ -128,10 +131,12 @@ let%expect_test "bs init appends to existing AGENTS.md" =
     let result = Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"] in
     Helper.print_result ~dir result;
     let contents = Helper.read_file agents_md_path in
-    Printf.printf "has original content: %b\n"
-      (contains_substring ~needle:"Existing agent instructions." contents);
-    Printf.printf "has kbases section: %b\n"
-      (contains_substring ~needle:"Knowledge Base" contents));
+    if contains_substring ~needle:"Existing agent instructions." contents
+    then print_endline "has original content: true"
+    else Printf.printf "missing original content in:\n%s\n" contents;
+    if contains_substring ~needle:"Knowledge Base" contents
+    then print_endline "has kbases section: true"
+    else Printf.printf "missing 'Knowledge Base' in:\n%s\n" contents);
   [%expect {|
     [exit 0]
     Initialised knowledge base:
@@ -185,8 +190,9 @@ let%expect_test "bs init creates .git/info/exclude with .kbases.db" =
     in
     Printf.printf "exclude exists: %b\n" (Sys.file_exists exclude_path);
     let contents = Helper.read_file exclude_path in
-    Printf.printf "has .kbases.db: %b\n"
-      (contains_substring ~needle:".kbases.db" contents));
+    if contains_substring ~needle:".kbases.db" contents
+    then print_endline "has .kbases.db: true"
+    else Printf.printf "missing '.kbases.db' in:\n%s\n" contents);
   [%expect {|
     exclude exists: true
     has .kbases.db: true
@@ -200,10 +206,12 @@ let%expect_test "bs init preserves existing .git/info/exclude content" =
     Io.write_file ~path:exclude_path ~contents:"*.swp\n.DS_Store\n";
     ignore (Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"]);
     let contents = Helper.read_file exclude_path in
-    Printf.printf "has original: %b\n"
-      (contains_substring ~needle:"*.swp" contents);
-    Printf.printf "has .kbases.db: %b\n"
-      (contains_substring ~needle:".kbases.db" contents));
+    if contains_substring ~needle:"*.swp" contents
+    then print_endline "has original: true"
+    else Printf.printf "missing '*.swp' in:\n%s\n" contents;
+    if contains_substring ~needle:".kbases.db" contents
+    then print_endline "has .kbases.db: true"
+    else Printf.printf "missing '.kbases.db' in:\n%s\n" contents);
   [%expect {|
     has original: true
     has .kbases.db: true

@@ -133,7 +133,8 @@ let%expect_test "bs relate --json error target not found" =
     ignore (Helper.run_bs ~dir ~stdin:"Body" ["add"; "todo"; "Source"]);
     let result = Helper.run_bs ~dir ["relate"; "kb-0"; "--depends-on"; "kb-999"; "--json"] in
     Printf.printf "[exit %d]\n" result.exit_code;
-    Printf.printf "stderr empty: %b\n" (result.stderr = "");
+    if result.stderr = "" then print_endline "stderr empty: true"
+    else Printf.printf "unexpected stderr: %s\n" result.stderr;
     let json = Helper.parse_json result.stdout in
     Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
     Printf.printf "reason: %s\n" (Helper.get_string json "reason");
@@ -151,7 +152,8 @@ let%expect_test "bs relate --json error no relation flags" =
     Helper.init_kb dir;
     let result = Helper.run_bs ~dir ["relate"; "kb-0"; "--json"] in
     Printf.printf "[exit %d]\n" result.exit_code;
-    Printf.printf "stderr empty: %b\n" (result.stderr = "");
+    if result.stderr = "" then print_endline "stderr empty: true"
+    else Printf.printf "unexpected stderr: %s\n" result.stderr;
     let json = Helper.parse_json result.stdout in
     Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
     Printf.printf "reason: %s\n" (Helper.get_string json "reason"));

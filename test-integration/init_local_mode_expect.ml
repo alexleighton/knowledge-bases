@@ -39,9 +39,10 @@ let%expect_test "bs init --mode foo rejects invalid mode" =
   Helper.with_git_root (fun dir ->
     let result = Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"; "--mode"; "foo"] in
     Printf.printf "[exit %d]\n" result.exit_code;
-    Printf.printf "has error: %b\n"
-      (Kbases.Data.String.contains_substring ~needle:"invalid" result.stderr
-       || Kbases.Data.String.contains_substring ~needle:"invalid" result.stdout));
+    let combined = result.stderr ^ result.stdout in
+    if Kbases.Data.String.contains_substring ~needle:"invalid" combined
+    then print_endline "has error: true"
+    else Printf.printf "missing 'invalid' in output:\n%s\n" combined);
   [%expect {|
     [exit 124]
     has error: true

@@ -43,10 +43,12 @@ let%expect_test "bs uninstall --yes removes appended section from AGENTS.md" =
     Helper.print_result ~dir result;
     Printf.printf "agents exists: %b\n" (Sys.file_exists agents_path);
     let contents = Helper.read_file agents_path in
-    Printf.printf "has original: %b\n"
-      (contains_substring ~needle:"Existing content." contents);
-    Printf.printf "has kb section: %b\n"
-      (contains_substring ~needle:"## Knowledge Base" contents));
+    if contains_substring ~needle:"Existing content." contents
+    then print_endline "has original: true"
+    else Printf.printf "missing 'Existing content.' in:\n%s\n" contents;
+    if not (contains_substring ~needle:"## Knowledge Base" contents)
+    then print_endline "has kb section: false"
+    else Printf.printf "unexpected '## Knowledge Base' still in:\n%s\n" contents);
   [%expect {|
     [exit 0]
     Uninstalled knowledge base:
@@ -99,10 +101,12 @@ let%expect_test "bs uninstall --yes roundtrip restores original state" =
     Printf.printf "agents exists: %b\n"
       (Sys.file_exists (Filename.concat dir "AGENTS.md"));
     let exclude_contents = Helper.read_file exclude_path in
-    Printf.printf "exclude has log: %b\n"
-      (contains_substring ~needle:"*.log" exclude_contents);
-    Printf.printf "exclude has kbases: %b\n"
-      (contains_substring ~needle:".kbases.db" exclude_contents));
+    if contains_substring ~needle:"*.log" exclude_contents
+    then print_endline "exclude has log: true"
+    else Printf.printf "missing '*.log' in:\n%s\n" exclude_contents;
+    if not (contains_substring ~needle:".kbases.db" exclude_contents)
+    then print_endline "exclude has kbases: false"
+    else Printf.printf "unexpected '.kbases.db' still in:\n%s\n" exclude_contents);
   [%expect {|
     db exists: false
     agents exists: false

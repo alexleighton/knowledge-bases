@@ -75,7 +75,8 @@ let%expect_test "bs flush --json in local mode returns json error" =
     ignore (Helper.run_bs ~dir ["init"; "-d"; dir; "-n"; "kb"; "--mode"; "local"]);
     let result = Helper.run_bs ~dir ["flush"; "--json"] in
     Printf.printf "[exit %d]\n" result.exit_code;
-    Printf.printf "stderr empty: %b\n" (result.stderr = "");
+    if result.stderr = "" then print_endline "stderr empty: true"
+    else Printf.printf "unexpected stderr: %s\n" result.stderr;
     let json = Helper.parse_json result.stdout in
     Printf.printf "ok: %b\n" (Helper.get_bool json "ok");
     Printf.printf "reason: %s\n" (Helper.get_string json "reason"));
